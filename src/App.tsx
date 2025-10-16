@@ -14,10 +14,14 @@ import NotFound from './mycomponents/user/shared/NotFound';
 // ✅ Dashboard Pages
 import DashboardLayout from "./mycomponents/dashboard/layout/DashboardLayout";
 import DashboardHome from './mycomponents/dashboard/pages/DashboardHome';
-import Products from './mycomponents/dashboard/pages/Products';
 import Users from './mycomponents/dashboard/pages/Users';
 import Bills from './mycomponents/user/pages/Bills/Bills';
 import NewProduct from './mycomponents/product/page/NewProduct ';
+import ProductsManagement from './mycomponents/product/page/ProductsManagement';
+
+// ✅ Product Pages (جديدة)
+import EditProductForm from './mycomponents/product/page/EditProductForm';
+import ViewProduct from './mycomponents/product/page/ViewProduct';
 
 function App() {
   const routes = createHashRouter([
@@ -41,11 +45,15 @@ function App() {
       path: "/dashboard",
       element: <DashboardLayout />,
       children: [
-        { path: "", element: <DashboardHome /> }, // 👈 دي الصفحة الافتراضية
-        { path: "products", element: <Products /> },
-        { path: "add-product", element: <NewProduct /> }, // الرابط الجديد
+        { path: "", element: <DashboardHome /> }, // الصفحة الافتراضية
+        { path: "products", element: <ProductsManagement /> },
+        { path: "add-product", element: <NewProduct /> },
         { path: "users", element: <Users /> },
         { path: "bills", element: <Bills /> },
+
+        // ✅ الصفحتين الجداد
+        { path: "products/edit/:id", element: <EditProductForm /> },
+        { path: "products/view/:id", element: <ViewProduct /> },
       ],
     },
 

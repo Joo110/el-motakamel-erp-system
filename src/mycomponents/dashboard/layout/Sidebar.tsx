@@ -65,33 +65,36 @@ const Sidebar = () => {
           }`}></div>
           
           {openMenus["products"] && (
-            <div className="bg-gray-50 py-2">
-              <Link
-                to="/products"
-                className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
-                  location.pathname === "/products"
-                    ? "text-[#334155] font-medium"
-                    : "text-gray-600 hover:text-[#334155]"
-                }`}
-              >
-                Products
-                <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
-                  location.pathname === "/products" ? "opacity-100" : "opacity-0 group-hover/item:opacity-100"
-                }`}></div>
-              </Link>
-              <Link
-  to="/dashboard/add-product"
-  className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
-    location.pathname === "/dashboard/add-product"
-      ? "text-[#334155] font-medium"
-      : "text-gray-600 hover:text-[#334155]"
-  }`}
->
-  Add Product
-</Link>
+  <div className="bg-gray-50 py-2">
+    <Link
+      to="/dashboard/products"
+      className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+        location.pathname === "/dashboard/products"
+          ? "text-[#334155] font-medium"
+          : "text-gray-600 hover:text-[#334155]"
+      }`}
+    >
+      Products
+      <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
+        location.pathname === "/dashboard/products"
+          ? "opacity-100"
+          : "opacity-0 group-hover/item:opacity-100"
+      }`}></div>
+    </Link>
 
-            </div>
-          )}
+    <Link
+      to="/dashboard/add-product"
+      className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+        location.pathname === "/dashboard/add-product"
+          ? "text-[#334155] font-medium"
+          : "text-gray-600 hover:text-[#334155]"
+      }`}
+    >
+      Add Product
+    </Link>
+  </div>
+)}
+
         </div>
 
         {/* More User Management Items */}
