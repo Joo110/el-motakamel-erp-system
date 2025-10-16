@@ -2,7 +2,6 @@
 
 import { useForm } from "react-hook-form"
 import { Button } from "@/components/ui/button"
-import logo from "@/assets/Logo.png"
 import axios from "axios"
 import { toast } from "react-toastify"
 import { useState } from "react"
@@ -57,7 +56,7 @@ const Bills = () => {
 
   return (
     <div className="flex flex-col items-start space-y-6 max-w-md mx-auto mt-10">
-      <img src={logo} alt="Logo" className="w-24 h-auto mb-2" />
+<img src="/images/Logo.png" alt="Logo" className="w-24 h-auto mb-2" />
       <h2 className="text-black text-[32px] font-bold">Invoice Information</h2>
 
 

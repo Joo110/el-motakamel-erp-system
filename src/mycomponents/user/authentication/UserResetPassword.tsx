@@ -1,7 +1,6 @@
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import logo from "@/assets/Logo.png";
 import { Lock, EyeOff, Eye } from "lucide-react";
 import { useState, useEffect } from "react";
 import axios from "axios";
@@ -64,7 +63,7 @@ const UserResetPassword = () => {
 
   return (
     <div className="flex flex-col items-start space-y-6 max-w-md mx-auto mt-10">
-      <img src={logo} alt="Logo" className="w-24 h-auto mb-2" />
+<img src="/images/Logo.png" alt="Logo" className="w-24 h-auto mb-2" />
       <h2 className="text-black text-[32px] font-bold">New password</h2>
       <p className="text-gray-500 font-light text-[20px]">
         Create a new password to secure your account
