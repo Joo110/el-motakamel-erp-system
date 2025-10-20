@@ -1,12 +1,11 @@
 export interface Product {
-  id: number;
+  _id?: string;
   name: string;
-  description: string;
-  category: string;
   code: string;
-  units: number;
   price: number;
   tax: number;
-  total: number;
-  image?: string;
+  description: string;
+  category: string;
+  unit: number;
+  img: (string | File)[]; // ✅ هنا أصبح يقبل string أو File
 }

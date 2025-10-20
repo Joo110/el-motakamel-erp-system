@@ -1,7 +1,18 @@
 import { useState } from "react";
 import { Upload, Edit2 } from "lucide-react";
+import { useProducts } from "../hooks/useProducts";
+import { toast } from "react-toastify";
 
 const NewProduct = () => {
+  const { addProduct } = useProducts();
+
+  const categories = [
+  { id: "68d97beed92afa6728644e3c", name: "electronics" },
+  { id: "68d97beed92afa6728644e3d", name: "footwear" },
+  { id: "68d97beed92afa6728644e3e", name: "clothing" },
+  { id: "68d97beed92afa6728644e3f", name: "accessories" },
+];
+
   const [formData, setFormData] = useState({
     name: "",
     category: "",
@@ -12,6 +23,8 @@ const NewProduct = () => {
     unit: "",
   });
   const [image, setImage] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -23,12 +36,11 @@ const NewProduct = () => {
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const file = e.target.files?.[0] || null;
     if (file) {
+      setImageFile(file);
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setImage(reader.result as string);
-      };
+      reader.onloadend = () => setImage(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
@@ -36,13 +48,44 @@ const NewProduct = () => {
   const calculateTotal = () => {
     const price = parseFloat(formData.price) || 0;
     const tax = parseFloat(formData.tax) || 0;
-    return (price + tax).toFixed(2);
+    const total = (price + tax).toFixed(2);
+    return total;
   };
 
-  const handleSubmit = () => {
-    console.log("Product Data:", formData);
-    console.log("Image:", image);
-  };
+  const handleSubmit = async () => {
+  if (!imageFile) return toast.error("Please upload an image!");
+
+  try {
+    setSaving(true);
+
+    const selectedCategory = categories.find(c => c.name === formData.category)?.id;
+    if (!selectedCategory) {
+      toast.error("Please select a valid category!");
+      setSaving(false);
+      return;
+    }
+
+    await addProduct({
+      name: formData.name,
+      category: selectedCategory,
+      description: formData.description,
+      code: formData.code,
+      price: parseFloat(formData.price),
+      tax: parseFloat(formData.tax),
+      unit: parseInt(formData.unit),
+      img: [imageFile],
+    });
+
+    toast.success("✅ Product created successfully!");
+    handleCancel();
+  } catch (error) {
+    console.error("❌ Error creating product:", error);
+    toast.error("Error creating product.");
+  } finally {
+    setSaving(false);
+  }
+};
+
 
   const handleCancel = () => {
     setFormData({
@@ -55,27 +98,25 @@ const NewProduct = () => {
       unit: "",
     });
     setImage(null);
+    setImageFile(null);
   };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
-    <div className="mb-3 flex items-center gap-4 flex-wrap">
-  {/* Title */}
-  <h1 className="text-3xl font-bold text-gray-800">
-    Products Management
-  </h1>
+      <div className="mb-3 flex items-center gap-4 flex-wrap">
+        <h1 className="text-3xl font-bold text-gray-800">
+          Products Management
+        </h1>
 
-  {/* Breadcrumb */}
-  <div className="flex items-center gap-2 text-sm text-gray-500 flex-wrap">
-    <span>Dashboard</span>
-    <span>›</span>
-    <span>Products</span>
-    <span>›</span>
-    <span className="text-gray-700">New Product</span>
-  </div>
-</div>
-
+        <div className="flex items-center gap-2 text-sm text-gray-500 flex-wrap">
+          <span>Dashboard</span>
+          <span>›</span>
+          <span>Products</span>
+          <span>›</span>
+          <span className="text-gray-700">New Product</span>
+        </div>
+      </div>
 
       {/* Main Content */}
       <div className="bg-white rounded-lg shadow-sm p-8">
@@ -94,7 +135,7 @@ const NewProduct = () => {
                 name="name"
                 value={formData.name}
                 onChange={handleInputChange}
-  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
                 placeholder=""
               />
             </div>
@@ -135,7 +176,7 @@ const NewProduct = () => {
                 value={formData.description}
                 onChange={handleInputChange}
                 rows={4}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
               />
             </div>
 
@@ -145,14 +186,13 @@ const NewProduct = () => {
                 Code
               </label>
               <input
-  type="text"
-  name="name"
-  value={formData.name}
-  onChange={handleInputChange}
-  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
-  placeholder="Enter product name..."
-/>
-
+                type="text"
+                name="code"
+                value={formData.code}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
+                placeholder="Enter product code..."
+              />
             </div>
 
             {/* Price, Tax, Unit Row */}
@@ -167,7 +207,7 @@ const NewProduct = () => {
                     name="price"
                     value={formData.price}
                     onChange={handleInputChange}
-  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
                     placeholder=""
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
@@ -186,7 +226,7 @@ const NewProduct = () => {
                     name="tax"
                     value={formData.tax}
                     onChange={handleInputChange}
-  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
                     placeholder=""
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
@@ -204,7 +244,7 @@ const NewProduct = () => {
                   name="unit"
                   value={formData.unit}
                   onChange={handleInputChange}
-  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
                   placeholder=""
                 />
               </div>
@@ -237,32 +277,31 @@ const NewProduct = () => {
 
               {/* Buttons */}
               <div className="flex gap-3">
-               <label className="flex-1 cursor-pointer">
-  <div className="flex items-center justify-center gap-2 px-4 py-3 bg-[#1f334d] text-white rounded-xl shadow-sm hover:bg-gray-900 transition-all font-medium">
-    <Edit2 size={18} />
-    <span>Edit image</span>
-  </div>
-  <input
-    type="file"
-    accept="image/*"
-    onChange={handleImageUpload}
-    className="hidden"
-  />
-</label>
+                <label className="flex-1 cursor-pointer">
+                  <div className="flex items-center justify-center gap-2 px-4 py-3 bg-[#1f334d] text-white rounded-xl shadow-sm hover:bg-gray-900 transition-all font-medium">
+                    <Edit2 size={18} />
+                    <span>Edit image</span>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </label>
 
-<label className="flex-1 cursor-pointer">
-  <div className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-400 text-white rounded-xl shadow-sm hover:bg-blue-700 transition-all font-medium">
-    <Upload size={18} />
-    <span>Upload image</span>
-  </div>
-  <input
-    type="file"
-    accept="image/*"
-    onChange={handleImageUpload}
-    className="hidden"
-  />
-</label>
-
+                <label className="flex-1 cursor-pointer">
+                  <div className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-400 text-white rounded-xl shadow-sm hover:bg-blue-700 transition-all font-medium">
+                    <Upload size={18} />
+                    <span>Upload image</span>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </label>
               </div>
             </div>
           </div>
@@ -270,20 +309,24 @@ const NewProduct = () => {
 
         {/* Action Buttons */}
         <div className="flex justify-end gap-4 mt-8 pt-6 border-t">
-        <button
-  onClick={handleCancel}
-  className="px-6 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-xl shadow-sm hover:bg-gray-50 transition-all font-medium"
->
-  Cancel
-</button>
+          <button
+            onClick={handleCancel}
+            className="px-6 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-xl shadow-sm hover:bg-gray-50 transition-all font-medium"
+          >
+            Cancel
+          </button>
 
-<button
-  onClick={handleSubmit}
-  className="px-6 py-2.5 text-white bg-gradient-to-r bg-[#1f334d] rounded-xl shadow-md hover:from-blue-700 hover:to-blue-600 transition-all font-medium"
->
-  Save Product
-</button>
-
+          <button
+            onClick={handleSubmit}
+            disabled={saving}
+            className={`px-6 py-2.5 text-white rounded-xl shadow-md font-medium transition-all ${
+              saving
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-[#1f334d] hover:bg-gray-900"
+            }`}
+          >
+            {saving ? "Saving..." : "Save Product"}
+          </button>
         </div>
       </div>
     </div>

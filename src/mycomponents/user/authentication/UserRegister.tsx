@@ -12,10 +12,9 @@ import {
   Briefcase,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import axios from "axios";
 import { toast } from "react-toastify";
-import { publicAxiosInstance } from "../Services/Urls/Urls";
 import { Link } from "react-router-dom";
+import { useRegister } from "../hooks/useRegister";
 
 const countries = [
   { code: "+20", flag: "🇪🇬" },
@@ -45,20 +44,20 @@ const UserRegister = () => {
     watch,
     trigger,
     reset,
-    formState: { errors,isSubmitting },
+    formState: { errors, isSubmitting },
   } = useForm<FormData>({
     defaultValues: {
       phone: { countryCode: countries[0].code, phoneNumber: "" },
     },
   });
 
-const password=watch("password");
- const confirmPassword=watch("confirmPassword");
-   useEffect(()=>{
-    if(confirmPassword){
-      trigger("confirmPassword")
+  const password = watch("password");
+  const confirmPassword = watch("confirmPassword");
+  useEffect(() => {
+    if (confirmPassword) {
+      trigger("confirmPassword");
     }
-  },[password,confirmPassword,trigger])
+  }, [password, confirmPassword, trigger]);
 
   const [selected, setSelected] = useState(countries[0]);
   const [open, setOpen] = useState(false);
@@ -66,44 +65,48 @@ const password=watch("password");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  const { register: doRegister, loading } = useRegister();
+
   const onSubmit = async (data: FormData) => {
-   const payload = {
-    ...data,
-    organizations: data.organizations || [],
-  };
+    const payload = {
+      ...data,
+      organizations: data.organizations || [],
+    };
 
-  console.log("Payload sent:", payload);
+    console.log("Payload sent:", payload);
 
- try{
-  const response = await publicAxiosInstance.post("/users/register", payload);
-        toast.success(response.data.status||"Registration successfully");
- reset({
-    fullname: "",
-    email: "",
-    phone: { countryCode: countries[0].code, phoneNumber: "" },
-    password: "",
-    confirmPassword: "",
-    role: "",
-    organizations: [],
-  });
-  console.log("Response received:", response.data);
- }catch(error){
-    if (axios.isAxiosError(error) && error.response?.data?.message) {
-      toast.error(error.response.data.status);
-    } else {
+    try {
+      const response = await doRegister(payload);
+      toast.success(response.message || "Registration successfully");
+      reset({
+        fullname: "",
+        email: "",
+        phone: { countryCode: countries[0].code, phoneNumber: "" },
+        password: "",
+        confirmPassword: "",
+        role: "",
+        organizations: [],
+      });
+      console.log("Response received:", response);
+    } catch (err) {
+      // err ممكن تكون AxiosError أو Error أو unknown — الهوك تعالج الخطأ وطرحت الاستثناء
+      if (typeof err === "object" && err !== null && "response" in err) {
+        // محاولة آمنة لاستخراج رسالة من Axios error
+        // @ts-expect-error - هنا مجرد محاولة قراءة حقل response
+        const serverMsg = err.response?.data?.status ?? undefined;
+        if (serverMsg) {
+          toast.error(serverMsg);
+          return;
+        }
+      }
       toast.error("An error occurred during registration.");
     }
- }
-};
-
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setOpen(false);
       }
     }
@@ -115,13 +118,12 @@ const password=watch("password");
 
   return (
     <div className="flex flex-col items-start space-y-6 max-w-md mx-auto mt-10">
-<img src="/images/Logo.png" alt="Logo" className="w-24 h-auto mb-2" />
+      <img src="/images/Logo.png" alt="Logo" className="w-24 h-auto mb-2" />
       <h2 className="text-black text-[32px] font-bold">
         Start managing your business efficiently
       </h2>
 
       <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-4">
-    
         {/* Full name & Email */}
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="w-full sm:w-1/2">
@@ -166,7 +168,6 @@ const password=watch("password");
             )}
           </div>
         </div>
-
 
         {/* Phone Number */}
         <div className="w-full relative" ref={dropdownRef}>
@@ -226,22 +227,23 @@ const password=watch("password");
             </p>
           )}
         </div>
+
         {/* role */}
         <div className="w-full">
-        <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-        <div className="relative">
-              <Briefcase  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4"  />
-          <Input
-            {...register("role", { required: "Role is required" })}
-            type="text"
-            placeholder="Enter your role"
-                className="pl-9 border border-gray-400 rounded"
-          />
+          <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+          <div className="relative">
+            <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
+              {...register("role", { required: "Role is required" })}
+              type="text"
+              placeholder="Enter your role"
+              className="pl-9 border border-gray-400 rounded"
+            />
+          </div>
+          {errors.role && (
+            <p className="text-red-500 text-sm mt-1">{errors.role.message}</p>
+          )}
         </div>
-        {errors.role && (
-          <p className="text-red-500 text-sm mt-1">{errors.role.message}</p>
-        )}
-      </div>
 
         {/* Password */}
         <div className="w-full">
@@ -275,11 +277,10 @@ const password=watch("password");
             </button>
           </div>
           {errors.password && (
-            <p className="text-red-500 text-sm mt-1">
-              {errors.password.message}
-            </p>
+            <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
           )}
         </div>
+
         {/* confirm Password */}
         <div className="w-full">
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -294,8 +295,7 @@ const password=watch("password");
                   value: 6,
                   message: "confirm Password must be at least 6 characters",
                 },
-                 validate: (value) =>
-      value === watch("password") || "Passwords do not match",
+                validate: (value) => value === watch("password") || "Passwords do not match",
               })}
               type={showConfirmPassword ? "text" : "password"}
               placeholder="Confirm Password"
@@ -314,30 +314,23 @@ const password=watch("password");
             </button>
           </div>
           {errors.confirmPassword && (
-            <p className="text-red-500 text-sm mt-1">
-              {errors.confirmPassword.message}
-            </p>
+            <p className="text-red-500 text-sm mt-1">{errors.confirmPassword.message}</p>
           )}
         </div>
 
-       <Button
-        disabled={isSubmitting}
+        <Button
+          disabled={isSubmitting || loading}
           type="submit"
           className="w-full bg-[#213555] hover:bg-[#1a2b45] text-white transition-colors duration-200 rounded"
         >
-          
-          {isSubmitting?"Loading...":"Register"}
+          {isSubmitting || loading ? "Loading..." : "Register"}
         </Button>
-          <p className="text-sm text-gray-600 mt-4 text-center">
-      Already have an account?{" "}
-      <Link
-        to="/user-login"
-        className="text-[#213555] hover:text-[#1a2b45] font-medium"
-      >
-       Access your account
-      </Link>
-    </p>
-
+        <p className="text-sm text-gray-600 mt-4 text-center">
+          Already have an account?{" "}
+          <Link to="/user-login" className="text-[#213555] hover:text-[#1a2b45] font-medium">
+            Access your account
+          </Link>
+        </p>
       </form>
     </div>
   );

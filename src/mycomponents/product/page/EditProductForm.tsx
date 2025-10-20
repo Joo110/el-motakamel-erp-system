@@ -1,38 +1,70 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import { ChevronRight, ChevronDown, Upload } from "lucide-react";
-import type { Product } from "src/types/Product";
+import { useProducts } from "../hooks/useProducts";
 
-interface EditProductFormProps {
-  product?: Product;
-  onCancel?: () => void;
-}
+const EditProductForm: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const productId = id!;
 
-const defaultProduct: Product = {
-  id: 0,
-  name: "Wireless Bluetooth Earbuds",
-  category: "Electronics",
-  description:
-    "Lightweight wireless Bluetooth earbuds, IPX4 water resistant, battery life up to 6 hours, USB-C charging.",
-  code: "75864",
-  price: 334.0,
-  tax: 12.0,
-  units: 34,
-  total: 48665.005,
-  image:
-    "https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?w=400&h=400&fit=crop",
-};
+  const { getProductById, updateProduct } = useProducts();
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-const EditProductForm: React.FC<EditProductFormProps> = ({
-  product = defaultProduct,
-  onCancel,
-}) => {
-  const [productName, setProductName] = useState(product.name);
-  const [category, setCategory] = useState(product.category);
-  const [description, setDescription] = useState(product.description);
-  const [code, setCode] = useState(product.code);
-  const [price, setPrice] = useState(product.price.toString());
-  const [tax, setTax] = useState(product.tax.toString());
-  const [units, setUnits] = useState(product.units.toString());
+  const categories = [
+    { _id: "1", name: "Electronics" },
+    { _id: "2", name: "Clothing" },
+    { _id: "3", name: "Food" },
+    { _id: "4", name: "Furniture" },
+  ];
+
+  const [productName, setProductName] = useState("");
+  const [category, setCategory] = useState("");
+  const [description, setDescription] = useState("");
+  const [code, setCode] = useState("");
+  const [price, setPrice] = useState("");
+  const [tax, setTax] = useState("");
+  const [units, setUnits] = useState("");
+  const [image, setImage] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+    const controller = new AbortController();
+
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const productData = await getProductById(productId);
+
+        if (!mounted) return;
+        if (!productData?._id) {
+          console.error("❌ Product ID missing");
+          return;
+        }
+
+        setProductName(productData.name || "");
+        setCategory(productData.category || categories[0]._id);
+        setDescription(productData.description || "");
+        setCode(productData.code || "");
+        setPrice(String(productData.price ?? ""));
+        setTax(String(productData.tax ?? ""));
+        setUnits(String(productData.unit ?? ""));
+        setImage(typeof productData.img?.[0] === "string" ? productData.img[0] : "");
+      } catch (error: unknown) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        console.error("❌ Error loading product data:", error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    if (productId) fetchData();
+
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
+  }, [productId, getProductById]);
 
   const calculateTotal = () => {
     const priceNum = parseFloat(price) || 0;
@@ -41,29 +73,37 @@ const EditProductForm: React.FC<EditProductFormProps> = ({
     return ((priceNum + taxNum) * unitsNum).toFixed(3);
   };
 
-  const handleSave = () => {
-    const updatedProduct: Product = {
-      ...product,
-      name: productName,
-      category,
-      description,
-      code,
-      price: parseFloat(price),
-      tax: parseFloat(tax),
-      units: parseFloat(units),
-      total: parseFloat(calculateTotal()),
+const handleSave = async () => {
+  try {
+    setSaving(true);
+
+    // Example: send only price
+    const payload = {
+      price: parseFloat(price) || 1000,
     };
 
-    console.log("✅ Updated product:", updatedProduct);
-  };
+    console.log("📦 Payload to send:", payload);
+
+    await updateProduct(productId, payload);
+    alert("✅ Product updated successfully!");
+  } catch (error) {
+    console.error("❌ Failed to update product:", error);
+    alert("Error updating product. Check console.");
+  } finally {
+    setSaving(false);
+  }
+};
+
+
+  if (loading) {
+    return <div className="p-10 text-center text-gray-500">Loading product...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Products Management
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Products Management</h1>
         <div className="flex items-center gap-2 text-sm text-gray-500">
           <span>Dashboard</span>
           <ChevronRight className="w-4 h-4" />
@@ -81,9 +121,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({
           {/* Left */}
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                Product Name
-              </label>
+              <label className="block text-sm font-medium text-gray-900 mb-2">Product Name</label>
               <input
                 type="text"
                 value={productName}
@@ -93,28 +131,25 @@ const EditProductForm: React.FC<EditProductFormProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                Category
-              </label>
+              <label className="block text-sm font-medium text-gray-900 mb-2">Category</label>
               <div className="relative">
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white appearance-none shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                 >
-                  <option>Electronics</option>
-                  <option>Footwear</option>
-                  <option>Clothing</option>
-                  <option>Accessories</option>
+                  {categories.map((cat) => (
+                    <option key={cat._id} value={cat._id}>
+                      {cat.name}
+                    </option>
+                  ))}
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                Description
-              </label>
+              <label className="block text-sm font-medium text-gray-900 mb-2">Description</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -124,9 +159,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                Code
-              </label>
+              <label className="block text-sm font-medium text-gray-900 mb-2">Code</label>
               <input
                 type="text"
                 value={code}
@@ -137,9 +170,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({
 
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
-                  Price
-                </label>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Price</label>
                 <input
                   type="text"
                   value={price}
@@ -148,9 +179,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
-                  Tax
-                </label>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Tax</label>
                 <input
                   type="text"
                   value={tax}
@@ -159,9 +188,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
-                  Units
-                </label>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Units</label>
                 <input
                   type="text"
                   value={units}
@@ -173,9 +200,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({
 
             <div className="pt-2">
               <span className="text-sm font-medium text-gray-900">Total: </span>
-              <span className="text-lg font-bold text-gray-900">
-                {calculateTotal()} SR
-              </span>
+              <span className="text-lg font-bold text-gray-900">{calculateTotal()} SR</span>
             </div>
           </div>
 
@@ -184,7 +209,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({
             <div className="w-full max-w-md">
               <div className="bg-gray-50 rounded-2xl p-8 flex flex-col items-center justify-center mb-6">
                 <img
-                  src={product.image || "https://via.placeholder.com/200"}
+                  src={image || "https://via.placeholder.com/200"}
                   alt="Product"
                   className="w-64 h-64 object-contain mb-6"
                 />
@@ -205,16 +230,19 @@ const EditProductForm: React.FC<EditProductFormProps> = ({
         {/* Actions */}
         <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-gray-200">
           <button
-            onClick={onCancel}
+            onClick={() => window.history.back()}
             className="px-6 py-2.5 rounded-xl bg-white border border-gray-300 shadow-sm text-gray-700 font-medium hover:bg-gray-100 transition-all"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="px-6 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-800 text-white font-medium shadow-sm transition-all"
+            disabled={saving}
+            className={`px-6 py-2.5 rounded-xl text-white font-medium shadow-sm transition-all ${
+              saving ? "bg-gray-400" : "bg-slate-700 hover:bg-slate-800"
+            }`}
           >
-            Save Product
+            {saving ? "Saving..." : "Save Product"}
           </button>
         </div>
       </div>

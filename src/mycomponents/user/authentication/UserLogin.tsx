@@ -5,6 +5,7 @@ import { Mail, Lock, EyeOff, Eye } from "lucide-react";
 import { useState } from "react";
 import { toast } from "react-toastify";
 import { Link, useNavigate } from "react-router-dom";
+import { useLogin } from "@/mycomponents/user/hooks/useLogin";
 
 type FormData = {
   email: string;
@@ -15,43 +16,72 @@ const UserLogin = () => {
   const {
     register,
     handleSubmit,
-    formState: { isSubmitting },
+    formState: { isSubmitting, errors },
   } = useForm<FormData>();
 
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const { login, loading } = useLogin();
 
-  const onSubmit = async () => {
-    toast.success("Login successful (Dev Mode)");
-    navigate("/dashboard");
+  const onSubmit = async (data: FormData) => {
+    try {
+      const response = await login(data.email, data.password);
+
+      if (response.token || response.accessToken) {
+        toast.success("Login successful! 🎉");
+        navigate("/dashboard");
+      } else {
+        toast.error("Login failed: No token received");
+      }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Invalid email or password";
+      toast.error(errorMessage);
+      console.error("Login error:", error);
+    }
   };
 
   return (
     <div className="flex flex-col items-start space-y-6 max-w-md mx-auto mt-10">
-<img
-  src="/public/images/Logo.png"
-  alt="Logo"
-  className="w-24 h-auto mb-2"
-/>
+      <img
+        src="/public/images/Logo.png"
+        alt="Logo"
+        className="w-24 h-auto mb-2"
+      />
+
       <h2 className="text-black text-[32px] font-bold">
         Welcome back! Please log in to continue.
       </h2>
 
       <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-4">
         {/* Email */}
-        <div className="w-full ">
+        <div className="w-full">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Email
           </label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
-              {...register("email")}
-              type="text"
+              {...register("email", {
+                required: "Email is required",
+                pattern: {
+                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                  message: "Invalid email address",
+                },
+              })}
+              type="email"
               placeholder="Enter your email"
-              className="pl-9 border-[2px] border-[#213555] rounded w-full "
+              className="pl-9 border-[2px] border-[#213555] rounded w-full"
             />
           </div>
+          {errors.email && (
+            <p className="text-red-500 text-sm mt-1">
+              {errors.email.message}
+            </p>
+          )}
         </div>
 
         {/* Password */}
@@ -62,7 +92,13 @@ const UserLogin = () => {
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
-              {...register("password")}
+              {...register("password", {
+                required: "Password is required",
+                minLength: {
+                  value: 6,
+                  message: "Password must be at least 6 characters",
+                },
+              })}
               type={showPassword ? "text" : "password"}
               placeholder="Enter Your Password"
               className="pl-9 border-[2px] border-[#213555] rounded"
@@ -75,6 +111,11 @@ const UserLogin = () => {
               {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
           </div>
+          {errors.password && (
+            <p className="text-red-500 text-sm mt-1">
+              {errors.password.message}
+            </p>
+          )}
         </div>
 
         <p className="text-sm text-gray-600 mt-4 text-right">
@@ -87,11 +128,11 @@ const UserLogin = () => {
         </p>
 
         <Button
-          disabled={isSubmitting}
+          disabled={isSubmitting || loading}
           type="submit"
           className="w-full bg-[#213555] hover:bg-[#1a2b45] text-white transition-colors duration-200 rounded"
         >
-          {isSubmitting ? "Loading..." : "Login"}
+          {isSubmitting || loading ? "Loading..." : "Login"}
         </Button>
 
         <p className="text-sm text-gray-600 mt-4 text-center">
