@@ -54,41 +54,25 @@ export const getProductByIdService = async (id: string): Promise<Product> => {
   return response.data.data.product;
 };
 
-// 3️⃣ Create product
 export const createProductService = async (product: Product): Promise<Product> => {
-  const formData = new FormData();
+  const payload = {
+    name: product.name,
+    code: product.code,
+    price: product.price,
+    tax: product.tax,
+    description: product.description,
+    category: product.category,
+    unit: product.unit,
+    img: product.img.map((i) => (typeof i === "string" ? i : "daf")), // File يتحول لاسم افتراضي
+  };
 
-  formData.append("name", product.name);
-  formData.append("code", product.code);
-  formData.append("price", String(product.price));
-  formData.append("tax", String(product.tax));
-  formData.append("description", product.description);
-  formData.append("category", product.category);
-  formData.append("unit", String(product.unit));
+  console.log("📤 Sending payload:", payload);
 
-  // التعامل مع الصور
-  if (product.img && product.img.length > 0) {
-    product.img.forEach((img) => {
-      if (img instanceof File) {
-        formData.append("img", img);
-      }
-    });
-  }
-
-  // Debug: طباعة محتويات FormData
-  console.log("📤 Sending FormData:");
-  for (const pair of formData.entries()) {
-    console.log(pair[0], pair[1]);
-  }
-
-  const response = await axiosClient.post<SingleProductResponse>("/products", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  const response = await axiosClient.post<SingleProductResponse>("/products", payload);
 
   console.log("✅ createProductService response:", response.data);
   return response.data.data.product;
 };
-
 // 4️⃣ Update product
 export const updateProductService = async (
   id: string,

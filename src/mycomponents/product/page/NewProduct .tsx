@@ -52,7 +52,7 @@ const NewProduct = () => {
     return total;
   };
 
-  const handleSubmit = async () => {
+const handleSubmit = async () => {
   if (!imageFile) return toast.error("Please upload an image!");
 
   try {
@@ -65,16 +65,16 @@ const NewProduct = () => {
       return;
     }
 
-    await addProduct({
-      name: formData.name,
-      category: selectedCategory,
-      description: formData.description,
-      code: formData.code,
-      price: parseFloat(formData.price),
-      tax: parseFloat(formData.tax),
-      unit: parseInt(formData.unit),
-      img: [imageFile],
-    });
+   await addProduct({
+  name: formData.name,
+  category: selectedCategory,
+  description: formData.description,
+  code: formData.code,
+  price: parseFloat(formData.price),
+  tax: parseFloat(formData.tax),
+  unit: parseInt(formData.unit) || 0, // ✅ تأمين ضد NaN
+  img: ["daf"], // ✅ مؤقتًا شغالة تمام
+});
 
     toast.success("✅ Product created successfully!");
     handleCancel();
@@ -85,6 +85,7 @@ const NewProduct = () => {
     setSaving(false);
   }
 };
+
 
 
   const handleCancel = () => {

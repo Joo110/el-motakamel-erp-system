@@ -1,8 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Search, Plus, Edit2, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useProducts } from "../hooks/useProducts";
 import type { Product } from "../services/productService";
+
+interface CategoryItem {
+  id: string;
+  name: string;
+}
 
 const ProductsManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -11,26 +16,76 @@ const ProductsManagement: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(5);
 
-  const { products, loading, error, fetchProducts, searchProducts, deleteProduct } = useProducts();
+  const { products, loading, error, fetchProducts, deleteProduct } = useProducts();
 
-  // fetch products once
-useEffect(() => {
-  fetchProducts();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, []);  // ✅ Run once
+  useEffect(() => {
+    fetchProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Filter products
-  const filteredProducts = products.filter((p) => {
-    const matchesSearch =
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.description.toLowerCase().includes(searchTerm.toLowerCase());
+  const CATEGORY_LOOKUP: Record<string, string> = {
+    "68d97beed92afa6728644e3c": "electronics",
+    "68d97beed92afa6728644e3d": "footwear",
+    "68d97beed92afa6728644e3e": "clothing",
+    "68e5211b786aca8a94703328": "fiat",
+    "68e5203c786aca8a9470331f": "Dell",
+    "68f4f9a491e22223929518e1": "laptop",
+    "68f4fa6591e22223929518e9": "mobile",
+    "68f508be44736b3c9e775906": "chair",
+    "68d97beed92afa6728644e3f": "accessories",
+    "68e52034786aca8a9470331d": "example-category",
+  };
 
-    const matchesCategory =
-      selectedCategory === "All Categories" || p.category === selectedCategory;
 
-    return matchesSearch && matchesCategory;
-  });
+  const categories: CategoryItem[] = useMemo(() => {
+    const map = new Map<string, string>();
+
+    products.forEach((p) => {
+      /* eslint-disable @typescript-eslint/no-explicit-any */
+      const cat = (p as any).category;
+      if (!cat) return;
+
+      if (typeof cat === "string") {
+        const name = CATEGORY_LOOKUP[cat] ?? cat;
+        map.set(cat, name);
+      } else if (typeof cat === "object") {
+        const id = cat._id ?? cat.id ?? String(cat);
+        const name = cat.name ?? CATEGORY_LOOKUP[id] ?? id;
+        map.set(id, name);
+      }
+    });
+
+    const arr: CategoryItem[] = [{ id: "All Categories", name: "All Categories" }];
+    for (const [id, name] of map.entries()) {
+      arr.push({ id, name });
+    }
+    return arr;
+  }, [products]);
+
+  const filteredProducts = useMemo(() => {
+    return products.filter((p) => {
+      const name = (p.name || "").toString().toLowerCase();
+      const code = (p.code || "").toString().toLowerCase();
+      const desc = (p.description || "").toString().toLowerCase();
+      const term = searchTerm.toLowerCase();
+
+      const matchesSearch = name.includes(term) || code.includes(term) || desc.includes(term);
+
+      if (selectedCategory === "All Categories") return matchesSearch;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+      const cat = (p as any).category;
+      if (!cat) return false;
+
+      if (typeof cat === "string") {
+        return matchesSearch && cat === selectedCategory;
+      } else if (typeof cat === "object") {
+        const id = cat._id ?? cat.id ?? "";
+        return matchesSearch && id === selectedCategory;
+      }
+
+      return false;
+    });
+  }, [products, searchTerm, selectedCategory]);
 
   // Pagination
   const startIndex = (currentPage - 1) * entriesPerPage;
@@ -40,7 +95,7 @@ useEffect(() => {
   const totalPages = Math.ceil(totalProducts / entriesPerPage);
 
   const getPageNumbers = () => {
-    const pages = [];
+    const pages: number[] = [];
     const maxPages = 5;
     let startPage = Math.max(1, currentPage - Math.floor(maxPages / 2));
     const endPage = Math.min(totalPages, startPage + maxPages - 1);
@@ -49,15 +104,6 @@ useEffect(() => {
     }
     for (let i = startPage; i <= endPage; i++) pages.push(i);
     return pages;
-  };
-
-  const handleSearch = async () => {
-    if (searchTerm.trim()) {
-      await searchProducts(searchTerm);
-    } else {
-      await fetchProducts();
-    }
-    setCurrentPage(1);
   };
 
   const handleReset = async () => {
@@ -137,7 +183,7 @@ useEffect(() => {
                 placeholder="Search products by name, code, or description..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+                onKeyPress={(e) => e.key === "Enter" && setCurrentPage(1)}
                 className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
               />
             </div>
@@ -148,27 +194,20 @@ useEffect(() => {
             <div className="relative">
               <select
                 value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
+                onChange={(e) => {
+                  setSelectedCategory(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm appearance-none focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none cursor-pointer"
               >
-                <option>All Categories</option>
-                <option>Electronics</option>
-                <option>Footwear</option>
-                <option>Clothing</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
             </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2 opacity-0">Search</label>
-            <button
-              onClick={handleSearch}
-              className="px-6 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-800 text-white font-medium shadow-sm transition-all flex items-center gap-2"
-            >
-              <Search className="w-5 h-5" />
-              Search
-            </button>
           </div>
 
           <div>
@@ -178,12 +217,7 @@ useEffect(() => {
               className="px-6 py-2.5 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium shadow-sm transition-all flex items-center gap-2"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
               Reset
             </button>
@@ -214,10 +248,7 @@ useEffect(() => {
             <div className="text-center py-10">
               <div className="text-red-500 mb-2">Failed to load products</div>
               <p className="text-sm text-gray-500">{error}</p>
-              <button
-                onClick={fetchProducts}
-                className="mt-4 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800"
-              >
+              <button onClick={fetchProducts} className="mt-4 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800">
                 Retry
               </button>
             </div>
@@ -228,7 +259,6 @@ useEffect(() => {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Product</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Category</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Code</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Units</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Price</th>
@@ -242,39 +272,33 @@ useEffect(() => {
                   const productImage = getProductImage(product.img);
                   const total = calculateTotal(product.price, product.tax);
 
+                  let categoryName = "—";
+                  const cat = (product as any).category;
+                  if (cat) {
+                    if (typeof cat === "string") {
+                      categoryName = CATEGORY_LOOKUP[cat] ?? cat;
+                    } else if (typeof cat === "object") {
+                      categoryName = cat.name ?? (CATEGORY_LOOKUP[cat._id ?? cat.id] ?? "—");
+                    }
+                  }
+
                   return (
-                    <tr
-                      key={product._id}
-                      onClick={() => handleViewProduct(product)}
-                      className="hover:bg-gray-50 transition-colors cursor-pointer"
-                    >
+                    <tr key={product._id} onClick={() => handleViewProduct(product)} className="hover:bg-gray-50 transition-colors cursor-pointer">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 bg-gradient-to-br from-gray-200 to-gray-300 rounded-lg flex-shrink-0 overflow-hidden flex items-center justify-center">
                             {productImage ? (
-                              <img
-                                src={productImage}
-                                alt={product.name}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = "none";
-                                }}
-                              />
+                              <img src={productImage} alt={product.name} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
                             ) : (
-                              <span className="text-gray-500 text-xs font-semibold">
-                                {product.name.charAt(0).toUpperCase()}
-                              </span>
+                              <span className="text-gray-500 text-xs font-semibold">{product.name.charAt(0).toUpperCase()}</span>
                             )}
                           </div>
                           <div>
                             <div className="font-medium text-gray-900">{product.name}</div>
-                            <div className="text-sm text-gray-500 line-clamp-1">
-                              {product.description}
-                            </div>
+                            <div className="text-sm text-gray-500 line-clamp-1">{categoryName}</div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-gray-700">{product.category}</td>
                       <td className="px-6 py-4 text-gray-700 font-mono text-sm">{product.code}</td>
                       <td className="px-6 py-4 text-gray-700">{product.unit}</td>
                       <td className="px-6 py-4 text-gray-700">{Number(product.price).toFixed(2)} SR</td>
@@ -282,18 +306,10 @@ useEffect(() => {
                       <td className="px-6 py-4 text-gray-700 font-semibold">{total.toFixed(2)} SR</td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <button
-                            className="text-blue-600 hover:text-blue-800 p-1 transition-colors"
-                            onClick={(e) => handleEdit(e, product)}
-                            title="Edit Product"
-                          >
+                          <button className="text-blue-600 hover:text-blue-800 p-1 transition-colors" onClick={(e) => handleEdit(e, product)} title="Edit Product">
                             <Edit2 className="w-5 h-5" />
                           </button>
-                          <button
-                            className="text-red-600 hover:text-red-800 p-1 transition-colors"
-                            onClick={(e) => handleDelete(e, product._id || "")}
-                            title="Delete Product"
-                          >
+                          <button className="text-red-600 hover:text-red-800 p-1 transition-colors" onClick={(e) => handleDelete(e, product._id || "")} title="Delete Product">
                             <Trash2 className="w-5 h-5" />
                           </button>
                         </div>
@@ -330,33 +346,17 @@ useEffect(() => {
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                  className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
+                <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                   Previous
                 </button>
 
                 {getPageNumbers().map((pageNum) => (
-                  <button
-                    key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={`px-4 py-2 text-sm rounded-lg transition-colors ${
-                      currentPage === pageNum
-                        ? "text-white bg-blue-600 border border-blue-600"
-                        : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
-                    }`}
-                  >
+                  <button key={pageNum} onClick={() => setCurrentPage(pageNum)} className={`px-4 py-2 text-sm rounded-lg transition-colors ${currentPage === pageNum ? "text-white bg-blue-600 border border-blue-600" : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"}`}>
                     {pageNum}
                   </button>
                 ))}
 
-                <button
-                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                  className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
+                <button onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                   Next
                 </button>
               </div>

@@ -9,4 +9,13 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://erp-3-5mq8.onrender.com",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, "/api/v1"),
+      },
+    },
+  },
 })

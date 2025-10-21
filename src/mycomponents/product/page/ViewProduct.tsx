@@ -9,6 +9,14 @@ const ViewProduct: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { getProductById, loading, error } = useProducts();
 
+  const categories = [
+  { id: "68d97beed92afa6728644e3c", name: "electronics" },
+  { id: "68d97beed92afa6728644e3d", name: "footwear" },
+  { id: "68d97beed92afa6728644e3e", name: "clothing" },
+  { id: "68d97beed92afa6728644e3f", name: "accessories" },
+];
+
+
   const [product, setProduct] = useState<Product | null>(null);
 
 useEffect(() => {
@@ -61,7 +69,10 @@ useEffect(() => {
               <label className="block text-sm font-medium text-gray-500 mb-2">
                 Category
               </label>
-              <p className="text-lg text-gray-900">{product.category}</p>
+              <p className="text-lg text-gray-900">
+  {categories.find(c => c.id === product.category)?.name || "Unknown"}
+</p>
+
             </div>
 
             <div>
