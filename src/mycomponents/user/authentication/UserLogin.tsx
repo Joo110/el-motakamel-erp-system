@@ -46,6 +46,7 @@ const UserLogin = () => {
 
   return (
     <div className="flex flex-col items-start space-y-6 max-w-md mx-auto mt-10">
+<img src="/images/Logo.png" alt="Logo" className="w-24 h-auto mb-2" />
 
       <h2 className="text-black text-[32px] font-bold">
         Welcome back! Please log in to continue.
