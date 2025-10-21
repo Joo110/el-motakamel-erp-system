@@ -5,8 +5,12 @@ interface RetryableRequest extends AxiosRequestConfig {
   _retry?: boolean;
 }
 
+// ✅ استخدم متغير البيئة أو المسار المحلي حسب الحالة
+const baseURL =
+  import.meta.env.VITE_API_URL || "/api";
+
 const axiosClient = axios.create({
-  baseURL: "/api", // بدل http://erp-3-5mq8.onrender.com/api/v1
+  baseURL,
   headers: { "Content-Type": "application/json" },
 });
 
@@ -29,6 +33,7 @@ axiosClient.interceptors.response.use(
     const originalRequest = error.config as RetryableRequest | undefined;
     if (!originalRequest) return Promise.reject(error);
 
+    // ✅ في حالة انتهاء الصلاحية، حاول تجديد التوكن
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
@@ -36,14 +41,16 @@ axiosClient.interceptors.response.use(
         const refreshToken = Cookies.get("refreshToken");
         if (!refreshToken) throw new Error("No refresh token found");
 
-        const res = await axios.post("/auth/refresh", { token: refreshToken });
+        const res = await axios.post(
+          `${baseURL.replace(/\/$/, "")}/auth/refresh`,
+          { token: refreshToken }
+        );
 
         const newAccessToken = res.data?.accessToken;
         if (newAccessToken) {
           Cookies.set("authToken", newAccessToken, { expires: 7 });
           if (!originalRequest.headers) originalRequest.headers = {};
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-
           return axiosClient(originalRequest);
         }
 
@@ -52,7 +59,6 @@ axiosClient.interceptors.response.use(
         console.error("Refresh token error:", refreshError);
         Cookies.remove("authToken");
         Cookies.remove("refreshToken");
-
         return Promise.reject(refreshError);
       }
     }
