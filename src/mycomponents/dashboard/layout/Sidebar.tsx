@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { ChevronDown, Users, Package } from "lucide-react";
+import { ChevronDown, Users, Package, Warehouse } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 const Sidebar = () => {
   const [openMenus, setOpenMenus] = useState<{ [key: string]: boolean }>({
-    products: true
+    products: true,
+    inventory: false
   });
   const location = useLocation();
 
@@ -33,7 +34,6 @@ const Sidebar = () => {
                 }`}
               />
             </button>
-            {/* الخط العمودي على اليمين عند الـ hover */}
             <div className="absolute right-0 top-0 h-full w-1 bg-[#334155] opacity-0 group-hover:opacity-100 transition-opacity"></div>
           </div>
         ))}
@@ -59,42 +59,227 @@ const Sidebar = () => {
               }`}
             />
           </button>
-          {/* الخط العمودي على اليمين */}
           <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
             openMenus["products"] ? "opacity-100" : "opacity-0 group-hover:opacity-100"
           }`}></div>
           
           {openMenus["products"] && (
-  <div className="bg-gray-50 py-2">
-    <Link
-      to="/dashboard/products"
-      className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
-        location.pathname === "/dashboard/products"
-          ? "text-[#334155] font-medium"
-          : "text-gray-600 hover:text-[#334155]"
-      }`}
-    >
-      Products
-      <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
-        location.pathname === "/dashboard/products"
-          ? "opacity-100"
-          : "opacity-0 group-hover/item:opacity-100"
-      }`}></div>
-    </Link>
+            <div className="bg-gray-50 py-2">
+              <Link
+                to="/dashboard/products"
+                className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+                  location.pathname === "/dashboard/products"
+                    ? "text-[#334155] font-medium"
+                    : "text-gray-600 hover:text-[#334155]"
+                }`}
+              >
+                Products
+                <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
+                  location.pathname === "/dashboard/products"
+                    ? "opacity-100"
+                    : "opacity-0 group-hover/item:opacity-100"
+                }`}></div>
+              </Link>
 
-    <Link
-      to="/dashboard/add-product"
-      className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
-        location.pathname === "/dashboard/add-product"
-          ? "text-[#334155] font-medium"
-          : "text-gray-600 hover:text-[#334155]"
-      }`}
-    >
-      Add Product
-    </Link>
-  </div>
-)}
+              <Link
+                to="/dashboard/add-product"
+                className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+                  location.pathname === "/dashboard/add-product"
+                    ? "text-[#334155] font-medium"
+                    : "text-gray-600 hover:text-[#334155]"
+                }`}
+              >
+                Add Product
+                <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
+                  location.pathname === "/dashboard/add-product"
+                    ? "opacity-100"
+                    : "opacity-0 group-hover/item:opacity-100"
+                }`}></div>
+              </Link>
+            </div>
+          )}
+        </div>
 
+        {/* Inventory Management */}
+        <div className="mb-1 relative group">
+          <button
+            onClick={() => toggleMenu("inventory")}
+            className={`flex justify-between items-center w-full px-6 py-3 transition-colors ${
+              openMenus["inventory"] 
+                ? "text-[#334155] bg-gray-50" 
+                : "text-gray-600 hover:text-[#334155]"
+            }`}
+          >
+            <span className="flex items-center gap-3 text-sm font-medium">
+              <Warehouse size={18} strokeWidth={2} />
+              <span>Inventory Management</span>
+            </span>
+            <ChevronDown
+              size={16}
+              className={`transition-all ${
+                openMenus["inventory"] ? "rotate-180 text-[#334155]" : "text-gray-400 group-hover:text-[#334155]"
+              }`}
+            />
+          </button>
+          <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
+            openMenus["inventory"] ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          }`}></div>
+          
+          {openMenus["inventory"] && (
+            <div className="bg-gray-50 py-2">
+              <Link
+                to="/dashboard/inventories"
+                className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+                  location.pathname === "/dashboard/inventories"
+                    ? "text-[#334155] font-medium"
+                    : "text-gray-600 hover:text-[#334155]"
+                }`}
+              >
+                Inventories
+                <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
+                  location.pathname === "/dashboard/inventories"
+                    ? "opacity-100"
+                    : "opacity-0 group-hover/item:opacity-100"
+                }`}></div>
+              </Link>
+
+              <Link
+                to="/dashboard/add-inventory"
+                className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+                  location.pathname === "/dashboard/add-inventory"
+                    ? "text-[#334155] font-medium"
+                    : "text-gray-600 hover:text-[#334155]"
+                }`}
+              >
+                Add Inventory
+                <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
+                  location.pathname === "/dashboard/add-inventory"
+                    ? "opacity-100"
+                    : "opacity-0 group-hover/item:opacity-100"
+                }`}></div>
+              </Link>
+
+              <Link
+                to="/dashboard/stock-search"
+                className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+                  location.pathname === "/dashboard/stock-search"
+                    ? "text-[#334155] font-medium"
+                    : "text-gray-600 hover:text-[#334155]"
+                }`}
+              >
+                Stock Search
+                <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
+                  location.pathname === "/dashboard/stock-search"
+                    ? "opacity-100"
+                    : "opacity-0 group-hover/item:opacity-100"
+                }`}></div>
+              </Link>
+
+              <Link
+                to="/dashboard/inventory-details"
+                className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+                  location.pathname === "/dashboard/inventory-details"
+                    ? "text-[#334155] font-medium"
+                    : "text-gray-600 hover:text-[#334155]"
+                }`}
+              >
+                Inventory Details
+                <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
+                  location.pathname === "/dashboard/inventory-details"
+                    ? "opacity-100"
+                    : "opacity-0 group-hover/item:opacity-100"
+                }`}></div>
+              </Link>
+
+              <Link
+                to="/dashboard/edit-inventory"
+                className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+                  location.pathname === "/dashboard/edit-inventory"
+                    ? "text-[#334155] font-medium"
+                    : "text-gray-600 hover:text-[#334155]"
+                }`}
+              >
+                Edit Inventory
+                <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
+                  location.pathname === "/dashboard/edit-inventory"
+                    ? "opacity-100"
+                    : "opacity-0 group-hover/item:opacity-100"
+                }`}></div>
+              </Link>
+              <Link
+        to="/dashboard/stock-in"
+        className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+          location.pathname === "/dashboard/stock-in" ? "text-[#334155] font-medium" : "text-gray-600 hover:text-[#334155]"
+        }`}
+      >
+        Stock In
+        <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
+          location.pathname === "/dashboard/stock-in" ? "opacity-100" : "opacity-0 group-hover/item:opacity-100"
+        }`}></div>
+      </Link>
+
+      <Link
+        to="/dashboard/stock-in-draft"
+        className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+          location.pathname === "/dashboard/stock-in-draft" ? "text-[#334155] font-medium" : "text-gray-600 hover:text-[#334155]"
+        }`}
+      >
+        Stock In Draft
+        <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
+          location.pathname === "/dashboard/stock-in-draft" ? "opacity-100" : "opacity-0 group-hover/item:opacity-100"
+        }`}></div>
+      </Link>
+
+      <Link
+        to="/dashboard/stock-out"
+        className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+          location.pathname === "/dashboard/stock-out" ? "text-[#334155] font-medium" : "text-gray-600 hover:text-[#334155]"
+        }`}
+      >
+        Stock Out
+        <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
+          location.pathname === "/dashboard/stock-out" ? "opacity-100" : "opacity-0 group-hover/item:opacity-100"
+        }`}></div>
+      </Link>
+
+      <Link
+        to="/dashboard/stock-out-draft"
+        className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+          location.pathname === "/dashboard/stock-out-draft" ? "text-[#334155] font-medium" : "text-gray-600 hover:text-[#334155]"
+        }`}
+      >
+        Stock Out Draft
+        <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
+          location.pathname === "/dashboard/stock-out-draft" ? "opacity-100" : "opacity-0 group-hover/item:opacity-100"
+        }`}></div>
+      </Link>
+
+      <Link
+        to="/dashboard/transfer"
+        className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+          location.pathname === "/dashboard/transfer" ? "text-[#334155] font-medium" : "text-gray-600 hover:text-[#334155]"
+        }`}
+      >
+        Transfer
+        <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
+          location.pathname === "/dashboard/transfer" ? "opacity-100" : "opacity-0 group-hover/item:opacity-100"
+        }`}></div>
+      </Link>
+
+      <Link
+        to="/dashboard/transfer-draft"
+        className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+          location.pathname === "/dashboard/transfer-draft" ? "text-[#334155] font-medium" : "text-gray-600 hover:text-[#334155]"
+        }`}
+      >
+        Transfer Draft
+        <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
+          location.pathname === "/dashboard/transfer-draft" ? "opacity-100" : "opacity-0 group-hover/item:opacity-100"
+        }`}></div>
+      </Link>
+            </div>
+            
+          )}
         </div>
 
         {/* More User Management Items */}
@@ -115,7 +300,6 @@ const Sidebar = () => {
                 }`}
               />
             </button>
-            {/* الخط العمودي على اليمين عند الـ hover */}
             <div className="absolute right-0 top-0 h-full w-1 bg-[#334155] opacity-0 group-hover:opacity-100 transition-opacity"></div>
           </div>
         ))}

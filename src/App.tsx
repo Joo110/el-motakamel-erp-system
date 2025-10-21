@@ -1,8 +1,8 @@
-import './App.css';
+import './App.css'; 
 import { createHashRouter, RouterProvider } from "react-router-dom";
 import { ToastContainer } from 'react-toastify';
 
-// ✅ Authentication Pages
+// Authentication Pages
 import UserLogin from './mycomponents/user/authentication/UserLogin';
 import UserRegister from './mycomponents/user/authentication/UserRegister';
 import UserResetPassword from './mycomponents/user/authentication/UserResetPassword';
@@ -11,17 +11,30 @@ import UserVerification from './mycomponents/user/authentication/UserVerificatio
 import UserAuthLayout from './mycomponents/user/shared/UserAuthLayout';
 import NotFound from './mycomponents/user/shared/NotFound';
 
-// ✅ Dashboard Pages
+// Dashboard Pages
 import DashboardLayout from "./mycomponents/dashboard/layout/DashboardLayout";
 import DashboardHome from './mycomponents/dashboard/pages/DashboardHome';
 import Users from './mycomponents/dashboard/pages/Users';
 import Bills from './mycomponents/user/pages/Bills/Bills';
 import NewProduct from './mycomponents/product/page/NewProduct ';
 import ProductsManagement from './mycomponents/product/page/ProductsManagement';
-
-// ✅ Product Pages (جديدة)
 import EditProductForm from './mycomponents/product/page/EditProductForm';
 import ViewProduct from './mycomponents/product/page/ViewProduct';
+
+// Inventory Pages
+import Inventories from './mycomponents/inventory/page/InventoriesListView';
+import AddInventory from './mycomponents/inventory/page/AddInventoryForm';
+import StockSearch from './mycomponents/inventory/page/StockSearchView';
+import InventoryDetails from './mycomponents/inventory/page/InventoryDetailsView';
+import EditInventory from './mycomponents/inventory/page/EditInventoryForm';
+
+// New Inventory Components
+import StockIn from './mycomponents/inventory/page/StockInComponent';
+import StockInDraft from './mycomponents/inventory/page/StockInDraftComponent';
+import StockOut from './mycomponents/inventory/page/StockOutComponent';
+import StockOutDraft from './mycomponents/inventory/page/StockOutDraftComponent';
+import Transfer from './mycomponents/inventory/page/TransferComponent';
+import TransferDraft from './mycomponents/inventory/page/TransferDraftComponent';
 
 function App() {
   const routes = createHashRouter([
@@ -45,19 +58,32 @@ function App() {
       path: "/dashboard",
       element: <DashboardLayout />,
       children: [
-        { path: "", element: <DashboardHome /> }, // الصفحة الافتراضية
+        { path: "", element: <DashboardHome /> },
         { path: "products", element: <ProductsManagement /> },
         { path: "add-product", element: <NewProduct /> },
+        { path: "products/edit/:id", element: <EditProductForm /> },
+        { path: "products/view/:id", element: <ViewProduct /> },
         { path: "users", element: <Users /> },
         { path: "bills", element: <Bills /> },
 
-        // ✅ الصفحتين الجداد
-        { path: "products/edit/:id", element: <EditProductForm /> },
-        { path: "products/view/:id", element: <ViewProduct /> },
+        // 🔹 Inventory Routes
+        { path: "inventories", element: <Inventories /> },
+        { path: "add-inventory", element: <AddInventory /> },
+        { path: "stock-search", element: <StockSearch /> },
+        { path: "inventory-details", element: <InventoryDetails /> },
+        { path: "edit-inventory", element: <EditInventory /> },
+
+        // 🔹 New Inventory Routes
+        { path: "stock-in", element: <StockIn /> },
+        { path: "stock-in-draft", element: <StockInDraft /> },
+        { path: "stock-out", element: <StockOut /> },
+        { path: "stock-out-draft", element: <StockOutDraft /> },
+        { path: "transfer", element: <Transfer /> },
+        { path: "transfer-draft", element: <TransferDraft /> },
       ],
     },
 
-    // 🔹 Catch All (404)
+    // 🔹 Catch-all
     {
       path: "*",
       element: <NotFound />,

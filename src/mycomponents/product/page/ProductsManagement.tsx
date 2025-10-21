@@ -238,7 +238,7 @@ const ProductsManagement: React.FC = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+                <div className="overflow-x-auto">
           {loading ? (
             <div className="text-center py-10 text-gray-500">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-slate-700"></div>
@@ -248,7 +248,10 @@ const ProductsManagement: React.FC = () => {
             <div className="text-center py-10">
               <div className="text-red-500 mb-2">Failed to load products</div>
               <p className="text-sm text-gray-500">{error}</p>
-              <button onClick={fetchProducts} className="mt-4 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800">
+              <button
+                onClick={fetchProducts}
+                className="mt-4 px-4 py-2 rounded-full bg-slate-700 text-white hover:bg-slate-800 transition-colors"
+              >
                 Retry
               </button>
             </div>
@@ -283,12 +286,23 @@ const ProductsManagement: React.FC = () => {
                   }
 
                   return (
-                    <tr key={product._id} onClick={() => handleViewProduct(product)} className="hover:bg-gray-50 transition-colors cursor-pointer">
+                    <tr
+                      key={product._id}
+                      onClick={() => handleViewProduct(product)}
+                      className="hover:bg-gray-50 transition-colors cursor-pointer"
+                    >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-gradient-to-br from-gray-200 to-gray-300 rounded-lg flex-shrink-0 overflow-hidden flex items-center justify-center">
+                          <div className="w-12 h-12 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center">
                             {productImage ? (
-                              <img src={productImage} alt={product.name} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                              <img
+                                src={productImage}
+                                alt={product.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = "none";
+                                }}
+                              />
                             ) : (
                               <span className="text-gray-500 text-xs font-semibold">{product.name.charAt(0).toUpperCase()}</span>
                             )}
@@ -306,10 +320,18 @@ const ProductsManagement: React.FC = () => {
                       <td className="px-6 py-4 text-gray-700 font-semibold">{total.toFixed(2)} SR</td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <button className="text-blue-600 hover:text-blue-800 p-1 transition-colors" onClick={(e) => handleEdit(e, product)} title="Edit Product">
+                          <button
+                            className="text-blue-600 hover:text-blue-800 p-2 rounded-full transition-colors"
+                            onClick={(e) => handleEdit(e, product)}
+                            title="Edit Product"
+                          >
                             <Edit2 className="w-5 h-5" />
                           </button>
-                          <button className="text-red-600 hover:text-red-800 p-1 transition-colors" onClick={(e) => handleDelete(e, product._id || "")} title="Delete Product">
+                          <button
+                            className="text-red-600 hover:text-red-800 p-2 rounded-full transition-colors"
+                            onClick={(e) => handleDelete(e, product._id || "")}
+                            title="Delete Product"
+                          >
                             <Trash2 className="w-5 h-5" />
                           </button>
                         </div>
@@ -334,7 +356,7 @@ const ProductsManagement: React.FC = () => {
                     setEntriesPerPage(Number(e.target.value));
                     setCurrentPage(1);
                   }}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-500 focus:border-transparent outline-none"
+                  className="px-3 py-2 border border-gray-300 rounded-full text-sm focus:ring-2 focus:ring-slate-500 focus:border-transparent outline-none"
                 >
                   <option value={5}>5</option>
                   <option value={10}>10</option>
@@ -346,23 +368,40 @@ const ProductsManagement: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                <button
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
                   Previous
                 </button>
 
                 {getPageNumbers().map((pageNum) => (
-                  <button key={pageNum} onClick={() => setCurrentPage(pageNum)} className={`px-4 py-2 text-sm rounded-lg transition-colors ${currentPage === pageNum ? "text-white bg-blue-600 border border-blue-600" : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"}`}>
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`px-4 py-2 text-sm rounded-full transition-colors ${
+                      currentPage === pageNum
+                        ? "text-white bg-blue-600 border border-blue-600"
+                        : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
                     {pageNum}
                   </button>
                 ))}
 
-                <button onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                <button
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
                   Next
                 </button>
               </div>
             </div>
           </div>
         )}
+
       </div>
     </div>
   );
