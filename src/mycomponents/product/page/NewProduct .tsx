@@ -23,7 +23,8 @@ const NewProduct = () => {
     unit: "",
   });
   const [image, setImage] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const [imageFile, setImageFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
   const handleInputChange = (
@@ -53,8 +54,6 @@ const NewProduct = () => {
   };
 
 const handleSubmit = async () => {
-  if (!imageFile) return toast.error("Please upload an image!");
-
   try {
     setSaving(true);
 
@@ -65,16 +64,19 @@ const handleSubmit = async () => {
       return;
     }
 
-   await addProduct({
-  name: formData.name,
-  category: selectedCategory,
-  description: formData.description,
-  code: formData.code,
-  price: parseFloat(formData.price),
-  tax: parseFloat(formData.tax),
-  unit: parseInt(formData.unit) || 0, // ✅ تأمين ضد NaN
-  img: ["daf"], // ✅ مؤقتًا شغالة تمام
-});
+    // Payload جاهز مثل الـ endpoint
+    const payload = {
+      name: formData.name,
+      category: selectedCategory,
+      description: formData.description,
+      code: formData.code,
+      price: parseFloat(formData.price),
+      tax: parseFloat(formData.tax),
+      unit: parseInt(formData.unit) || 0,
+      img: ["daf", "adf", "ahfjk"], // ✅ مؤقتًا شغال للتست
+    };
+
+    await addProduct(payload);
 
     toast.success("✅ Product created successfully!");
     handleCancel();

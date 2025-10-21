@@ -63,7 +63,7 @@ export const createProductService = async (product: Product): Promise<Product> =
     description: product.description,
     category: product.category,
     unit: product.unit,
-    img: product.img.map((i) => (typeof i === "string" ? i : "daf")), // File يتحول لاسم افتراضي
+    img: product.img.map(i => (typeof i === "string" ? i : "daf")), // أي File يتحول لاسم افتراضي
   };
 
   console.log("📤 Sending payload:", payload);
@@ -73,6 +73,9 @@ export const createProductService = async (product: Product): Promise<Product> =
   console.log("✅ createProductService response:", response.data);
   return response.data.data.product;
 };
+
+
+
 // 4️⃣ Update product
 export const updateProductService = async (
   id: string,
