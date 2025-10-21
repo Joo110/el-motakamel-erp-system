@@ -73,27 +73,25 @@ const EditProductForm: React.FC = () => {
     return ((priceNum + taxNum) * unitsNum).toFixed(3);
   };
 
-const handleSave = async () => {
-  try {
-    setSaving(true);
+  const handleSave = async () => {
+    try {
+      setSaving(true);
 
-    // Example: send only price
-    const payload = {
-      price: parseFloat(price) || 1000,
-    };
+      const payload = {
+        price: parseFloat(price) || 1000,
+      };
 
-    console.log("📦 Payload to send:", payload);
+      console.log("📦 Payload to send:", payload);
 
-    await updateProduct(productId, payload);
-    alert("✅ Product updated successfully!");
-  } catch (error) {
-    console.error("❌ Failed to update product:", error);
-    alert("Error updating product. Check console.");
-  } finally {
-    setSaving(false);
-  }
-};
-
+      await updateProduct(productId, payload);
+      alert("✅ Product updated successfully!");
+    } catch (error) {
+      console.error("❌ Failed to update product:", error);
+      alert("Error updating product. Check console.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading) {
     return <div className="p-10 text-center text-gray-500">Loading product...</div>;
@@ -126,6 +124,7 @@ const handleSave = async () => {
                 type="text"
                 value={productName}
                 onChange={(e) => setProductName(e.target.value)}
+                readOnly
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
               />
             </div>
@@ -135,7 +134,9 @@ const handleSave = async () => {
               <div className="relative">
                 <select
                   value={category}
-                  onChange={(e) => setCategory(e.target.value)}
+                  onChange={() => { /* readonly: prevent changes */ }}
+                  tabIndex={-1}
+                  aria-readonly="true"
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white appearance-none shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                 >
                   {categories.map((cat) => (
@@ -154,6 +155,7 @@ const handleSave = async () => {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={5}
+                readOnly
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none transition-all"
               />
             </div>
@@ -164,6 +166,7 @@ const handleSave = async () => {
                 type="text"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
+                readOnly
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
               />
             </div>
@@ -184,6 +187,7 @@ const handleSave = async () => {
                   type="text"
                   value={tax}
                   onChange={(e) => setTax(e.target.value)}
+                  readOnly
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                 />
               </div>
@@ -193,6 +197,7 @@ const handleSave = async () => {
                   type="text"
                   value={units}
                   onChange={(e) => setUnits(e.target.value)}
+                  readOnly
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                 />
               </div>
@@ -215,10 +220,17 @@ const handleSave = async () => {
                 />
               </div>
               <div className="flex gap-4">
-                <button className="flex-1 px-6 py-2.5 rounded-xl bg-white border border-gray-300 shadow-sm text-gray-700 font-medium hover:bg-gray-100 transition-all">
+                {/* kept buttons visually identical but they do nothing (readonly image) */}
+                <button
+                  onClick={() => {}}
+                  className="flex-1 px-6 py-2.5 rounded-xl bg-white border border-gray-300 shadow-sm text-gray-700 font-medium hover:bg-gray-100 transition-all"
+                >
                   Edit Image
                 </button>
-                <button className="flex-1 px-6 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-800 text-white font-medium shadow-sm flex items-center justify-center gap-2 transition-all">
+                <button
+                  onClick={() => {}}
+                  className="flex-1 px-6 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-800 text-white font-medium shadow-sm flex items-center justify-center gap-2 transition-all"
+                >
                   <Upload className="w-5 h-5" />
                   Upload
                 </button>
