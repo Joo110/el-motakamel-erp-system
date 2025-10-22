@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Upload } from 'lucide-react';
+import { useInventories } from '@/mycomponents/inventory/hooks/useInventories';
+import type { InventoryInput } from '@/types/inventory';
 
 interface AddInventoryFormProps {
   onSave?: (data: InventoryFormData) => void;
@@ -23,6 +25,9 @@ const AddInventoryForm: React.FC<AddInventoryFormProps> = ({ onSave, onCancel })
     image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=400&h=300&fit=crop'
   });
 
+  // ربطت الهاندلر بالهوك هنا
+  const { create } = useInventories();
+
   const handleInputChange = (field: keyof InventoryFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -38,9 +43,32 @@ const AddInventoryForm: React.FC<AddInventoryFormProps> = ({ onSave, onCancel })
     }
   };
 
-  const handleSave = () => {
-    if (onSave) onSave(formData);
+  // الآن هذا الhandleSave ينادي create من الهوك ويبعت الداتا للسيرفر
+const handleSave = async () => {
+  const payload: InventoryInput = {
+    name: formData.inventoryName,
+    location: formData.location,
+    capacity: formData.capacity,
   };
+
+  try {
+    const created = await create(payload);
+    const newId = (created as { _id?: string })._id ?? formData.id;
+
+    if (onSave) {
+      onSave({
+        ...formData,
+        id: newId,
+      });
+    }
+
+    // ✅ الرسالة اللي هتطلع لما الإضافة تنجح
+    alert('Inventory added successfully!✅');
+  } catch (err) {
+    console.error('Create inventory failed', err);
+  }
+};
+
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
