@@ -6,6 +6,10 @@ import {
   updateInventoryService,
   deleteInventoryService,
   searchInventoriesService,
+  transferStockService,
+  getAllStocksService,
+  getAllStockTransfersService,
+  getInventoryStocksService,
 } from "@/mycomponents/inventory/services/inventories";
 
 const isAbortError = (err: unknown) => {
@@ -80,6 +84,66 @@ export const useInventories = () => {
     }
   }, []);
 
+  const getStocks = useCallback(async (inventoryId: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await getInventoryStocksService(inventoryId);
+      return data;
+    } catch (err: unknown) {
+      setError(err as Error);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const getAllStocks = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await getAllStocksService();
+      return data;
+    } catch (err: unknown) {
+      setError(err as Error);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const getAllStockTransfers = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await getAllStockTransfersService();
+      return data;
+    } catch (err: unknown) {
+      setError(err as Error);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const transferStock = useCallback(
+    async (fromInventoryId: string, toInventoryId: string, productId: string, quantity: number) => {
+      setIsMutating(true);
+      setError(null);
+      try {
+        const payload = { fromInventoryId, toInventoryId, productId, quantity };
+        const result = await transferStockService(payload);
+        return result;
+      } catch (err: unknown) {
+        setError(err as Error);
+        throw err;
+      } finally {
+        setIsMutating(false);
+      }
+    },
+    []
+  );
+
   const remove = useCallback(async (id: string) => {
     setIsMutating(true);
     setError(null);
@@ -120,5 +184,9 @@ export const useInventories = () => {
     update,
     remove,
     search,
+    getStocks,
+    getAllStocks,
+    getAllStockTransfers,
+    transferStock,
   } as const;
 };

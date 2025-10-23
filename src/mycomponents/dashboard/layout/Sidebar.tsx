@@ -175,37 +175,7 @@ const Sidebar = () => {
                 }`}></div>
               </Link>
 
-              <Link
-                to="/dashboard/inventory-details"
-                className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
-                  location.pathname === "/dashboard/inventory-details"
-                    ? "text-[#334155] font-medium"
-                    : "text-gray-600 hover:text-[#334155]"
-                }`}
-              >
-                Inventory Details
-                <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
-                  location.pathname === "/dashboard/inventory-details"
-                    ? "opacity-100"
-                    : "opacity-0 group-hover/item:opacity-100"
-                }`}></div>
-              </Link>
-
-              <Link
-                to="/dashboard/edit-inventory"
-                className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
-                  location.pathname === "/dashboard/edit-inventory"
-                    ? "text-[#334155] font-medium"
-                    : "text-gray-600 hover:text-[#334155]"
-                }`}
-              >
-                Edit Inventory
-                <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
-                  location.pathname === "/dashboard/edit-inventory"
-                    ? "opacity-100"
-                    : "opacity-0 group-hover/item:opacity-100"
-                }`}></div>
-              </Link>
+              
               <Link
         to="/dashboard/stock-in"
         className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${

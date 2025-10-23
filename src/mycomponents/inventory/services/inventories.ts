@@ -83,3 +83,41 @@ export const searchInventoriesService = async (q: string): Promise<Inventory[]> 
   });
   return response.data.data.inventories || [];
 };
+
+// ✅ Get stocks for specific inventory
+export const getInventoryStocksService = async (inventoryId: string) => {
+  const response = await axiosClient.get(
+    `/inventories/${inventoryId}/stocks`
+  );
+  console.log("getInventoryStocksService response:", response.data);
+  return response.data;
+};
+
+// ✅ Get all stocks
+export const getAllStocksService = async () => {
+  // ✅ أضف populate للـ from و to
+  const response = await axiosClient.get("/stocks");
+  console.log("getAllStocksService response:", response.data);
+  return response.data;
+};
+
+// ✅ Transfer stock between inventories
+interface StockTransferPayload {
+  fromInventoryId: string;
+  toInventoryId: string;
+  productId: string;
+  quantity: number;
+}
+
+export const transferStockService = async (payload: StockTransferPayload) => {
+  const response = await axiosClient.post("/stockTransfer", payload);
+  console.log("transferStockService response:", response.data);
+  return response.data;
+};
+
+// ✅ Get all stock transfers
+export const getAllStockTransfersService = async () => {
+  const response = await axiosClient.get("/stockTransfer");
+  console.log("getAllStockTransfersService response:", response.data);
+  return response.data;
+};

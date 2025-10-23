@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, RotateCcw, MapPin, Calendar } from 'lucide-react';
+import { Search, RotateCcw, MapPin, Calendar, Edit2 } from 'lucide-react';
 import { useInventories } from '@/mycomponents/inventory/hooks/useInventories';
 import { useNavigate } from 'react-router-dom';
 
@@ -15,11 +15,13 @@ interface Inventory {
 interface InventoriesListViewProps {
   onAddProduct?: () => void;
   onInventoryClick?: (id: string) => void;
+  onEditInventory?: (id: string) => void;
 }
 
 const InventoriesListView: React.FC<InventoriesListViewProps> = ({
   onAddProduct,
   onInventoryClick,
+  onEditInventory,
 }) => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
@@ -30,14 +32,15 @@ const InventoriesListView: React.FC<InventoriesListViewProps> = ({
 
   const mappedInventories: Inventory[] = useMemo(() => {
     return rawInventories.map((inv, idx) => {
-      const id = (inv as any)._id ?? `inv-${idx}`; // safe fallback id
+      const id = (inv as { _id?: string })._id ?? `inv-${idx}`;
       const name = inv.name ?? 'Unnamed Inventory';
       const location = inv.location ?? '';
       const capacity =
         typeof inv.capacity === 'number'
           ? String(inv.capacity)
           : inv.capacity ?? '';
-      const dateStr = (inv as any).updatedAt ?? (inv as any).createdAt ?? '';
+      const dateStr = (inv as { updatedAt?: string; createdAt?: string }).updatedAt ?? 
+                      (inv as { updatedAt?: string; createdAt?: string }).createdAt ?? '';
       let lastUpdate = '';
       if (dateStr) {
         try {
@@ -49,7 +52,6 @@ const InventoriesListView: React.FC<InventoriesListViewProps> = ({
         }
       }
 
-      // placeholder image per item (picsum using seed to keep images stable)
       const image = `https://picsum.photos/seed/${encodeURIComponent(id)}/400/300`;
 
       return {
@@ -63,7 +65,6 @@ const InventoriesListView: React.FC<InventoriesListViewProps> = ({
     });
   }, [rawInventories]);
 
-  // client-side search: filter locally by name, location, or id
   const filteredInventories = useMemo(() => {
     if (!searchQuery.trim()) {
       return mappedInventories;
@@ -94,7 +95,6 @@ const InventoriesListView: React.FC<InventoriesListViewProps> = ({
     }
   };
 
-  // pagination
   const totalInventories = filteredInventories.length;
   const maxPages = Math.max(1, Math.ceil(totalInventories / entriesPerPage));
   const startEntry = totalInventories === 0 ? 0 : (currentPage - 1) * entriesPerPage + 1;
@@ -109,8 +109,16 @@ const InventoriesListView: React.FC<InventoriesListViewProps> = ({
     if (onInventoryClick) {
       onInventoryClick(id);
     } else {
-      // لو مفيش callback، ممكن نروح لصفحة التفاصيل
-      navigate(`/inventories/${id}`);
+      navigate(`/dashboard/inventory-details/${id}`);
+    }
+  };
+
+  const handleEditClick = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (onEditInventory) {
+      onEditInventory(id);
+    } else {
+      navigate(`/dashboard/edit-inventory/${id}`);
     }
   };
 
@@ -175,7 +183,6 @@ const InventoriesListView: React.FC<InventoriesListViewProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
           {isLoading ? (
-            // keep layout: show placeholders while loading (simple boxes)
             Array.from({ length: entriesPerPage }).map((_, i) => (
               <div key={`skeleton-${i}`} className="bg-white rounded-lg shadow-sm overflow-hidden animate-pulse h-64" />
             ))
@@ -188,9 +195,9 @@ const InventoriesListView: React.FC<InventoriesListViewProps> = ({
               <div
                 key={`${inventory.id}-${index}`}
                 onClick={() => handleInventoryClick(inventory.id)}
-                className="bg-white rounded-lg shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                className="bg-white rounded-lg shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow relative group"
               >
-                <div className="h-40 bg-gray-200 overflow-hidden">
+                <div className="h-40 bg-gray-200 overflow-hidden relative">
                   {inventory.image ? (
                     <img
                       src={inventory.image}
@@ -200,6 +207,13 @@ const InventoriesListView: React.FC<InventoriesListViewProps> = ({
                   ) : (
                     <div className="w-full h-full bg-amber-100"></div>
                   )}
+                  <button
+                    onClick={(e) => handleEditClick(e, inventory.id)}
+                    className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-all opacity-0 group-hover:opacity-100"
+                    aria-label="Edit inventory"
+                  >
+                    <Edit2 size={16} className="text-slate-700" />
+                  </button>
                 </div>
                 <div className="p-4">
                   <div className="flex justify-between items-start mb-3">

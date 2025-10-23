@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Edit2, Trash2 } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useInventories } from '@/mycomponents/inventory/hooks/useInventories';
 
 interface Product {
   id: string;
@@ -18,57 +20,101 @@ interface InventoryDetailsViewProps {
   onDelete?: () => void;
 }
 
-const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit, onDelete }) => {
+const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { inventories, getStocks, isLoading } = useInventories();
+  
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [stocksLoading, setStocksLoading] = useState(false);
 
-  const inventoryData = {
-    id: '#1346HC',
-    name: 'Dakahlia Master Inventory',
-    location: 'Mansura, Sandob',
-    capacity: '18/90',
-    image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=400&h=300&fit=crop'
+  const inventory = useMemo(() => {
+    return inventories.find((inv) => (inv as any)._id === id);
+  }, [inventories, id]);
+
+  useEffect(() => {
+    if (id && inventory) {
+      loadStocks();
+    }
+  }, [id, inventory]);
+
+const loadStocks = async () => {
+  if (!id) return;
+  
+  setStocksLoading(true);
+  try {
+    const stocksData = await getStocks(id);
+
+    const stocksArray = Array.isArray(stocksData)
+      ? stocksData
+      : Array.isArray(stocksData?.data)
+      ? stocksData.data
+      : Array.isArray(stocksData?.data?.stocks)
+      ? stocksData.data.stocks
+      : [];
+
+    const mappedProducts: Product[] = stocksArray.map((stock: any, idx: number) => ({
+      id: stock._id || `prod-${idx}`,
+      name: stock.product?.name || 'Unknown Product',
+      category: stock.product?.category?.name || 'N/A',
+      units: stock.product?.sku || 'N/A',
+      unitCount: stock.quantity || 0,
+      price: `${stock.product?.price?.toFixed(2) || '0.00'} SR`,
+      priceValue: stock.product?.price || 0,
+      total: `${(stock.quantity * (stock.product?.price || 0)).toFixed(2)} SR`,
+      totalValue: stock.quantity * (stock.product?.price || 0),
+    }));
+    setProducts(mappedProducts);
+  } catch (err) {
+    console.error('Error loading stocks:', err);
+    setProducts([]);
+  } finally {
+    setStocksLoading(false);
+  }
+};
+
+
+  const inventoryData = useMemo(() => {
+    if (!inventory) return null;
+    
+    const inv = inventory as any;
+    return {
+      id: inv._id || 'N/A',
+      name: inv.name || 'Unnamed Inventory',
+      location: inv.location || 'N/A',
+      capacity: typeof inv.capacity === 'number' ? String(inv.capacity) : inv.capacity || 'N/A',
+      image: `https://picsum.photos/seed/${encodeURIComponent(inv._id || 'default')}/400/300`
+    };
+  }, [inventory]);
+
+  const totalProducts = products.length;
+  const startEntry = totalProducts === 0 ? 0 : (currentPage - 1) * entriesPerPage + 1;
+  const endEntry = Math.min(currentPage * entriesPerPage, totalProducts);
+  
+  const paginatedProducts = useMemo(() => {
+    return products.slice((currentPage - 1) * entriesPerPage, currentPage * entriesPerPage);
+  }, [products, currentPage, entriesPerPage]);
+
+  const maxPages = Math.max(1, Math.ceil(totalProducts / entriesPerPage));
+
+  const handleEditClick = () => {
+    if (onEdit) {
+      onEdit();
+    } else if (id) {
+      navigate(`/dashboard/edit-inventory/${id}`);
+    }
   };
 
-  const products: Product[] = [
-    {
-      id: '1',
-      name: 'Product 1',
-      category: 'Electronics',
-      units: '30282',
-      unitCount: 10,
-      price: '999.00 SR',
-      priceValue: 9999,
-      total: '19.00 SR',
-      totalValue: 19
-    },
-    {
-      id: '2',
-      name: 'Product 2',
-      category: 'Footwear',
-      units: '32214',
-      unitCount: 10,
-      price: '849.00 SR',
-      priceValue: 849,
-      total: '11.00 SR',
-      totalValue: 11
-    },
-    {
-      id: '3',
-      name: 'Wireless Bluetooth Earbuds',
-      category: 'Electronics',
-      units: '32441',
-      unitCount: 10,
-      price: '849.00 SR',
-      priceValue: 849,
-      total: '11.00 SR',
-      totalValue: 11
-    }
-  ];
 
-  const totalProducts = 747;
-  const startEntry = (currentPage - 1) * entriesPerPage + 1;
-  const endEntry = Math.min(currentPage * entriesPerPage, totalProducts);
+  if (isLoading || !inventoryData) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="text-gray-500">Loading inventory details...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -79,7 +125,7 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit, onD
             <span>›</span>
             <span>Inventories</span>
             <span>›</span>
-            <span className="text-gray-700">Dakahlia Master Inventory</span>
+            <span className="text-gray-700">{inventoryData.name}</span>
           </div>
           <h1 className="text-2xl font-bold">Inventory Management</h1>
         </div>
@@ -103,13 +149,7 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit, onD
             <div className="flex flex-col items-end gap-4">
               <div className="flex gap-3">
                 <button
-                  onClick={onDelete}
-                  className="px-5 py-2 bg-amber-200 text-gray-800 rounded-full hover:bg-amber-300 transition-colors"
-                >
-                  Delete Inventory
-                </button>
-                <button
-                  onClick={onEdit}
+                  onClick={handleEditClick}
                   className="px-5 py-2 bg-slate-700 text-white rounded-full hover:bg-blue-800 transition-colors"
                 >
                   Edit Details
@@ -153,36 +193,50 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit, onD
                 </tr>
               </thead>
               <tbody>
-                {products.map((product) => (
-                  <tr key={product.id} className="border-b last:border-b-0">
-                    <td className="py-4 flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
-                      <span>{product.name}</span>
-                    </td>
-                    <td className="py-4">{product.category}</td>
-                    <td className="py-4">
-                      <span className="text-gray-600">{product.units}</span>
-                      <span className="ml-2">{product.unitCount}</span>
-                    </td>
-                    <td className="py-4">
-                      <span className="text-gray-600">{product.price}</span>
-                      <span className="ml-2">{product.total}</span>
-                    </td>
-                    <td className="py-4">
-                      <span className="text-gray-600">{product.totalValue.toFixed(2)} SR</span>
-                    </td>
-                    <td className="py-4">
-                      <div className="flex gap-2">
-                        <button className="p-1 text-blue-600 hover:bg-blue-50 rounded-full">
-                          <Edit2 size={18} />
-                        </button>
-                        <button className="p-1 text-red-600 hover:bg-red-50 rounded-full">
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
+                {stocksLoading ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-gray-500">
+                      Loading products...
                     </td>
                   </tr>
-                ))}
+                ) : paginatedProducts.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-gray-500">
+                      No products found in this inventory
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedProducts.map((product) => (
+                    <tr key={product.id} className="border-b last:border-b-0">
+                      <td className="py-4 flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                        <span>{product.name}</span>
+                      </td>
+                      <td className="py-4">{product.category}</td>
+                      <td className="py-4">
+                        <span className="text-gray-600">{product.units}</span>
+                        <span className="ml-2">{product.unitCount}</span>
+                      </td>
+                      <td className="py-4">
+                        <span className="text-gray-600">{product.price}</span>
+                        <span className="ml-2">{product.total}</span>
+                      </td>
+                      <td className="py-4">
+                        <span className="text-gray-600">{product.totalValue.toFixed(2)} SR</span>
+                      </td>
+                      <td className="py-4">
+                        <div className="flex gap-2">
+                          <button className="p-1 text-blue-600 hover:bg-blue-50 rounded-full">
+                            <Edit2 size={18} />
+                          </button>
+                          <button className="p-1 text-red-600 hover:bg-red-50 rounded-full">
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -192,7 +246,10 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit, onD
               <span>Show</span>
               <select
                 value={entriesPerPage}
-                onChange={(e) => setEntriesPerPage(Number(e.target.value))}
+                onChange={(e) => {
+                  setEntriesPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
                 className="border border-gray-300 rounded-full px-2 py-1"
               >
                 <option value="10">10</option>
@@ -209,33 +266,21 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit, onD
               >
                 Previous
               </button>
+              {Array.from({ length: Math.min(3, maxPages) }, (_, i) => i + 1).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`px-3 py-1 rounded-full ${
+                    currentPage === pageNum ? 'bg-slate-700 text-white' : 'border hover:bg-gray-50'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              ))}
               <button
-                onClick={() => setCurrentPage(1)}
-                className={`px-3 py-1 rounded-full ${
-                  currentPage === 1 ? 'bg-slate-700 text-white' : 'border hover:bg-gray-50'
-                }`}
-              >
-                1
-              </button>
-              <button
-                onClick={() => setCurrentPage(2)}
-                className={`px-3 py-1 rounded-full ${
-                  currentPage === 2 ? 'bg-slate-700 text-white' : 'border hover:bg-gray-50'
-                }`}
-              >
-                2
-              </button>
-              <button
-                onClick={() => setCurrentPage(3)}
-                className={`px-3 py-1 rounded-full ${
-                  currentPage === 3 ? 'bg-slate-700 text-white' : 'border hover:bg-gray-50'
-                }`}
-              >
-                3
-              </button>
-              <button
-                onClick={() => setCurrentPage(currentPage + 1)}
-                className="px-3 py-1 border rounded-full hover:bg-gray-50"
+                onClick={() => setCurrentPage(Math.min(maxPages, currentPage + 1))}
+                disabled={currentPage >= maxPages}
+                className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next
               </button>
