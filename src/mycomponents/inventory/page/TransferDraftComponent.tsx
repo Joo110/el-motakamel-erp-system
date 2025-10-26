@@ -1,21 +1,51 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Eye, FileText, Download } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+
+type StatusType = 'Draft' | 'Invoice';
 
 const TransferDraftComponent: React.FC = () => {
+  const location = useLocation();
+
+  // نحاول نقرأ الحالة من location.state أولًا، بعدين من query param، وإلا نفّض على 'Draft'
+  const getInitialStatus = (): StatusType => {
+    // 1) check location.state (react-router state)
+    const stateStatus = location.state?.status;
+    if (stateStatus === 'Draft' || stateStatus === 'Invoice') return stateStatus;
+
+    // 2) check query param ?status=Invoice
+    const params = new URLSearchParams(location.search);
+    const q = params.get('status');
+    if (q === 'Draft' || q === 'Invoice') return q;
+
+    // fallback
+    return 'Draft';
+  };
+
+  const [activeStatus, setActiveStatus] = useState<StatusType>(getInitialStatus());
+
+  // لو حصل navigation داخلي وغيرنا location، نحدّث الحالة تلقائيًا
+  useEffect(() => {
+    const newStatus = getInitialStatus();
+    setActiveStatus(newStatus);
+    // نريد أن يعمل effect عندما يتغير الـ location
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key, location.search, JSON.stringify(location.state)]);
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-gray-900">Inventory Management</h1>
-        <p className="text-sm text-gray-500">Dashboard &gt; Inventory &gt; Transfer Draft</p>
+        <p className="text-sm text-gray-500">Dashboard &gt; Inventory &gt; Transfer {activeStatus}</p>
       </div>
 
       {/* Main Form */}
       <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-sm">
-        {/* Draft Status Header */}
+        {/* Status Header */}
         <div className="bg-slate-700 text-white px-6 py-3 rounded-t-lg flex items-center justify-center gap-2">
           <Eye className="w-5 h-5" />
-          <span className="font-medium">Draft</span>
+          <span className="font-medium">{activeStatus}</span>
         </div>
 
         <div className="p-6">

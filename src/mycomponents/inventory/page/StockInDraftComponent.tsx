@@ -1,7 +1,46 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Eye, FileText, Download } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+
+type StatusType = 'Draft' | 'Approved' | 'Invoice';
 
 const StockInDraftComponent: React.FC = () => {
+  const location = useLocation();
+
+  const parseStatus = (raw?: any): StatusType | null => {
+    if (!raw) return null;
+    const s = String(raw).toLowerCase();
+    if (s === 'draft') return 'Draft';
+    if (s === 'approved') return 'Approved';
+    if (s === 'invoice') return 'Invoice';
+    return null;
+  };
+
+  const getInitialStatus = (): StatusType => {
+    // 1) try location.state (react-router state)
+    const stateStatus = parseStatus(location.state?.status);
+    if (stateStatus) return stateStatus;
+
+    // 2) try query param ?status=
+    const params = new URLSearchParams(location.search);
+    const q = parseStatus(params.get('status') || undefined);
+    if (q) return q;
+
+    // fallback
+    return 'Draft';
+  };
+
+  const [activeStatus, setActiveStatus] = useState<StatusType>(getInitialStatus());
+
+  useEffect(() => {
+    const newStatus = getInitialStatus();
+    setActiveStatus(newStatus);
+    // re-run when location changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key, location.search, JSON.stringify(location.state)]);
+
+  const headerText = `Precious Order (${activeStatus})`;
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
@@ -15,7 +54,7 @@ const StockInDraftComponent: React.FC = () => {
         {/* Draft Status Header */}
         <div className="bg-slate-700 text-white px-6 py-3 rounded-t-lg flex items-center justify-center gap-2">
           <Eye className="w-5 h-5" />
-          <span className="font-medium">Draft</span>
+          <span className="font-medium">{headerText}</span>
         </div>
 
         <div className="p-6">
