@@ -1,72 +1,56 @@
-import React from 'react';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Suppliers } from "../hooks/Suppliers";
 
 const SupplierAdd = () => {
+  const navigate = useNavigate();
+  const { addSupplier, loading } = Suppliers(false);
+  const [form, setForm] = useState({
+    name: "",
+    address: "",
+    email: "",
+    phone: "",
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSave = async () => {
+    await addSupplier({
+      ...form,
+      organizationId: ["68c2d89e2ee5fae98d57bef1"],
+      createdBy: "68c034e28feb5edb98b6ee36",
+    });
+    navigate("/dashboard/supplier");
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Precious Management</h1>
-          <p className="text-sm text-gray-500">Dashboard &gt; Precious &gt; Add</p>
-        </div>
+      <div className="max-w-4xl mx-auto bg-white shadow rounded-lg p-6">
+        <h2 className="text-xl font-bold mb-4">Add Supplier</h2>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex justify-between items-start mb-6">
-            <h2 className="text-xl font-bold text-gray-900">Add Supplier</h2>
-            <div className="text-right">
-              <p className="text-sm text-gray-500">Id:</p>
-              <p className="font-semibold text-gray-900">#1346HC</p>
-            </div>
+        {["name", "address", "email", "phone"].map((field) => (
+          <div key={field} className="mb-4">
+            <label className="block text-sm font-semibold mb-2 capitalize">
+              {field}
+            </label>
+            <input
+              name={field}
+              value={(form as any)[field]}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border rounded-full"
+            />
           </div>
+        ))}
 
-          <div className="flex gap-8">
-            <div className="flex-1 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Supplier Name:</label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Address:</label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Email:</label>
-                <input
-                  type="email"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Phone:</label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col items-center">
-              <div className="text-red-500 text-4xl font-bold mb-3">⚡ FRESH</div>
-              <button className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-full text-sm">
-                Change Image
-              </button>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3 mt-8">
-            <button className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-2 rounded-full">
-              Cancel
-            </button>
-            <button className="bg-gray-800 hover:bg-blue-800 text-white px-6 py-2 rounded-full">
-              Save Details
-            </button>
-          </div>
-        </div>
+        <button
+          onClick={handleSave}
+          disabled={loading}
+          className="bg-gray-800 text-white px-6 py-2 rounded-full"
+        >
+          {loading ? "Saving..." : "Save"}
+        </button>
       </div>
     </div>
   );

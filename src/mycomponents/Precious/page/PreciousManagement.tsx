@@ -1,260 +1,227 @@
-import React, { useState } from "react";
+// src/mycomponents/Precious/page/PreciousManagement.tsx
+import React, { useEffect, useState, useMemo } from "react";
+import { usePurchaseOrdersList } from "../hooks/useCreatePurchaseOrder";
+import { useSuppliers } from "../../Precious/hooks/useSuppliers";
+import { useUsers } from "../../user/hooks/useUsers";
 
-// ✅ أولاً: نعرف نوع البيانات
-type PreciousItem = {
-  orderNumber: string;
-  supplier: string;
-  inventory: string;
-  totalPrice: string;
-  requestedBy: string;
-  orderTime: string;
-  action: string;
-};
-
-// ✅ ثانياً: نحدد أنواع الحالات (التبويبات)
 type TabType = "draft" | "approved" | "delivered";
 
-// ✅ ثالثاً: نُعرّف الداتا بشكل مضبوط
-const preciousData: Record<TabType, PreciousItem[]> = {
-  draft: [
-    {
-      orderNumber: "3523543235",
-      supplier: "GCC",
-      inventory: "Market Detricks",
-      totalPrice: "10",
-      requestedBy: "Mahmoud Magdy",
-      orderTime: "2:13pm",
-      action: "Approve",
-    },
-    {
-      orderNumber: "093599362",
-      supplier: "Abujo",
-      inventory: "New Capital",
-      totalPrice: "10",
-      requestedBy: "Mahmoud Magdy",
-      orderTime: "2 oct 2025",
-      action: "Approve",
-    },
-    {
-      orderNumber: "23512x223",
-      supplier: "Fresh",
-      inventory: "Abu Station",
-      totalPrice: "10",
-      requestedBy: "Mahmoud Magdy",
-      orderTime: "3 NOV 2025",
-      action: "Approve",
-    },
-  ],
-  approved: [
-    {
-      orderNumber: "3523543235",
-      supplier: "GCC",
-      inventory: "Market Detricks",
-      totalPrice: "10",
-      requestedBy: "Mahmoud Magdy",
-      orderTime: "2:13pm",
-      action: "Delivered",
-    },
-    {
-      orderNumber: "093599362",
-      supplier: "Abujo",
-      inventory: "New Capital",
-      totalPrice: "10",
-      requestedBy: "Mahmoud Magdy",
-      orderTime: "2 oct 2025",
-      action: "Delivered",
-    },
-    {
-      orderNumber: "23512x223",
-      supplier: "Fresh",
-      inventory: "Abu Station",
-      totalPrice: "10",
-      requestedBy: "Mahmoud Magdy",
-      orderTime: "3 NOV 2025",
-      action: "Delivered",
-    },
-  ],
-  delivered: [
-    {
-      orderNumber: "3523543235",
-      supplier: "GCC",
-      inventory: "Market Detricks",
-      totalPrice: "10",
-      requestedBy: "Mahmoud Magdy",
-      orderTime: "2:13pm",
-      action: "Invoice",
-    },
-    {
-      orderNumber: "093599362",
-      supplier: "Abujo",
-      inventory: "New Capital",
-      totalPrice: "10",
-      requestedBy: "Mahmoud Magdy",
-      orderTime: "2 oct 2025",
-      action: "Invoice",
-    },
-    {
-      orderNumber: "23512x223",
-      supplier: "Fresh",
-      inventory: "Abu Station",
-      totalPrice: "10",
-      requestedBy: "Mahmoud Magdy",
-      orderTime: "3 NOV 2025",
-      action: "Invoice",
-    },
-  ],
-};
-
 const PreciousManagement = () => {
-  // ✅ نحدد نوع الحالة هنا علشان TypeScript يعرف المفاتيح اللي مسموح بيها
   const [activeTab, setActiveTab] = useState<TabType>("draft");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  const data = preciousData[activeTab];
-  const totalPages = Math.ceil(data.length / itemsPerPage);
+  const { items, loading, error, fetch } = usePurchaseOrdersList(activeTab);
+
+  // suppliers + users hooks
+  const { suppliers, loading: suppliersLoading } = useSuppliers();
+  const { users, loading: usersLoading } = useUsers();
+
+  // build maps for O(1) lookup: id -> name
+  const suppliersMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of suppliers) {
+      m.set(s._id, s.name ?? s._id);
+    }
+    return m;
+  }, [suppliers]);
+
+  const usersMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const u of users) {
+      const name = u.name ?? (u.fullname || u.email) ?? u._id;
+      m.set(u._id, name);
+    }
+    return m;
+  }, [users]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+    void fetch(activeTab);
+  }, [activeTab, fetch]);
+
+  const totalPages = Math.ceil(items.length / itemsPerPage);
+  const paginatedData = items.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // helper to display supplier name (fallback to id if not found)
+  const getSupplierName = (supplierId?: string | null) => {
+    if (!supplierId) return "-";
+    const name = suppliersMap.get(supplierId);
+    if (name) return name;
+    // if still loading, show placeholder
+    if (suppliersLoading) return "Loading supplier...";
+    return supplierId; // fallback show id
+  };
+
+  // helper to display createdBy name (fallback to id)
+  const getCreatedByName = (userId?: string | null) => {
+    if (!userId) return "-";
+    const name = usersMap.get(userId);
+    if (name) return name;
+    if (usersLoading) return "Loading user...";
+    return userId;
+  };
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">Precious Management</h1>
-        <div className="text-sm text-gray-500">Dashboard {'>'} Inventory {'>'} Precious</div>
+        <h1 className="text-2xl font-bold mb-2">Purchase Orders Management</h1>
+        <div className="text-sm text-gray-500">
+          Dashboard {'>'} Purchase Orders
+        </div>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-4 mb-6">
-        <button
-          onClick={() => setActiveTab('draft')}
-          className={`px-6 py-2 rounded-full transition-colors ${
-            activeTab === 'draft'
-              ? 'bg-slate-700 text-white'
-              : 'bg-white text-gray-600 hover:bg-gray-100'
-          }`}
-        >
-          Draft
-        </button>
-        <button
-          onClick={() => setActiveTab('approved')}
-          className={`px-6 py-2 rounded-full transition-colors ${
-            activeTab === 'approved'
-              ? 'bg-slate-700 text-white'
-              : 'bg-white text-gray-600 hover:bg-gray-100'
-          }`}
-        >
-          Approved
-        </button>
-        <button
-          onClick={() => setActiveTab('delivered')}
-          className={`px-6 py-2 rounded-full transition-colors ${
-            activeTab === 'delivered'
-              ? 'bg-slate-700 text-white'
-              : 'bg-white text-gray-600 hover:bg-gray-100'
-          }`}
-        >
-          Delivered
-        </button>
+        {(["draft", "approved", "delivered"] as TabType[]).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-6 py-2 rounded-full transition-colors ${
+              activeTab === tab
+                ? "bg-slate-700 text-white"
+                : "bg-white text-gray-600 hover:bg-gray-100"
+            }`}
+          >
+            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+          </button>
+        ))}
       </div>
 
-      {/* Info Text */}
+      {/* Info */}
       <div className="text-right text-sm text-gray-500 mb-4">
-        Showing 1-10 of 247 products
+        Showing {items.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-
+        {Math.min(currentPage * itemsPerPage, items.length)} of {items.length} orders
       </div>
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="border-b">
-              <tr className="text-left text-sm text-gray-600">
-                <th className="pb-3 font-medium">Order number</th>
-                <th className="pb-3 font-medium">Supplier</th>
-                <th className="pb-3 font-medium">Inventory</th>
-                <th className="pb-3 font-medium">Total Price</th>
-                <th className="pb-3 font-medium">Requested by</th>
-                <th className="pb-3 font-medium">Order Time</th>
-                <th className="pb-3 font-medium">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((item, index) => (
-                <tr key={index} className="border-b last:border-0">
-                  <td className="py-4 text-sm">{item.orderNumber}</td>
-                  <td className="py-4 text-sm">{item.supplier}</td>
-                  <td className="py-4 text-sm text-blue-600">{item.inventory}</td>
-                  <td className="py-4 text-sm">{item.totalPrice}</td>
-                  <td className="py-4 text-sm">{item.requestedBy}</td>
-                  <td className="py-4 text-sm">{item.orderTime}</td>
-                  <td className="py-4">
-                    <div className="flex gap-2">
-                      <button className="px-4 py-1.5 text-sm text-white bg-slate-700 rounded-full hover:bg-slate-800 transition-colors">
-                        {item.action}
-                      </button>
-                      <button className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors">
-                        view
-                      </button>
-                    </div>
-                  </td>
+        {loading && <div className="text-center py-6">Loading...</div>}
+        {error && (
+          <div className="text-center text-red-600 py-6">
+            Failed to load orders: {error.message}
+          </div>
+        )}
+        {!loading && !error && (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="border-b">
+                <tr className="text-left text-sm text-gray-600">
+                  <th className="pb-3 font-medium">Invoice Number</th>
+                  <th className="pb-3 font-medium">Supplier</th>
+                  <th className="pb-3 font-medium">Currency</th>
+                  <th className="pb-3 font-medium">Total Amount</th>
+                  <th className="pb-3 font-medium">Created By</th>
+                  <th className="pb-3 font-medium">Created At</th>
+                  <th className="pb-3 font-medium">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {paginatedData.map((order) => (
+                  <tr key={order._id} className="border-b last:border-0">
+                    <td className="py-4 text-sm">{order.invoiceNumber || "-"}</td>
+
+                    {/* show supplier name instead of id */}
+                    <td className="py-4 text-sm">{getSupplierName(order.supplierId)}</td>
+
+                    <td className="py-4 text-sm">{order.currency || "EGP"}</td>
+                    <td className="py-4 text-sm">
+                      {order.totalAmount?.toLocaleString() || "0"}
+                    </td>
+
+                    {/* show createdBy name instead of id */}
+                    <td className="py-4 text-sm">{getCreatedByName(order.createdBy)}</td>
+
+                    <td className="py-4 text-sm">
+                      {order.createdAt
+                        ? new Date(order.createdAt).toLocaleDateString("en-GB")
+                        : "-"}
+                    </td>
+                    <td className="py-4">
+                      <div className="flex gap-2">
+                        <button className="px-4 py-1.5 text-sm text-white bg-slate-700 rounded-full hover:bg-slate-800 transition-colors">
+                          {activeTab === "draft"
+                            ? "Approve"
+                            : activeTab === "approved"
+                            ? "Deliver"
+                            : "Invoice"}
+                        </button>
+                        <button className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors">
+                          View
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+
+                {paginatedData.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="text-center py-6 text-gray-500">
+                      No orders found for this status.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Pagination */}
-        <div className="flex items-center justify-between mt-6">
-          <div className="flex items-center gap-2 text-sm">
-            <span>Show</span>
-            <select
-              value={itemsPerPage}
-              onChange={(e) => setItemsPerPage(Number(e.target.value))}
-              className="px-4 py-1.5 border border-gray-300 rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-slate-700"
-            >
-              <option>10</option>
-              <option>20</option>
-              <option>50</option>
-            </select>
-            <span>entries</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1.5 border border-gray-300 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            {[1, 2, 3].map((page) => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`w-8 h-8 rounded-full ${
-                  currentPage === page
-                    ? 'bg-slate-700 text-white'
-                    : 'border border-gray-300 hover:bg-gray-50'
-                }`}
+        {!loading && !error && totalPages > 0 && (
+          <div className="flex items-center justify-between mt-6">
+            <div className="flex items-center gap-2 text-sm">
+              <span>Show</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="px-4 py-1.5 border border-gray-300 rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-slate-700"
               >
-                {page}
-              </button>
-            ))}
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1.5 border border-gray-300 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      </div>
+                <option>10</option>
+                <option>20</option>
+                <option>50</option>
+              </select>
+              <span>entries</span>
+            </div>
 
-      {/* Bottom Buttons */}
-      <div className="flex justify-end gap-4 mt-6">
-        <button className="px-6 py-2 border border-gray-300 text-gray-700 rounded-full hover:bg-gray-50 transition-colors">
-          Cancel
-        </button>
-        <button className="px-6 py-2 bg-slate-700 text-white rounded-full hover:bg-slate-800 transition-colors">
-          Save Order
-        </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 border border-gray-300 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              {[...Array(totalPages)].map((_, page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page + 1)}
+                  className={`w-8 h-8 rounded-full ${
+                    currentPage === page + 1
+                      ? "bg-slate-700 text-white"
+                      : "border border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  {page + 1}
+                </button>
+              ))}
+              <button
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 border border-gray-300 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

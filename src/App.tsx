@@ -36,26 +36,25 @@ import StockOutDraft from './mycomponents/inventory/page/StockOutDraftComponent'
 import Transfer from './mycomponents/inventory/page/TransferComponent';
 import TransferDraft from './mycomponents/inventory/page/TransferDraftComponent';
 
-// ✅ الصفحات الجديدة
 import TransferManagement from './mycomponents/inventory/page/TransferManagement';
 import InventoryOrders from './mycomponents/Sales/page/InventoryOrders';
 import PreciousManagement from './mycomponents/Precious/page/PreciousManagement';
 
-// 🆕 Sales Management Pages (Customer)
+//  Sales Management Pages (Customer)
 import CustomerSearchList from './mycomponents/Sales/page/CustomerSearchList';
 import CustomerDetails from './mycomponents/Sales/page/CustomerDetails';
 import CustomerEditFilled from './mycomponents/Sales/page/CustomerEditFilled';
-import CustomerEditEmpty from './mycomponents/Sales/page/CustomerEditEmpty';
+import CustomerAdd from './mycomponents/Sales/page/CustomerAdd';
 
-// 🆕 Precious Management Pages (Supplier)
+//  Precious Management Pages (Supplier)
 import SupplierSearchList from './mycomponents/Precious/page/SupplierSearchList';
 import SupplierDetails from './mycomponents/Precious/page/SupplierDetails';
 import SupplierEditFilled from './mycomponents/Precious/page/SupplierEditFilled';
-import SupplierEditEmpty from './mycomponents/Precious/page/SupplierAdd';
+import SupplierAdd from './mycomponents/Precious/page/SupplierAdd';
 
 function App() {
   const routes = createHashRouter([
-    // 🔹 Public (Auth) Routes
+    //  Public (Auth) Routes
     {
       path: "/",
       element: <UserAuthLayout />,
@@ -70,7 +69,7 @@ function App() {
       ],
     },
 
-    // 🔹 Protected (Dashboard) Routes
+    //  Protected (Dashboard) Routes
     {
       path: "/dashboard",
       element: <DashboardLayout />,
@@ -83,14 +82,14 @@ function App() {
         { path: "users", element: <Users /> },
         { path: "bills", element: <Bills /> },
 
-        // 🔹 Inventory Routes
+        //  Inventory Routes
         { path: "inventories", element: <Inventories /> },
         { path: "add-inventory", element: <AddInventory /> },
         { path: "stock-search", element: <StockSearch /> },
         { path: "inventory-details/:id", element: <InventoryDetails /> },
         { path: "edit-inventory/:id", element: <EditInventory /> },
 
-        // 🔹 Old Inventory Routes
+        //  Old Inventory Routes
         { path: "stock-in", element: <StockIn /> },
         { path: "stock-in-draft", element: <StockInDraft /> },
         { path: "stock-out", element: <StockOut /> },
@@ -98,26 +97,26 @@ function App() {
         { path: "transfer", element: <Transfer /> },
         { path: "transfer-draft", element: <TransferDraft /> },
 
-        // ✅ Old Management Routes
+        // Old Management Routes
         { path: "transfermanagement", element: <TransferManagement /> },
         { path: "inventoryorders", element: <InventoryOrders /> },
         { path: "preciousmanagement", element: <PreciousManagement /> },
 
-        // 🆕 Sales Management Routes (Customer)
+        // Sales Management Routes (Customer)
         { path: "sales/customers", element: <CustomerSearchList /> },
-        { path: "sales/customer", element: <CustomerDetails /> },
-        { path: "sales/customer/edit", element: <CustomerEditFilled /> },
-        { path: "sales/customer/new", element: <CustomerEditEmpty /> },
+        { path: "sales/customer/:id", element: <CustomerDetails /> },
+        { path: "sales/customer/edit/:id", element: <CustomerEditFilled /> },
+        { path: "sales/customer/new", element: <CustomerAdd /> },
 
-        // 🆕 Precious Management Routes (Supplier)
+        //  Precious Management Routes (Supplier)
         { path: "precious/suppliers", element: <SupplierSearchList /> },
-        { path: "precious/supplier", element: <SupplierDetails /> },
-        { path: "precious/supplier/edit", element: <SupplierEditFilled /> },
-        { path: "precious/supplier/new", element: <SupplierEditEmpty /> },
+        { path: "precious/supplier/:id", element: <SupplierDetails /> },
+        { path: "precious/supplier/edit/:id", element: <SupplierEditFilled /> },
+        { path: "precious/supplier/new", element: <SupplierAdd /> },
       ],
     },
 
-    // 🔹 Catch-all
+    //  Catch-all
     {
       path: "*",
       element: <NotFound />,

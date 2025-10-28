@@ -1,13 +1,60 @@
-import React from 'react';
+// src/mycomponents/Sales/CustomerSearchList.tsx
+import React, { useEffect, useMemo, useState } from 'react';
 import { Search, Edit2, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useCustomers } from '../../Sales/hooks/useCustomers';
 
-const CustomerSearchList = () => {
-  const customers = [
-    { name: 'TG Motors', address: 'Alghref st, 1st Nasr City', email: 'adsnwha@gmail.com', phone: '01092783654' },
-    { name: 'Omar Mohsen', address: 'Mokhtayam 12, al obour', email: 'ajaooadk@gmail.com', phone: '01587268393' },
-    { name: 'Mahmoud Sayed', address: '4 madersh St. Rehab', email: 'dkadjad@hasda.com', phone: '01187765654' }
-  ];
+
+const CustomerSearchList: React.FC = () => {
+  const { customers, loading, error, fetchCustomers, removeCustomer } = useCustomers(true);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    if (!customers || customers.length === 0) void fetchCustomers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+const handleDelete = async (id?: string) => {
+  if (!id) return;
+  if (!window.confirm('Are you sure you want to delete this customer?')) return;
+
+  try {
+    console.log('🗑️ Trying to delete customer:', id);
+    const res = await removeCustomer(id);
+
+    console.log('🧩 Delete response:', res);
+
+    const isDeleted =
+      !res ||
+      res.success === true ||
+      (res as any)?.status === 204 ||
+      (res as any)?.status === 'success' ||
+      (typeof (res as any)?.message === 'string' &&
+        (res as any).message.toLowerCase().includes('deleted'));
+
+    if (isDeleted) {
+      console.log('✅ Customer deleted successfully');
+      await fetchCustomers(); // إعادة تحميل البيانات بعد الحذف
+    } else {
+      console.warn('⚠️ Unexpected delete response:', res);
+      alert('Customer may not have been deleted. Check console for details.');
+    }
+  } catch (err) {
+    console.error('❌ Delete failed:', err);
+    alert('Delete failed. Check console.');
+  }
+};
+
+  const filtered = useMemo(() => {
+    const term = (searchTerm || '').toLowerCase().trim();
+    if (!term) return customers ?? [];
+    return (customers ?? []).filter((c) =>
+      (c.name ?? '').toLowerCase().includes(term) ||
+      (c.email ?? '').toLowerCase().includes(term) ||
+      (c.phone ?? '').toLowerCase().includes(term) ||
+      (c.address ?? '').toLowerCase().includes(term)
+    );
+  }, [customers, searchTerm]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -38,10 +85,15 @@ const CustomerSearchList = () => {
               <input
                 type="text"
                 placeholder="Search products by name, phone, or email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <button className="bg-gray-800 hover:bg-blue-800 text-white px-6 py-2 rounded-full flex items-center gap-2">
+            <button
+              onClick={() => {}}
+              className="bg-gray-800 hover:bg-blue-800 text-white px-6 py-2 rounded-full flex items-center gap-2"
+            >
               <Search className="w-4 h-4" />
               Search
             </button>
@@ -53,7 +105,9 @@ const CustomerSearchList = () => {
           <div className="p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Customer</h2>
-              <p className="text-sm text-gray-500">Showing 1-10 of 247 Supplier</p>
+              <p className="text-sm text-gray-500">
+                Showing {filtered.length > 0 ? `1-${Math.min(filtered.length, 10)}` : 0} of {filtered.length} Supplier
+              </p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -67,11 +121,11 @@ const CustomerSearchList = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {customers.map((customer, idx) => (
-                    <tr key={idx} className="border-b hover:bg-gray-50">
+                  {filtered.map((customer, idx) => (
+                    <tr key={customer._id ?? idx} className="border-b hover:bg-gray-50">
                       <td className="py-4 px-4">
                         <Link
-                          to="/dashboard/sales/customer"
+                          to={`/dashboard/sales/customer/${customer._id}`}
                           className="flex items-center gap-3"
                         >
                           <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
@@ -84,18 +138,28 @@ const CustomerSearchList = () => {
                       <td className="py-4 px-4">
                         <div className="flex gap-2">
                           <Link
-                            to="/dashboard/sales/customer/edit"
+                            to={`/dashboard/sales/customer/edit/${customer._id}`}
                             className="text-blue-600 hover:text-blue-800 rounded-full p-2"
                           >
                             <Edit2 className="w-4 h-4" />
                           </Link>
-                          <button className="text-red-600 hover:text-red-800 rounded-full p-2">
+                          <button
+                            onClick={() => handleDelete(customer._id)}
+                            className="text-red-600 hover:text-red-800 rounded-full p-2"
+                          >
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
                     </tr>
                   ))}
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="text-center py-6 text-gray-500">
+                        {loading ? 'Loading customers...' : error ?? 'No customers found.'}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

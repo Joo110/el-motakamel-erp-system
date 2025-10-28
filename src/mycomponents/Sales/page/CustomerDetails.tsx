@@ -1,11 +1,58 @@
-import React from 'react';
+// src/mycomponents/Sales/CustomerDetails.tsx
+import React, { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { useCustomers } from '../../Sales/hooks/useCustomers';
+import { useSaleOrdersList } from '../../Sales/hooks/useSaleOrders';
+import { useInventories } from '../../inventory/hooks/useInventories';
+import { useUsers } from '../../user/hooks/useUsers';
 
-const CustomerDetails = () => {
-  const orders = [
-    { number: '3523543235', inventory: 'Master Dakahlia', price: '10', creator: 'Mahmoud Magdy', time: '2:13 pm', status: 'Draft' },
-    { number: '093509342', inventory: 'New Capital', price: '10', creator: 'Mahmoud Magdy', time: '2 oct 2025', status: 'Delivered' },
-    { number: '235324223', inventory: 'Alw Station', price: '10', creator: 'Mahmoud Magdy', time: '3 NOV 2025', status: 'Approved' }
-  ];
+const CustomerDetails: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const { getCustomer } = useCustomers(false);
+  const { items: orders, fetch: fetchOrders } = useSaleOrdersList(undefined, false);
+const { inventories, refetch: refetchInventories } = useInventories();
+const { users, refetch: refetchUsers } = useUsers();
+
+
+  const [customer, setCustomer] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    setLoading(true);
+    void (async () => {
+      try {
+        const c = await getCustomer(id);
+        setCustomer(c);
+await Promise.all([fetchOrders(), refetchInventories(), refetchUsers()]);
+      } catch (err) {
+        console.error('Failed to load customer or related data', err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  const customerOrders = useMemo(() => {
+    if (!orders || !id) return [];
+    return orders.filter((o) => o.customerId === id);
+  }, [orders, id]);
+
+  // 🧠 تحويل الـ IDs إلى أسماء
+  const getInventoryName = (invId?: string) => {
+    if (!invId) return '-';
+    return inventories?.find((inv: any) => inv._id === invId)?.name ?? invId;
+  };
+
+ const getUserName = (userId?: string) => {
+  if (!userId) return '-';
+  const user = users?.find((u: any) => u._id === userId);
+  return user?.name || user?.fullname || user?.name || userId;
+};
+
+  if (loading) return <p className="p-6">Loading supplier details...</p>;
+  if (!customer) return <p className="p-6 text-gray-500">Customer not found.</p>;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -14,15 +61,7 @@ const CustomerDetails = () => {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Sales Management</h1>
-            <p className="text-sm text-gray-500">Dashboard &gt; Precious &gt; Details</p>
-          </div>
-          <div className="flex gap-3">
-            <button className="bg-red-300 hover:bg-red-400 text-white px-4 py-2 rounded-full">
-              Delete Customer
-            </button>
-            <button className="bg-gray-800 hover:bg-blue-800 text-white px-4 py-2 rounded-full">
-              Edit Details
-            </button>
+            <p className="text-sm text-gray-500">Dashboard &gt; Customer &gt; Details</p>
           </div>
         </div>
 
@@ -31,29 +70,33 @@ const CustomerDetails = () => {
           <div className="flex justify-between">
             <div className="flex-1">
               <div className="flex justify-between items-start mb-6">
-                <h2 className="text-xl font-bold text-gray-900">Mahmoud Sayed</h2>
+                <h2 className="text-xl font-bold text-gray-900">{customer.name}</h2>
                 <div className="text-right">
                   <p className="text-sm text-gray-500">Id:</p>
-                  <p className="font-semibold text-gray-900">#1346HC</p>
+                  <p className="font-semibold text-gray-900">{customer._id}</p>
                 </div>
               </div>
               <div className="space-y-3">
                 <div className="flex">
                   <span className="font-semibold text-gray-700 w-32">Location:</span>
-                  <span className="text-gray-600">Mansura, Sandob</span>
+                  <span className="text-gray-600">{customer.address ?? '-'}</span>
                 </div>
                 <div className="flex">
-                  <span className="font-semibold text-gray-700 w-32">phone:</span>
-                  <span className="text-gray-600">01087765643</span>
+                  <span className="font-semibold text-gray-700 w-32">Phone:</span>
+                  <span className="text-gray-600">{customer.phone ?? '-'}</span>
                 </div>
                 <div className="flex">
                   <span className="font-semibold text-gray-700 w-32">Email:</span>
-                  <span className="text-gray-600">info@fresh.com</span>
+                  <span className="text-gray-600">{customer.email ?? '-'}</span>
                 </div>
               </div>
             </div>
             <div className="ml-8">
-              <img src="https://via.placeholder.com/150x100/e5e7eb/6b7280?text=Warehouse" alt="Location" className="rounded-lg" />
+              <img
+                src="https://via.placeholder.com/150x100/e5e7eb/6b7280?text=Customer"
+                alt="Customer"
+                className="rounded-lg"
+              />
             </div>
           </div>
         </div>
@@ -63,7 +106,7 @@ const CustomerDetails = () => {
           <div className="p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Orders</h2>
-              <p className="text-sm text-gray-500">Showing 1-10 of 247 Orders</p>
+              <p className="text-sm text-gray-500">Showing 1-10 of {customerOrders.length} Orders</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -79,19 +122,32 @@ const CustomerDetails = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.map((order, idx) => (
-                    <tr key={idx} className="border-b hover:bg-gray-50">
-                      <td className="py-4 px-4 text-gray-900">{order.number}</td>
-                      <td className="py-4 px-4 text-blue-600 underline cursor-pointer hover:text-blue-800">{order.inventory}</td>
-                      <td className="py-4 px-4 text-gray-600">{order.price}</td>
-                      <td className="py-4 px-4 text-gray-600">{order.creator}</td>
-                      <td className="py-4 px-4 text-gray-600">{order.time}</td>
-                      <td className="py-4 px-4 text-gray-600">{order.status}</td>
+                  {customerOrders.map((order: any, idx: number) => (
+                    <tr key={order._id ?? idx} className="border-b hover:bg-gray-50">
+                      <td className="py-4 px-4 text-gray-900">{order.invoiceNumber ?? order._id}</td>
+                      <td className="py-4 px-4 text-blue-600 underline cursor-pointer hover:text-blue-800">
+                        {getInventoryName(order.products?.[0]?.inventoryId)}
+                      </td>
+                      <td className="py-4 px-4 text-gray-600">{order.totalAmount ?? '-'}</td>
+                      <td className="py-4 px-4 text-gray-600">{getUserName(order.createdBy)}</td>
+                      <td className="py-4 px-4 text-gray-600">
+                        {order.createdAt ? new Date(order.createdAt).toLocaleString() : '-'}
+                      </td>
+                      <td className="py-4 px-4 text-gray-600">{order.status ?? '-'}</td>
                       <td className="py-4 px-4">
-                        <button className="text-blue-600 hover:text-blue-800 underline text-sm rounded-full px-2 py-1">view</button>
+                        <button className="text-blue-600 hover:text-blue-800 underline text-sm rounded-full px-2 py-1">
+                          view
+                        </button>
                       </td>
                     </tr>
                   ))}
+                  {customerOrders.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="text-center py-6 text-gray-500">
+                        No orders found for this customer.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
