@@ -17,7 +17,7 @@ export interface InventoryEditData {
   inventoryName: string;
   location: string;
   capacity: string;
-  image: string | null;
+  image?: string;
 }
 
 const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
@@ -72,7 +72,7 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
           inventoryName,
           location,
           capacity,
-          image,
+          image: image ?? undefined,
         });
       } catch (err) {
         console.error(err);
@@ -119,7 +119,7 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
     )
       changes.capacity = formData.capacity;
     if (formData.image && formData.image !== (original as any).image)
-      changes.image = formData.image;
+      changes.capacityUnit = formData.image;
 
     return changes;
   };
