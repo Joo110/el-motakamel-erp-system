@@ -1,8 +1,8 @@
-// src/mycomponents/sales/EditSaleOrderComponent.tsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { Calendar, ChevronDown, Trash2, Save } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSaleOrders } from '../../Sales/hooks/useSaleOrders';
+import { usePurchaseOrder } from '../../Precious/hooks/useCreatePurchaseOrder';
 import { useProducts } from '../../product/hooks/useProducts';
 import { useInventories } from '../../inventory/hooks/useInventories';
 import { useSuppliers } from '../../Precious/hooks/useSuppliers';
@@ -29,9 +29,9 @@ const truncate = (s: string | undefined, n = 30) => {
 const EditSaleOrderComponent: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  
+
   // ===== Hooks =====
-  const { item, loading: orderLoading, error: orderError, fetch, setItem } = usePurchaseOrder(id);
+const { item, loading: orderLoading, error: orderError } = usePurchaseOrder(id);
   const { update } = useSaleOrders(); // Hook العام للتحديث
   const { products: productsFromHook = [], loading: productsLoading = false } = useProducts() as any;
   const { inventories = [], isLoading: inventoriesLoading = false } = useInventories() as any;
@@ -57,7 +57,6 @@ const EditSaleOrderComponent: React.FC = () => {
   const [selectedInventoryId, setSelectedInventoryId] = useState<string>('');
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
 
-  // ===== تحميل البيانات من الـ API وتعبئة الفورم =====
   useEffect(() => {
     if (item) {
       setSupplierId(item.supplierId || '');
@@ -132,8 +131,10 @@ const EditSaleOrderComponent: React.FC = () => {
     const discount = Number(formProduct.discount || 0);
     const tot = units * price * (1 - discount / 100);
 
-    const productName = productsFromHook.find((p: any) => p._id === selectedProductId || p.id === selectedProductId)?.name ?? formProduct.name;
-    const inventoryName = inventories.find((i: any) => i._id === selectedInventoryId || i.id === selectedInventoryId)?.name ?? formProduct.inventory;
+    const productName =
+      productsFromHook.find((p: any) => p._id === selectedProductId || p.id === selectedProductId)?.name ?? formProduct.name;
+    const inventoryName =
+      inventories.find((i: any) => i._id === selectedInventoryId || i.id === selectedInventoryId)?.name ?? formProduct.inventory;
 
     const newProduct: ProductRow = {
       id: Date.now().toString(),
@@ -215,281 +216,281 @@ const EditSaleOrderComponent: React.FC = () => {
         <p className="text-sm text-gray-500">Dashboard &gt; Sales Orders &gt; Edit #{item.invoiceNumber || id}</p>
       </div>
 
-      
-            {/* Main Form */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              {/* Top Section */}
-              <div className="grid grid-cols-4 gap-4 mb-8">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Supplier</label>
-                  <div className="relative">
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
-                      value={supplierId}
-                      onChange={(e) => setSupplierId(e.target.value)}
-                    >
-                      <option value="">{suppliersLoading ? 'Loading suppliers...' : 'Select supplier'}</option>
-                      {suppliers.map((s: any) => (
-                        <option key={s._id ?? s.id ?? s.name} value={s._id}>
-                          {truncate(s.name, 36)}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-2 top-3 w-4 h-4 text-gray-400" />
-                  </div>
-                </div>
-      
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Expected Delivery Date</label>
-                  <div className="relative">
-                    <input
-                      type="date"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm"
-                      value={expectedDeliveryDate}
-                      onChange={(e) => setExpectedDeliveryDate(e.target.value)}
-                    />
-                    <Calendar className="absolute right-2 top-3 w-4 h-4 text-gray-400 pointer-events-none" />
-                  </div>
-                </div>
-      
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Order Date</label>
-                  <div className="relative">
-                    <input
-                      type="date"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-gray-50"
-                      value={orderDate}
-                      readOnly
-                    />
-                    <Calendar className="absolute right-2 top-3 w-4 h-4 text-gray-400 pointer-events-none" />
-                  </div>
-                </div>
-      
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
-                  <div className="relative">
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
-                      value={currency}
-                      onChange={(e) => setCurrency(e.target.value)}
-                    >
-                      <option value="SR">SR</option>
-                      <option value="EGP">EGP</option>
-                      <option value="USD">USD</option>
-                      <option value="EUR">EUR</option>
-                    </select>
-                    <ChevronDown className="absolute right-2 top-3 w-4 h-4 text-gray-400" />
-                  </div>
-                </div>
-              </div>
-      
-              {/* Add Products Section */}
-              <div className="mb-6">
-                <h2 className="text-lg font-medium text-gray-900 mb-4">Add More Products</h2>
-                <div className="grid grid-cols-7 gap-3 items-end">
-                  {/* Product dropdown */}
-                  <div className="relative">
-                    <label className="block text-xs text-gray-600 mb-1">Product</label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
-                      value={selectedProductId}
-                      onChange={(e) => handleProductSelect(e.target.value)}
-                    >
-                      <option value="">{productsLoading ? 'Loading...' : 'Select'}</option>
-                      {productsFromHook.map((p: any) => (
-                        <option key={p._id ?? p.id} value={p._id ?? p.id}>
-                          {truncate(p.name, 36)}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-2 top-8 w-4 h-4 text-gray-400" />
-                  </div>
-      
-                  {/* Inventory dropdown */}
-                  <div className="relative">
-                    <label className="block text-xs text-gray-600 mb-1">Inventory</label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
-                      value={selectedInventoryId}
-                      onChange={(e) => handleInventorySelect(e.target.value)}
-                    >
-                      <option value="">{inventoriesLoading ? 'Loading...' : 'Select'}</option>
-                      {inventories.map((inv: any) => (
-                        <option key={inv._id ?? inv.id} value={inv._id}>
-                          {truncate(inv.name, 36)}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-2 top-8 w-4 h-4 text-gray-400" />
-                  </div>
-      
-                  {/* Code */}
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Code</label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
-                      value={formProduct.code}
-                      onChange={(e) => handleFormChange('code', e.target.value)}
-                    />
-                  </div>
-      
-                  {/* Units */}
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Units</label>
-                    <input
-                      type="number"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
-                      value={formProduct.units}
-                      onChange={(e) => handleFormChange('units', e.target.value)}
-                      min={0}
-                    />
-                  </div>
-      
-                  {/* Price */}
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Price</label>
-                    <input
-                      type="number"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
-                      value={formProduct.price}
-                      onChange={(e) => handleFormChange('price', e.target.value)}
-                      min={0}
-                      step="0.01"
-                    />
-                  </div>
-      
-                  {/* Discount */}
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Discount</label>
-                    <input
-                      type="number"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
-                      value={formProduct.discount}
-                      onChange={(e) => handleFormChange('discount', e.target.value)}
-                      min={0}
-                      max={100}
-                    />
-                  </div>
-      
-                  {/* Total */}
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Total</label>
-                    <input
-                      type="text"
-                      readOnly
-                      value={computedFormTotal}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm bg-gray-50"
-                    />
-                  </div>
-                </div>
-      
-                <div className="flex justify-end gap-2 mt-4">
-                  <button
-                    onClick={handleResetForm}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-full text-sm hover:bg-gray-300"
-                  >
-                    Reset
-                  </button>
-                  <button
-                    onClick={handleAddProduct}
-                    className="px-4 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-slate-800"
-                  >
-                    + Add Product
-                  </button>
-                </div>
-              </div>
-      
-              {/* Products Table */}
-              <div className="mb-6">
-                <h2 className="text-lg font-medium text-gray-900 mb-4">Order Products</h2>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-left text-xs font-medium text-gray-600 pb-3 w-8"></th>
-                        <th className="text-left text-xs font-medium text-gray-600 pb-3">Product</th>
-                        <th className="text-left text-xs font-medium text-gray-600 pb-3">Inventory</th>
-                        <th className="text-left text-xs font-medium text-gray-600 pb-3">Code</th>
-                        <th className="text-left text-xs font-medium text-gray-600 pb-3">Units</th>
-                        <th className="text-left text-xs font-medium text-gray-600 pb-3">Price</th>
-                        <th className="text-left text-xs font-medium text-gray-600 pb-3">Discount</th>
-                        <th className="text-left text-xs font-medium text-gray-600 pb-3">Total</th>
-                        <th className="w-8"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {products.map((product) => (
-                        <tr key={product.id} className="border-b border-gray-100">
-                          <td className="py-3">
-                            <input
-                              type="checkbox"
-                              className="w-4 h-4 rounded border-gray-300"
-                              checked={selectedProducts.includes(product.id)}
-                              onChange={() => handleCheckboxToggle(product.id)}
-                            />
-                          </td>
-                          <td className="py-3 text-sm text-gray-900">{product.name}</td>
-                          <td className="py-3 text-sm text-gray-600">{product.inventoryName}</td>
-                          <td className="py-3 text-sm text-gray-600">{product.code}</td>
-                          <td className="py-3 text-sm text-gray-600">{product.units}</td>
-                          <td className="py-3 text-sm text-gray-600">{product.price.toFixed(2)}</td>
-                          <td className="py-3 text-sm text-gray-600">{product.discount}%</td>
-                          <td className="py-3 text-sm text-gray-900">{product.total.toFixed(2)} {currency}</td>
-                          <td className="py-3">
-                            <button
-                              onClick={() => handleDeleteProduct(product.id)}
-                              className="text-gray-400 hover:text-red-500"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-      
-                <div className="flex justify-end mt-4">
-                  <div className="text-right">
-                    <span className="text-sm font-medium text-gray-700">Total: </span>
-                    <span className="text-sm font-semibold text-gray-900">{total.toFixed(2)} {currency}</span>
-                  </div>
-                </div>
-              </div>
-      
-              {/* Notes */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-                <textarea
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm resize-none"
-                  rows={4}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Add any notes here..."
-                ></textarea>
-              </div>
-      
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => navigate(-1)}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-full text-sm hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleUpdate}
-                  disabled={orderLoading}
-                  className="px-6 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  <Save className="w-4 h-4" />
-                  {orderLoading ? 'Updating...' : 'Update Order'}
-                </button>
-              </div>
+      {/* Main Form */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        {/* Top Section */}
+        <div className="grid grid-cols-4 gap-4 mb-8">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Supplier</label>
+            <div className="relative">
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
+                value={supplierId}
+                onChange={(e) => setSupplierId(e.target.value)}
+              >
+                <option value="">{suppliersLoading ? 'Loading suppliers...' : 'Select supplier'}</option>
+                {suppliers.map((s: any) => (
+                  <option key={s._id ?? s.id ?? s.name} value={s._id}>
+                    {truncate(s.name, 36)}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2 top-3 w-4 h-4 text-gray-400" />
             </div>
           </div>
-        );
-      };
-      
-      export default EditSaleOrderComponent;
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Expected Delivery Date</label>
+            <div className="relative">
+              <input
+                type="date"
+                className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm"
+                value={expectedDeliveryDate}
+                onChange={(e) => setExpectedDeliveryDate(e.target.value)}
+              />
+              <Calendar className="absolute right-2 top-3 w-4 h-4 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Order Date</label>
+            <div className="relative">
+              <input
+                type="date"
+                className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-gray-50"
+                value={orderDate}
+                readOnly
+              />
+              <Calendar className="absolute right-2 top-3 w-4 h-4 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
+            <div className="relative">
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+              >
+                <option value="SR">SR</option>
+                <option value="EGP">EGP</option>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+              </select>
+              <ChevronDown className="absolute right-2 top-3 w-4 h-4 text-gray-400" />
+            </div>
+          </div>
+        </div>
+
+        {/* Add Products Section */}
+        <div className="mb-6">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Add More Products</h2>
+          <div className="grid grid-cols-7 gap-3 items-end">
+            {/* Product dropdown */}
+            <div className="relative">
+              <label className="block text-xs text-gray-600 mb-1">Product</label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
+                value={selectedProductId}
+                onChange={(e) => handleProductSelect(e.target.value)}
+              >
+                <option value="">{productsLoading ? 'Loading...' : 'Select'}</option>
+                {productsFromHook.map((p: any) => (
+                  <option key={p._id ?? p.id} value={p._id ?? p.id}>
+                    {truncate(p.name, 36)}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2 top-8 w-4 h-4 text-gray-400" />
+            </div>
+
+            {/* Inventory dropdown */}
+            <div className="relative">
+              <label className="block text-xs text-gray-600 mb-1">Inventory</label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
+                value={selectedInventoryId}
+                onChange={(e) => handleInventorySelect(e.target.value)}
+              >
+                <option value="">{inventoriesLoading ? 'Loading...' : 'Select'}</option>
+                {inventories.map((inv: any) => (
+                  <option key={inv._id ?? inv.id} value={inv._id}>
+                    {truncate(inv.name, 36)}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2 top-8 w-4 h-4 text-gray-400" />
+            </div>
+
+            {/* Code */}
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Code</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
+                value={formProduct.code}
+                onChange={(e) => handleFormChange('code', e.target.value)}
+              />
+            </div>
+
+            {/* Units */}
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Units</label>
+              <input
+                type="number"
+                className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
+                value={formProduct.units}
+                onChange={(e) => handleFormChange('units', e.target.value)}
+                min={0}
+              />
+            </div>
+
+            {/* Price */}
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Price</label>
+              <input
+                type="number"
+                className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
+                value={formProduct.price}
+                onChange={(e) => handleFormChange('price', e.target.value)}
+                min={0}
+                step="0.01"
+              />
+            </div>
+
+            {/* Discount */}
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Discount</label>
+              <input
+                type="number"
+                className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
+                value={formProduct.discount}
+                onChange={(e) => handleFormChange('discount', e.target.value)}
+                min={0}
+                max={100}
+              />
+            </div>
+
+            {/* Total */}
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Total</label>
+              <input
+                type="text"
+                readOnly
+                value={computedFormTotal}
+                className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm bg-gray-50"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 mt-4">
+            <button
+              onClick={handleResetForm}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-full text-sm hover:bg-gray-300"
+            >
+              Reset
+            </button>
+            <button
+              onClick={handleAddProduct}
+              className="px-4 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-slate-800"
+            >
+              + Add Product
+            </button>
+          </div>
+        </div>
+
+        {/* Products Table */}
+        <div className="mb-6">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Order Products</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3 w-8"></th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Product</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Inventory</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Code</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Units</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Price</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Discount</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Total</th>
+                  <th className="w-8"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.map((product) => (
+                  <tr key={product.id} className="border-b border-gray-100">
+                    <td className="py-3">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded border-gray-300"
+                        checked={selectedProducts.includes(product.id)}
+                        onChange={() => handleCheckboxToggle(product.id)}
+                      />
+                    </td>
+                    <td className="py-3 text-sm text-gray-900">{product.name}</td>
+                    <td className="py-3 text-sm text-gray-600">{product.inventoryName}</td>
+                    <td className="py-3 text-sm text-gray-600">{product.code}</td>
+                    <td className="py-3 text-sm text-gray-600">{product.units}</td>
+                    <td className="py-3 text-sm text-gray-600">{product.price.toFixed(2)}</td>
+                    <td className="py-3 text-sm text-gray-600">{product.discount}%</td>
+                    <td className="py-3 text-sm text-gray-900">
+                      {product.total.toFixed(2)} {currency}
+                    </td>
+                    <td className="py-3">
+                      <button onClick={() => handleDeleteProduct(product.id)} className="text-gray-400 hover:text-red-500">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex justify-end mt-4">
+            <div className="text-right">
+              <span className="text-sm font-medium text-gray-700">Total: </span>
+              <span className="text-sm font-semibold text-gray-900">
+                {total.toFixed(2)} {currency}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Notes */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+          <textarea
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm resize-none"
+            rows={4}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Add any notes here..."
+          ></textarea>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={() => navigate(-1)}
+            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-full text-sm hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleUpdate}
+            disabled={orderLoading}
+            className="px-6 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <Save className="w-4 h-4" />
+            {orderLoading ? 'Updating...' : 'Update Order'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default EditSaleOrderComponent;
