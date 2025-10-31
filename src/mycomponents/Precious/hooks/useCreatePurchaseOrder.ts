@@ -7,7 +7,10 @@ import {
   getPurchaseOrderById,
   updatePurchaseOrder,
   deletePurchaseOrder,
+  approvePurchaseOrder,
+  deliverPurchaseOrder,
 } from '../services/purchaseOrders';
+
 
 /* ---------- useCreatePurchaseOrder ---------- */
 export function useCreatePurchaseOrder() {
@@ -114,6 +117,41 @@ export function usePurchaseOrder(id?: string) {
     [id]
   );
 
+    const approve = useCallback(async () => {
+    if (!id) throw new Error('Missing id to approve purchase order');
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await approvePurchaseOrder(id);
+      setItem(res);
+      return res;
+    } catch (err) {
+      const e = err as Error;
+      setError(e);
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  const deliver = useCallback(async () => {
+    if (!id) throw new Error('Missing id to deliver purchase order');
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await deliverPurchaseOrder(id);
+      setItem(res);
+      return res;
+    } catch (err) {
+      const e = err as Error;
+      setError(e);
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+
   const remove = useCallback(async () => {
     if (!id) throw new Error('Missing id to delete purchase order');
     setLoading(true);
@@ -135,5 +173,6 @@ export function usePurchaseOrder(id?: string) {
     if (id) void fetch(id);
   }, [id, fetch]);
 
-  return { item, loading, error, fetch, patch, remove } as const;
+return { item, loading, error, fetch, patch, remove, approve, deliver } as const;
 }
+

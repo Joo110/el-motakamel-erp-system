@@ -12,7 +12,7 @@ import {
   Briefcase,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import { toast } from "react-toastify";
+import { toast } from 'react-hot-toast';
 import { Link } from "react-router-dom";
 import { useRegister } from "../hooks/useRegister";
 

@@ -2,11 +2,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useCustomers } from '../../Sales/hooks/useCustomers';
+import { toast } from 'react-hot-toast';
 
 const CustomerEditFilled: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  // removed 'loading' because it wasn't used
   const { getCustomer, updateExistingCustomer } = useCustomers(false);
 
   const [form, setForm] = useState<any>({
@@ -34,11 +34,11 @@ const CustomerEditFilled: React.FC = () => {
     setSaving(true);
     try {
       await updateExistingCustomer(id, form);
-      alert('Saved');
+      toast('Saved');
       navigate(`/dashboard/sales/customer/${id}`);
     } catch (err) {
       console.error('Save failed', err);
-      alert('Save failed. Check console.');
+      toast('Save failed. Check console.');
     } finally {
       setSaving(false);
     }

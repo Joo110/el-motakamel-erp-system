@@ -1,6 +1,6 @@
 import './App.css'; 
 import { createHashRouter, RouterProvider } from "react-router-dom";
-import { ToastContainer } from 'react-toastify';
+import { Toaster } from 'react-hot-toast'; // ✅ بديل احترافي وخفيف
 
 // Authentication Pages
 import UserLogin from './mycomponents/user/authentication/UserLogin';
@@ -39,6 +39,8 @@ import TransferDraft from './mycomponents/inventory/page/TransferDraftComponent'
 import TransferManagement from './mycomponents/inventory/page/TransferManagement';
 import InventoryOrders from './mycomponents/Sales/page/InventoryOrders';
 import PreciousManagement from './mycomponents/Precious/page/PreciousManagement';
+import EditPurchaseOrderComponent from './mycomponents/Precious/page/EditPurchaseOrderComponent';
+import EditSaleOrderComponent from './mycomponents/Sales/page/EditSaleOrderComponent';
 
 //  Sales Management Pages (Customer)
 import CustomerSearchList from './mycomponents/Sales/page/CustomerSearchList';
@@ -91,9 +93,9 @@ function App() {
 
         //  Old Inventory Routes
         { path: "stock-in", element: <StockIn /> },
-        { path: "stock-in-draft", element: <StockInDraft /> },
+        { path: "stock-in-draft/:id", element: <StockInDraft /> },
         { path: "stock-out", element: <StockOut /> },
-        { path: "stock-out-draft", element: <StockOutDraft /> },
+        { path: "stock-out-draft/:id", element: <StockOutDraft /> },
         { path: "transfer", element: <Transfer /> },
         { path: "transfer-draft", element: <TransferDraft /> },
 
@@ -101,6 +103,8 @@ function App() {
         { path: "transfermanagement", element: <TransferManagement /> },
         { path: "inventoryorders", element: <InventoryOrders /> },
         { path: "preciousmanagement", element: <PreciousManagement /> },
+        { path: "EditPurchaseOrderComponent/:id", element: <EditPurchaseOrderComponent /> },
+        { path: "EditSaleOrderComponent/:id", element: <EditSaleOrderComponent /> },
 
         // Sales Management Routes (Customer)
         { path: "sales/customers", element: <CustomerSearchList /> },
@@ -126,7 +130,7 @@ function App() {
   return (
     <>
       <RouterProvider router={routes} />
-      <ToastContainer position="top-right" />
+      <Toaster position="top-right" reverseOrder={false} />
     </>
   );
 }

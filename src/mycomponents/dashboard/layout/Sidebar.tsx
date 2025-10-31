@@ -180,42 +180,6 @@ const Sidebar = () => {
               </Link>
 
               <Link
-                to="/dashboard/stock-in"
-                className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
-                  location.pathname === "/dashboard/stock-in" ? "text-[#334155] font-medium" : "text-gray-600 hover:text-[#334155]"
-                }`}
-              >
-                Stock In
-                <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
-                  location.pathname === "/dashboard/stock-in" ? "opacity-100" : "opacity-0 group-hover/item:opacity-100"
-                }`}></div>
-              </Link>
-
-              <Link
-                to="/dashboard/stock-in-draft"
-                className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
-                  location.pathname === "/dashboard/stock-in-draft" ? "text-[#334155] font-medium" : "text-gray-600 hover:text-[#334155]"
-                }`}
-              >
-                Stock In Draft
-                <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
-                  location.pathname === "/dashboard/stock-in-draft" ? "opacity-100" : "opacity-0 group-hover/item:opacity-100"
-                }`}></div>
-              </Link>
-
-              <Link
-                to="/dashboard/stock-out"
-                className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
-                  location.pathname === "/dashboard/stock-out" ? "text-[#334155] font-medium" : "text-gray-600 hover:text-[#334155]"
-                }`}
-              >
-                Stock Out
-                <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
-                  location.pathname === "/dashboard/stock-out" ? "opacity-100" : "opacity-0 group-hover/item:opacity-100"
-                }`}></div>
-              </Link>
-
-              <Link
                 to="/dashboard/transfermanagement"
                 className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
                   location.pathname === "/dashboard/transfermanagement" ? "text-[#334155] font-medium" : "text-gray-600 hover:text-[#334155]"

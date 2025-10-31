@@ -2,9 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Edit2, Trash2 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useInventories } from '@/mycomponents/inventory/hooks/useInventories';
+import axiosClient from '@/lib/axiosClient';
 
 interface Product {
-  id: string;
+  id: string; // stock _id
   name: string;
   category: string;
   units: string;
@@ -13,6 +14,8 @@ interface Product {
   priceValue: number;
   total: string;
   totalValue: number;
+  // keep the raw stock so we can send original ids back to API
+  raw?: any;
 }
 
 interface InventoryDetailsViewProps {
@@ -30,6 +33,12 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
   const [products, setProducts] = useState<Product[]>([]);
   const [stocksLoading, setStocksLoading] = useState(false);
 
+  // Edit modal state
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editQty, setEditQty] = useState<number>(0);
+  const [editPrice, setEditPrice] = useState<number>(0);
+  const [editLoading, setEditLoading] = useState(false);
+
   const inventory = useMemo(() => {
     return inventories.find((inv) => (inv as any)._id === id);
   }, [inventories, id]);
@@ -37,44 +46,57 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
   useEffect(() => {
     if (id && inventory) {
       loadStocks();
+    } else {
+      setProducts([]);
     }
-  }, [id, inventory]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, inventory, inventories, getStocks]);
 
-const loadStocks = async () => {
-  if (!id) return;
-  
-  setStocksLoading(true);
-  try {
-    const stocksData = await getStocks(id);
+  const loadStocks = async () => {
+    if (!id) return;
 
-    const stocksArray = Array.isArray(stocksData)
-      ? stocksData
-      : Array.isArray(stocksData?.data)
-      ? stocksData.data
-      : Array.isArray(stocksData?.data?.stocks)
-      ? stocksData.data.stocks
-      : [];
+    setStocksLoading(true);
+    try {
+      const stocksData = await getStocks(id);
 
-    const mappedProducts: Product[] = stocksArray.map((stock: any, idx: number) => ({
-      id: stock._id || `prod-${idx}`,
-      name: stock.product?.name || 'Unknown Product',
-      category: stock.product?.category?.name || 'N/A',
-      units: stock.product?.sku || 'N/A',
-      unitCount: stock.quantity || 0,
-      price: `${stock.product?.price?.toFixed(2) || '0.00'} SR`,
-      priceValue: stock.product?.price || 0,
-      total: `${(stock.quantity * (stock.product?.price || 0)).toFixed(2)} SR`,
-      totalValue: stock.quantity * (stock.product?.price || 0),
-    }));
-    setProducts(mappedProducts);
-  } catch (err) {
-    console.error('Error loading stocks:', err);
-    setProducts([]);
-  } finally {
-    setStocksLoading(false);
-  }
-};
+      const stocksArray = (() => {
+        if (!stocksData) return [];
+        if (Array.isArray(stocksData)) return stocksData;
+        if (Array.isArray(stocksData.stocks)) return stocksData.stocks;
+        if (Array.isArray(stocksData.data)) return stocksData.data;
+        if (Array.isArray(stocksData.data?.stocks)) return stocksData.data.stocks;
+        if (Array.isArray(stocksData.result)) return stocksData.result;
+        if (Array.isArray(stocksData.data?.result)) return stocksData.data.result;
+        return [];
+      })();
 
+      const mappedProducts: Product[] = stocksArray.map((stock: any, idx: number) => {
+        const prod = stock.product ?? stock.productId ?? {};
+        const priceVal = prod && prod.price ? Number(prod.price) : 0;
+        const qty = typeof stock.quantity === 'number' ? stock.quantity : Number(stock.quantity || 0);
+
+        return {
+          id: stock._id || stock.id || `prod-${idx}`,
+          name: prod?.name || stock.name || 'Unknown Product',
+          category: (prod?.category && typeof prod.category === 'object' ? prod.category.name : prod?.category) || 'N/A',
+          units: prod?.sku || 'N/A',
+          unitCount: qty,
+          price: `${priceVal.toFixed(2)} SR`,
+          priceValue: priceVal,
+          total: `${(qty * priceVal).toFixed(2)} SR`,
+          totalValue: qty * priceVal,
+          raw: stock,
+        };
+      });
+
+      setProducts(mappedProducts);
+    } catch (err) {
+      console.error("Error loading stocks:", err);
+      setProducts([]);
+    } finally {
+      setStocksLoading(false);
+    }
+  };
 
   const inventoryData = useMemo(() => {
     if (!inventory) return null;
@@ -99,7 +121,7 @@ const loadStocks = async () => {
 
   const maxPages = Math.max(1, Math.ceil(totalProducts / entriesPerPage));
 
-  const handleEditClick = () => {
+  const handleEditClickHeader = () => {
     if (onEdit) {
       onEdit();
     } else if (id) {
@@ -107,6 +129,108 @@ const loadStocks = async () => {
     }
   };
 
+  // Open modal and prefill values
+  const openEditModal = (product: Product) => {
+    setEditingProduct(product);
+    setEditQty(product.unitCount);
+    setEditPrice(product.priceValue ?? 0);
+  };
+
+  const closeEditModal = () => {
+    setEditingProduct(null);
+    setEditQty(0);
+    setEditPrice(0);
+  };
+
+  // Submit edit: PATCH /stocks/:stockId
+  const submitEdit = async () => {
+    if (!editingProduct || !editingProduct.raw) return;
+    const stockId = editingProduct.raw._id || editingProduct.id;
+    if (!stockId) {
+      alert('Cannot determine stock id for update.');
+      return;
+    }
+
+    const payload: any = {
+      quantity: Number(editQty),
+    };
+    // send price if available (product price)
+    if (!Number.isNaN(Number(editPrice))) {
+      payload.price = Number(editPrice);
+    }
+    // include productId/inventoryId if present in raw (helps backend)
+    if (editingProduct.raw.productId) {
+      payload.productId = typeof editingProduct.raw.productId === 'object'
+        ? editingProduct.raw.productId._id ?? editingProduct.raw.productId.id
+        : editingProduct.raw.productId;
+    }
+    if (editingProduct.raw.inventoryId) {
+      payload.inventoryId = editingProduct.raw.inventoryId;
+    }
+
+    try {
+      setEditLoading(true);
+      const resp = await axiosClient.patch(`/stocks/${stockId}`, payload);
+      // optimistic local update: update products array with new values
+      const updatedStock = resp?.data ?? resp; // try find response shape
+      // try to find updated fields in response, else use our payload
+      const newQty = Number(updatedStock?.quantity ?? payload.quantity);
+      const newPrice = Number(updatedStock?.price ?? payload.price ?? editPrice);
+
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === editingProduct.id
+            ? {
+                ...p,
+                unitCount: newQty,
+                priceValue: newPrice,
+                price: `${newPrice.toFixed(2)} SR`,
+                totalValue: newQty * newPrice,
+                total: `${(newQty * newPrice).toFixed(2)} SR`,
+                // also update raw if response returned updated stock
+                raw: updatedStock?.data ?? updatedStock ?? p.raw,
+              }
+            : p
+        )
+      );
+      closeEditModal();
+    } catch (err) {
+      console.error('Error updating stock:', err);
+      alert('Failed to update stock. Check console for details.');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  // Delete stock: DELETE /stocks/:stockId
+  const handleDeleteProduct = async (productId: string) => {
+    const p = products.find(x => x.id === productId);
+    if (!p) return;
+    if (!confirm('Are you sure you want to delete this product from the inventory?')) return;
+
+    const stockId = p.raw?._id || p.id;
+    if (!stockId) {
+      // fallback to local removal
+      setProducts((prev) => prev.filter(x => x.id !== productId));
+      return;
+    }
+
+    try {
+      // call api
+      await axiosClient.delete(`/stocks/${stockId}`);
+      // remove locally
+      setProducts((prev) => prev.filter(x => x.id !== productId));
+    } catch (err) {
+      console.error('Error deleting stock:', err);
+      alert('Failed to delete stock. Check console for details.');
+    }
+  };
+
+  const handleEditProduct = (productId: string) => {
+    const p = products.find(x => x.id === productId);
+    if (!p) return;
+    openEditModal(p);
+  };
 
   if (isLoading || !inventoryData) {
     return (
@@ -149,7 +273,7 @@ const loadStocks = async () => {
             <div className="flex flex-col items-end gap-4">
               <div className="flex gap-3">
                 <button
-                  onClick={handleEditClick}
+                  onClick={handleEditClickHeader}
                   className="px-5 py-2 bg-slate-700 text-white rounded-full hover:bg-blue-800 transition-colors"
                 >
                   Edit Details
@@ -214,11 +338,9 @@ const loadStocks = async () => {
                       </td>
                       <td className="py-4">{product.category}</td>
                       <td className="py-4">
-                        <span className="text-gray-600">{product.units}</span>
                         <span className="ml-2">{product.unitCount}</span>
                       </td>
                       <td className="py-4">
-                        <span className="text-gray-600">{product.price}</span>
                         <span className="ml-2">{product.total}</span>
                       </td>
                       <td className="py-4">
@@ -226,10 +348,18 @@ const loadStocks = async () => {
                       </td>
                       <td className="py-4">
                         <div className="flex gap-2">
-                          <button className="p-1 text-blue-600 hover:bg-blue-50 rounded-full">
+                          <button
+                            onClick={() => handleEditProduct(product.id)}
+                            className="p-1 text-blue-600 hover:bg-blue-50 rounded-full"
+                            title="Edit product"
+                          >
                             <Edit2 size={18} />
                           </button>
-                          <button className="p-1 text-red-600 hover:bg-red-50 rounded-full">
+                          <button
+                            onClick={() => handleDeleteProduct(product.id)}
+                            className="p-1 text-red-600 hover:bg-red-50 rounded-full"
+                            title="Delete product"
+                          >
                             <Trash2 size={18} />
                           </button>
                         </div>
@@ -288,6 +418,62 @@ const loadStocks = async () => {
           </div>
         </div>
       </div>
+
+      {/* Edit Modal (keeps visual look unchanged elsewhere) */}
+      {editingProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-6">
+            <h3 className="text-lg font-medium mb-4">Edit Product</h3>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Product</label>
+                <div className="text-sm text-gray-900">{editingProduct.name}</div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Quantity</label>
+                <input
+                  type="number"
+                  value={editQty}
+                  onChange={(e) => setEditQty(Number(e.target.value))}
+                  className="w-full px-3 py-2 border rounded-md text-sm"
+                  min={0}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Price per unit (SR)</label>
+                <input
+                  type="number"
+                  value={editPrice}
+                  onChange={(e) => setEditPrice(Number(e.target.value))}
+                  className="w-full px-3 py-2 border rounded-md text-sm"
+                  min={0}
+                  step="0.01"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 mt-4">
+                <button
+                  onClick={closeEditModal}
+                  className="px-4 py-2 border rounded-full text-sm hover:bg-gray-50"
+                  disabled={editLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitEdit}
+                  className="px-4 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-slate-800 disabled:opacity-50"
+                  disabled={editLoading}
+                >
+                  {editLoading ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

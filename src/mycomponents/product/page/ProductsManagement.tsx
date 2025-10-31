@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { Search, Plus, Edit2, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useProducts } from "../hooks/useProducts";
+import { useCategories } from "@/mycomponents/category/hooks/useCategories";
 import type { Product } from "../services/productService";
 
 interface CategoryItem {
@@ -17,42 +18,22 @@ const ProductsManagement: React.FC = () => {
   const [entriesPerPage, setEntriesPerPage] = useState(5);
 
   const { products, loading, error, fetchProducts, deleteProduct } = useProducts();
+  const { categories: apiCategories } = useCategories();
 
   useEffect(() => {
     fetchProducts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const CATEGORY_LOOKUP: Record<string, string> = {
-    "68d97beed92afa6728644e3c": "electronics",
-    "68d97beed92afa6728644e3d": "footwear",
-    "68d97beed92afa6728644e3e": "clothing",
-    "68e5211b786aca8a94703328": "fiat",
-    "68e5203c786aca8a9470331f": "Dell",
-    "68f4f9a491e22223929518e1": "laptop",
-    "68f4fa6591e22223929518e9": "mobile",
-    "68f508be44736b3c9e775906": "chair",
-    "68d97beed92afa6728644e3f": "accessories",
-    "68e52034786aca8a9470331d": "example-category",
-  };
-
-
   const categories: CategoryItem[] = useMemo(() => {
+    // Build a map of id -> display name using API categories first
     const map = new Map<string, string>();
 
-    products.forEach((p) => {
-      /* eslint-disable @typescript-eslint/no-explicit-any */
-      const cat = (p as any).category;
-      if (!cat) return;
-
-      if (typeof cat === "string") {
-        const name = CATEGORY_LOOKUP[cat] ?? cat;
-        map.set(cat, name);
-      } else if (typeof cat === "object") {
-        const id = cat._id ?? cat.id ?? String(cat);
-        const name = cat.name ?? CATEGORY_LOOKUP[id] ?? id;
-        map.set(id, name);
-      }
+    // Normalize API categories: API might return { _id, category } or { _id, name }
+    (apiCategories ?? []).forEach((c: any) => {
+      const id = c._id ?? c.id ?? String(c);
+      const name = c.name ?? c.category ?? c.title ?? id;
+      map.set(id, name);
     });
 
     const arr: CategoryItem[] = [{ id: "All Categories", name: "All Categories" }];
@@ -60,7 +41,7 @@ const ProductsManagement: React.FC = () => {
       arr.push({ id, name });
     }
     return arr;
-  }, [products]);
+  }, [products, apiCategories]);
 
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
@@ -72,7 +53,6 @@ const ProductsManagement: React.FC = () => {
       const matchesSearch = name.includes(term) || code.includes(term) || desc.includes(term);
 
       if (selectedCategory === "All Categories") return matchesSearch;
-/* eslint-disable @typescript-eslint/no-explicit-any */
       const cat = (p as any).category;
       if (!cat) return false;
 
@@ -142,6 +122,14 @@ const ProductsManagement: React.FC = () => {
 
   const calculateTotal = (price: number, tax: number): number => {
     return price * (1 + tax / 100);
+  };
+
+  // helper to resolve category name by id from apiCategories (with fallbacks)
+  const resolveCategoryNameById = (id: string | undefined) => {
+    if (!id) return "—";
+    const found = (apiCategories ?? []).find((c: any) => (c._id ?? c.id) === id);
+    if (found) return found.name ?? found.category ?? found.title ?? id;
+    return id;
   };
 
   return (
@@ -238,7 +226,7 @@ const ProductsManagement: React.FC = () => {
           </div>
         </div>
 
-                <div className="overflow-x-auto">
+        <div className="overflow-x-auto">
           {loading ? (
             <div className="text-center py-10 text-gray-500">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-slate-700"></div>
@@ -275,13 +263,14 @@ const ProductsManagement: React.FC = () => {
                   const productImage = getProductImage(product.img);
                   const total = calculateTotal(product.price, product.tax);
 
+                  // Resolve category name: prefer API categories, else product object content
                   let categoryName = "—";
                   const cat = (product as any).category;
                   if (cat) {
                     if (typeof cat === "string") {
-                      categoryName = CATEGORY_LOOKUP[cat] ?? cat;
+                      categoryName = resolveCategoryNameById(cat);
                     } else if (typeof cat === "object") {
-                      categoryName = cat.name ?? (CATEGORY_LOOKUP[cat._id ?? cat.id] ?? "—");
+                      categoryName = cat.name ?? cat.category ?? resolveCategoryNameById(cat._id ?? cat.id ?? undefined);
                     }
                   }
 
@@ -401,7 +390,6 @@ const ProductsManagement: React.FC = () => {
             </div>
           </div>
         )}
-
       </div>
     </div>
   );

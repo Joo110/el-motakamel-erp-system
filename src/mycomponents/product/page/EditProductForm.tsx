@@ -2,30 +2,47 @@ import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { ChevronRight, ChevronDown, Upload } from "lucide-react";
 import { useProducts } from "../hooks/useProducts";
+import { useCategories } from "@/mycomponents/category/hooks/useCategories";
+import { toast } from 'react-hot-toast';
 
 const EditProductForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const productId = id!;
 
   const { getProductById, updateProduct } = useProducts();
+  const { categories: apiCategories } = useCategories();
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const categories = [
-    { _id: "1", name: "Electronics" },
-    { _id: "2", name: "Clothing" },
-    { _id: "3", name: "Food" },
-    { _id: "4", name: "Furniture" },
-  ];
-
   const [productName, setProductName] = useState("");
-  const [category, setCategory] = useState("");
+  const [category, setCategory] = useState(""); // will store category _id
   const [description, setDescription] = useState("");
   const [code, setCode] = useState("");
   const [price, setPrice] = useState("");
   const [tax, setTax] = useState("");
   const [units, setUnits] = useState("");
   const [image, setImage] = useState("");
+
+  // helper: resolve category id from various product.category shapes
+  const resolveCategoryId = (prodCat: any) => {
+    if (!prodCat) return "";
+    // if it's a string assume it's the id
+    if (typeof prodCat === "string") return prodCat;
+    // if it's an object with _id or id
+    const idCandidate = prodCat._id ?? prodCat.id;
+    if (idCandidate) return idCandidate;
+    // if it's an object with a name/category string, try to find matching api category by name
+    const nameCandidate = prodCat.name ?? prodCat.category;
+    if (nameCandidate && Array.isArray(apiCategories)) {
+      const found = apiCategories.find((c: any) => {
+        const cname = c.name ?? c.category ?? c.title;
+        return cname && String(cname).toLowerCase() === String(nameCandidate).toLowerCase();
+      });
+      if (found) return found._id ?? found.id ?? "";
+    }
+    return "";
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -43,7 +60,7 @@ const EditProductForm: React.FC = () => {
         }
 
         setProductName(productData.name || "");
-        setCategory(productData.category || categories[0]._id);
+        setCategory(resolveCategoryId(productData.category) || "");
         setDescription(productData.description || "");
         setCode(productData.code || "");
         setPrice(String(productData.price ?? ""));
@@ -64,7 +81,8 @@ const EditProductForm: React.FC = () => {
       mounted = false;
       controller.abort();
     };
-  }, [productId, getProductById]);
+    // include apiCategories so that resolveCategoryId can match by name if needed
+  }, [productId, getProductById, apiCategories]);
 
   const calculateTotal = () => {
     const priceNum = parseFloat(price) || 0;
@@ -77,17 +95,22 @@ const EditProductForm: React.FC = () => {
     try {
       setSaving(true);
 
-      const payload = {
-        price: parseFloat(price) || 1000,
+      // build payload: ensure category id is sent
+      const payload: any = {
+        price: parseFloat(price) || 0,
+        category: category || undefined,
       };
+
+      // If you don't want to overwrite category when it's empty, remove it from payload:
+      if (!payload.category) delete payload.category;
 
       console.log("📦 Payload to send:", payload);
 
       await updateProduct(productId, payload);
-      alert("✅ Product updated successfully!");
+      toast.success("✅ Product updated successfully!");
     } catch (error) {
       console.error("❌ Failed to update product:", error);
-      alert("Error updating product. Check console.");
+      toast.error("Error updating product. Check console.");
     } finally {
       setSaving(false);
     }
@@ -139,11 +162,21 @@ const EditProductForm: React.FC = () => {
                   aria-readonly="true"
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white appearance-none shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                 >
-                  {categories.map((cat) => (
-                    <option key={cat._id} value={cat._id}>
-                      {cat.name}
-                    </option>
-                  ))}
+                  {/* map api categories to options; if none, show placeholder */}
+                  {apiCategories && apiCategories.length > 0 ? (
+                    apiCategories.map((c: any) => {
+                      const idVal = c._id ?? c.id;
+                      const label = c.name ?? c.category ?? c.title ?? idVal;
+                      return (
+                        <option key={idVal} value={idVal}>
+                          {label}
+                        </option>
+                      );
+                    })
+                  ) : (
+                    // fallback: show current category as single option if we have its id
+                    category ? <option value={category}>{category}</option> : <option value="">No categories</option>
+                  )}
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
               </div>
@@ -220,7 +253,6 @@ const EditProductForm: React.FC = () => {
                 />
               </div>
               <div className="flex gap-4">
-                {/* kept buttons visually identical but they do nothing (readonly image) */}
                 <button
                   onClick={() => {}}
                   className="flex-1 px-6 py-2.5 rounded-xl bg-white border border-gray-300 shadow-sm text-gray-700 font-medium hover:bg-gray-100 transition-all"

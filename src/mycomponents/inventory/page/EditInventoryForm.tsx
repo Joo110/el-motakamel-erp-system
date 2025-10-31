@@ -5,6 +5,7 @@ import {
   getInventoryByIdService,
   updateInventoryService,
 } from "@/mycomponents/inventory/services/inventories";
+import { toast } from 'react-hot-toast';
 
 interface EditInventoryFormProps {
   inventoryId: string;
@@ -128,7 +129,7 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
   const handleSaveDetails = async () => {
     const changes = getChangedFields();
     if (Object.keys(changes).length === 0) {
-      alert("No changes detected.");
+      toast.success("No changes detected.");
       return;
     }
 
@@ -141,7 +142,7 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
         changes
       );
 
-      alert("Inventory updated successfully!");
+      toast.success("✅Inventory updated successfully!");
       setOriginal(updated);
       if (onSave) {
         onSave({
@@ -157,7 +158,7 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
       }
     } catch (err) {
       console.error("Update error:", err);
-      setError("Failed to update inventory.");
+      toast.error("Failed to update inventory.");
     } finally {
       setIsSaving(false);
     }

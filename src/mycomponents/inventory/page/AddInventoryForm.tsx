@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Upload } from 'lucide-react';
 import { useInventories } from '@/mycomponents/inventory/hooks/useInventories';
 import type { InventoryInput } from '@/types/inventory';
+import { toast } from 'react-hot-toast';
 
 interface AddInventoryFormProps {
   onSave?: (data: InventoryFormData) => void;
@@ -43,7 +44,6 @@ const AddInventoryForm: React.FC<AddInventoryFormProps> = ({ onSave, onCancel })
     }
   };
 
-  // الآن هذا الhandleSave ينادي create من الهوك ويبعت الداتا للسيرفر
 const handleSave = async () => {
   const payload: InventoryInput = {
     name: formData.inventoryName,
@@ -62,9 +62,9 @@ const handleSave = async () => {
       });
     }
 
-    // ✅ الرسالة اللي هتطلع لما الإضافة تنجح
-    alert('Inventory added successfully!✅');
+toast.success('Inventory added successfully! ✅');
   } catch (err) {
+    toast.error('Something went wrong ❌');
     console.error('Create inventory failed', err);
   }
 };

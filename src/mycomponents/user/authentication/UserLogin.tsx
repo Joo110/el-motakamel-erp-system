@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mail, Lock, EyeOff, Eye } from "lucide-react";
 import { useState } from "react";
-import { toast } from "react-toastify";
+import { toast } from 'react-hot-toast';
 import { Link, useNavigate } from "react-router-dom";
 import { useLogin } from "@/mycomponents/user/hooks/useLogin";
 

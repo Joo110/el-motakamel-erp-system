@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCustomers } from '../../Sales/hooks/useCustomers';
+import { toast } from 'react-hot-toast';
 
 const ORG_ID = import.meta.env.VITE_ORG_ID || '68c2d89e2ee5fae98d57bef1';
 
@@ -25,17 +26,17 @@ const CustomerAdd: React.FC = () => {
 
   const handleSave = async () => {
     if (!form.name) {
-      alert('Customer name required');
+      toast('Customer name required');
       return;
     }
     setSaving(true);
     try {
       await createNewCustomer(ORG_ID, form);
-      alert('Customer created');
+      toast('Customer created');
       navigate('/dashboard/sales/customers');
     } catch (err) {
       console.error('Create failed', err);
-      alert('Create failed. Check console.');
+      toast('Create failed. Check console.');
     } finally {
       setSaving(false);
     }

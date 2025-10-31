@@ -1,10 +1,12 @@
+// src/services/purchaseOrders.ts
 import axiosClient from '@/lib/axiosClient';
 import type { AxiosRequestConfig } from 'axios';
 
 /* ----------------------
    TYPES
    ---------------------- */
-export type SaleOrderProductPayload = {
+
+export type PurchaseOrderProductPayload = {
   productId: string;
   inventoryId: string;
   name?: string;
@@ -13,32 +15,30 @@ export type SaleOrderProductPayload = {
   discount?: number;
 };
 
-export type CreateSaleOrderPayload = {
-  customerId: string;
+export type CreatePurchaseOrderPayload = {
+  supplierId: string;
   organizationId?: string;
-  products: SaleOrderProductPayload[];
-  shippingCost?: number;
+  products: PurchaseOrderProductPayload[];
   expectedDeliveryDate?: string;
-  tax?: number;
+  currency?: string;
   notes?: string;
   createdBy?: string;
 };
 
-export type SaleOrderProduct = SaleOrderProductPayload & {
+export type PurchaseOrderProduct = PurchaseOrderProductPayload & {
   _id?: string;
   total?: number;
 };
 
-export type SaleOrder = {
+export type PurchaseOrder = {
   _id: string;
-  customerId?: string;
+  supplierId?: string;
   organizationId?: string;
-  products: SaleOrderProduct[];
-  shippingCost?: number;
+  products: PurchaseOrderProduct[];
   expectedDeliveryDate?: string;
-  tax?: number;
-  notes?: string;
+  currency?: string;
   status?: string;
+  notes?: string;
   createdBy?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -53,31 +53,29 @@ export type SaleOrder = {
 
 const BASE = '/saleOrders';
 
-function extractListFromResponse(resData: any): SaleOrder[] {
+function extractListFromResponse(resData: any): PurchaseOrder[] {
   if (!resData) return [];
-  // common shapes:
-  // { data: { saleOrders: [...] } }
-  if (resData.data && Array.isArray(resData.data.saleOrders)) return resData.data.saleOrders as SaleOrder[];
-  // { saleOrders: [...] }
-  if (Array.isArray(resData.saleOrders)) return resData.saleOrders as SaleOrder[];
-  // { data: [...] }
-  if (Array.isArray(resData.data)) return resData.data as SaleOrder[];
-  // direct array
-  if (Array.isArray(resData)) return resData as SaleOrder[];
-  // try find array inside data
-  if (resData.data) {
-    const found = Object.values(resData.data).find((v) => Array.isArray(v));
-    if (Array.isArray(found)) return found as SaleOrder[];
+
+  if (resData.data && Array.isArray(resData.data.purchases)) return resData.data.purchases as PurchaseOrder[];
+  if (Array.isArray(resData.purchases)) return resData.purchases as PurchaseOrder[];
+  if (Array.isArray(resData.purchaseOrders)) return resData.purchaseOrders as PurchaseOrder[];
+  if (Array.isArray(resData.data)) return resData.data as PurchaseOrder[];
+  if (Array.isArray(resData)) return resData as PurchaseOrder[];
+
+  if (resData.data && typeof resData.data === 'object') {
+    const maybe = Object.values(resData.data).find((v) => Array.isArray(v));
+    if (Array.isArray(maybe)) return maybe as PurchaseOrder[];
   }
+
   return [];
 }
 
-function extractSingleFromResponse(resData: any): SaleOrder | null {
+function extractSingleFromResponse(resData: any): PurchaseOrder | null {
   if (!resData) return null;
-  if (resData.data && resData.data.saleOrder) return resData.data.saleOrder as SaleOrder;
-  if (resData.saleOrder) return resData.saleOrder as SaleOrder;
-  if (resData.data && Array.isArray(resData.data.saleOrders)) return resData.data.saleOrders[0] ?? null;
-  if (resData._id) return resData as SaleOrder;
+  if (resData.data && resData.data.purchase) return resData.data.purchase as PurchaseOrder;
+  if (resData.purchase) return resData.purchase as PurchaseOrder;
+  if (resData.data && Array.isArray(resData.data.purchases)) return resData.data.purchases[0] ?? null;
+  if (resData._id) return resData as PurchaseOrder;
   return null;
 }
 
@@ -85,35 +83,51 @@ function extractSingleFromResponse(resData: any): SaleOrder | null {
    SERVICE FUNCTIONS
    ---------------------- */
 
-export async function getSaleOrders(status?: string, config?: AxiosRequestConfig): Promise<SaleOrder[]> {
-  const { data } = await axiosClient.get(`${BASE}`, {
+export async function getsalesOrders(status?: 'draft' | 'approved' | 'delivered', config?: AxiosRequestConfig): Promise<PurchaseOrder[]> {
+  const url = BASE;
+  const { data } = await axiosClient.get(url, {
     params: status ? { status } : {},
     ...config,
   });
   return extractListFromResponse(data);
 }
 
-export async function getSaleOrderById(id: string, config?: AxiosRequestConfig): Promise<SaleOrder | null> {
+export async function getsaleseOrderById(id: string, config?: AxiosRequestConfig): Promise<PurchaseOrder | null> {
   const { data } = await axiosClient.get(`${BASE}/${id}`, config);
-  return extractSingleFromResponse(data);
+  return data?.data?.saleOrder ?? null;
 }
 
-export async function createSaleOrder(payload: CreateSaleOrderPayload, config?: AxiosRequestConfig): Promise<SaleOrder> {
-  const { data } = await axiosClient.post(`${BASE}`, payload, config);
+
+export async function createsaleseOrder(payload: CreatePurchaseOrderPayload, config?: AxiosRequestConfig): Promise<PurchaseOrder> {
+  const { data } = await axiosClient.post(BASE, payload, config);
   const single = extractSingleFromResponse(data);
   if (single) return single;
-  return data as SaleOrder;
+  return data as PurchaseOrder;
 }
 
-export async function updateSaleOrder(id: string, payload: Partial<CreateSaleOrderPayload>, config?: AxiosRequestConfig): Promise<SaleOrder | null> {
+export async function updatePurchaseOrder(id: string, payload: Partial<CreatePurchaseOrderPayload>, config?: AxiosRequestConfig): Promise<PurchaseOrder | null> {
   const { data } = await axiosClient.patch(`${BASE}/${id}`, payload, config);
   return extractSingleFromResponse(data);
 }
 
-export async function deleteSaleOrder(
-  id: string,
-  config?: AxiosRequestConfig
-): Promise<{ success?: boolean; message?: string } | null> {
+export async function deletesaleseOrder(id: string, config?: AxiosRequestConfig): Promise<{ success?: boolean; message?: string } | null> {
   const { data } = await axiosClient.delete(`${BASE}/${id}`, config);
   return data ?? null;
+}
+
+/* ----------------------
+   ✅ NEW PATCH ENDPOINTS
+   ---------------------- */
+
+// Approve sale order
+// Approve sale order
+export async function approveSaleOrder(id: string): Promise<PurchaseOrder | null> {
+  const { data } = await axiosClient.patch(`${BASE}/${id}?status=approved`);
+  return extractSingleFromResponse(data);
+}
+
+// Mark sale order as delivered
+export async function markSaleOrderDelivered(id: string): Promise<PurchaseOrder | null> {
+  const { data } = await axiosClient.patch(`${BASE}/${id}?status=delivered`);
+  return extractSingleFromResponse(data);
 }

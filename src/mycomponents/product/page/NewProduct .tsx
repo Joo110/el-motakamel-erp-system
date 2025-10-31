@@ -1,17 +1,12 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Upload, Edit2 } from "lucide-react";
 import { useProducts } from "../hooks/useProducts";
-import { toast } from "react-toastify";
+import { toast } from 'react-hot-toast';
+import { useCategories } from "@/mycomponents/category/hooks/useCategories";
 
 const NewProduct = () => {
   const { addProduct } = useProducts();
-
-  const categories = [
-  { id: "68d97beed92afa6728644e3c", name: "electronics" },
-  { id: "68d97beed92afa6728644e3d", name: "footwear" },
-  { id: "68d97beed92afa6728644e3e", name: "clothing" },
-  { id: "68d97beed92afa6728644e3f", name: "accessories" },
-];
+  const { categories: apiCategories, isLoading: catLoading } = useCategories();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -23,9 +18,18 @@ const NewProduct = () => {
     unit: "",
   });
   const [image, setImage] = useState<string | null>(null);
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const [imageFile, setImageFile] = useState<File | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    // set default category to first API category if available and no category selected yet
+    if (apiCategories && apiCategories.length > 0 && !formData.category) {
+      const firstId = apiCategories[0]._id ?? apiCategories[0].id;
+      setFormData((prev) => ({ ...prev, category: firstId }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiCategories]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -53,28 +57,29 @@ const [imageFile, setImageFile] = useState<File | null>(null);
     return total;
   };
 
-const handleSubmit = async () => {
+  const handleSubmit = async () => {
   try {
     setSaving(true);
 
-    const selectedCategory = categories.find(c => c.name === formData.category)?.id;
-    if (!selectedCategory) {
+    const selectedCategoryId = formData.category;
+    if (!selectedCategoryId) {
       toast.error("Please select a valid category!");
       setSaving(false);
       return;
     }
 
-    // Payload جاهز مثل الـ endpoint
     const payload = {
       name: formData.name,
-      category: selectedCategory,
-      description: formData.description,
       code: formData.code,
-      price: parseFloat(formData.price),
-      tax: parseFloat(formData.tax),
-      unit: parseInt(formData.unit) || 0,
-      img: ["daf", "adf", "ahfjk"], // ✅ مؤقتًا شغال للتست
+      price: parseFloat(formData.price) || 0,      // ✅ Convert to number
+      tax: parseFloat(formData.tax) || 0,          // ✅ Convert to number
+      description: formData.description,
+      category: selectedCategoryId,
+      unit: parseInt(formData.unit) || 1,
+      img: image ? [image] : ["daf", "adf", "ahfjk"],
     };
+
+    console.log("📤 Payload to send:", JSON.stringify(payload, null, 2));
 
     await addProduct(payload);
 
@@ -87,9 +92,6 @@ const handleSubmit = async () => {
     setSaving(false);
   }
 };
-
-
-
   const handleCancel = () => {
     setFormData({
       name: "",
@@ -108,9 +110,7 @@ const handleSubmit = async () => {
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
       <div className="mb-3 flex items-center gap-4 flex-wrap">
-        <h1 className="text-3xl font-bold text-gray-800">
-          Products Management
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-800">Products Management</h1>
 
         <div className="flex items-center gap-2 text-sm text-gray-500 flex-wrap">
           <span>Dashboard</span>
@@ -130,9 +130,7 @@ const handleSubmit = async () => {
           <div className="lg:col-span-2 space-y-6">
             {/* Product Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Product Name
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Product Name</label>
               <input
                 type="text"
                 name="name"
@@ -145,9 +143,7 @@ const handleSubmit = async () => {
 
             {/* Category */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
               <select
                 name="category"
                 value={formData.category}
@@ -162,18 +158,22 @@ const handleSubmit = async () => {
                 }}
               >
                 <option value="">Category...</option>
-                <option value="electronics">Electronics</option>
-                <option value="footwear">Footwear</option>
-                <option value="clothing">Clothing</option>
-                <option value="accessories">Accessories</option>
+                {apiCategories && apiCategories.length > 0 ? (
+                  apiCategories.map((c: any) => (
+                    <option key={c._id ?? c.id} value={c._id ?? c.id}>
+                      {c.name ?? c.category ?? c.title}
+                    </option>
+                  ))
+                ) : (
+                  // if categories list empty, show nothing (no dummy options)
+                  null
+                )}
               </select>
             </div>
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
               <textarea
                 name="description"
                 value={formData.description}
@@ -185,9 +185,7 @@ const handleSubmit = async () => {
 
             {/* Code */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Code
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Code</label>
               <input
                 type="text"
                 name="code"
@@ -201,9 +199,7 @@ const handleSubmit = async () => {
             {/* Price, Tax, Unit Row */}
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Price
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Price</label>
                 <div className="relative">
                   <input
                     type="number"
@@ -213,16 +209,12 @@ const handleSubmit = async () => {
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
                     placeholder=""
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
-                    SR
-                  </span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">SR</span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tax
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Tax</label>
                 <div className="relative">
                   <input
                     type="number"
@@ -232,16 +224,12 @@ const handleSubmit = async () => {
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
                     placeholder=""
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
-                    SR
-                  </span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">SR</span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Unit
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Unit</label>
                 <input
                   type="number"
                   name="unit"
@@ -256,9 +244,7 @@ const handleSubmit = async () => {
             {/* Total */}
             <div className="flex items-center gap-4">
               <span className="text-sm font-medium text-gray-700">Total:</span>
-              <span className="text-lg font-semibold text-gray-800">
-                {calculateTotal()} SR
-              </span>
+              <span className="text-lg font-semibold text-gray-800">{calculateTotal()} SR</span>
             </div>
           </div>
 
@@ -268,11 +254,7 @@ const handleSubmit = async () => {
               {/* Image Preview */}
               <div className="border-2 border-dashed border-gray-300 rounded-lg h-80 flex items-center justify-center bg-gray-50 mb-4 overflow-hidden">
                 {image ? (
-                  <img
-                    src={image}
-                    alt="Product preview"
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={image} alt="Product preview" className="w-full h-full object-cover" />
                 ) : (
                   <span className="text-gray-400 text-sm">image preview</span>
                 )}
@@ -285,12 +267,7 @@ const handleSubmit = async () => {
                     <Edit2 size={18} />
                     <span>Edit image</span>
                   </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
+                  <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                 </label>
 
                 <label className="flex-1 cursor-pointer">
@@ -298,12 +275,7 @@ const handleSubmit = async () => {
                     <Upload size={18} />
                     <span>Upload image</span>
                   </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
+                  <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                 </label>
               </div>
             </div>
@@ -323,9 +295,7 @@ const handleSubmit = async () => {
             onClick={handleSubmit}
             disabled={saving}
             className={`px-6 py-2.5 text-white rounded-xl shadow-md font-medium transition-all ${
-              saving
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-[#1f334d] hover:bg-gray-900"
+              saving ? "bg-gray-400 cursor-not-allowed" : "bg-[#1f334d] hover:bg-gray-900"
             }`}
           >
             {saving ? "Saving..." : "Save Product"}

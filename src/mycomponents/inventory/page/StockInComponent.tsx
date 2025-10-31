@@ -4,6 +4,7 @@ import { useCreatePurchaseOrder } from '../../Precious/hooks/useCreatePurchaseOr
 import { useProducts } from '../../product/hooks/useProducts';
 import { useInventories } from '../../inventory/hooks/useInventories';
 import { useSuppliers } from '../../Precious/hooks/useSuppliers';
+import { toast } from 'react-hot-toast';
 
 interface ProductRow {
   id: string;
@@ -25,12 +26,8 @@ const truncate = (s: string | undefined, n = 30) => {
 
 const StockInComponent: React.FC = () => {
   // ===== جدول المنتجات =====
-  const [products, setProducts] = useState<ProductRow[]>([
-    { id: '1', productId: '1', inventoryId: 'a', name: 'Product 1', inventoryName: 'Abu Dhabi', code: '99282', units: 10, price: 1140.95, discount: 13, total: 9990.0 },
-    { id: '2', productId: '2', inventoryId: 'a', name: 'Product 2', inventoryName: 'Abu Dhabi', code: '322-14', units: 10, price: 1710.55, discount: 13, total: 9400.0 },
-    { id: '3', productId: '3', inventoryId: 'b', name: 'Wireless Bluetooth Earbuds', inventoryName: 'New capital', code: '326x1', units: 10, price: 1102.55, discount: 11, total: 9400.0 },
-    { id: '4', productId: '4', inventoryId: 'a', name: 'Product 2', inventoryName: 'Abu Dhabi', code: '322-14', units: 10, price: 1710.55, discount: 23, total: 9400.0 },
-  ]);
+const [products, setProducts] = useState<ProductRow[]>([]);
+
 
   const total = useMemo(() => products.reduce((sum, product) => sum + product.total, 0), [products]);
 
@@ -110,7 +107,7 @@ const StockInComponent: React.FC = () => {
 
   const handleAddProduct = () => {
     if (!selectedProductId || !selectedInventoryId || Number(formProduct.units) <= 0 || Number(formProduct.price) <= 0) {
-      alert('Please select product & inventory and fill Units (>0) and Price (>0)');
+      toast.error('Please select product & inventory and fill Units (>0) and Price (>0)');
       return;
     }
 
@@ -164,12 +161,12 @@ const StockInComponent: React.FC = () => {
   const handleSave = async () => {
     try {
       if (!supplierId) {
-        alert('Please select a supplier before saving.');
+        toast.error('Please select a supplier before saving.');
         return;
       }
       
       if (products.length === 0) {
-        alert('Please add at least one product.');
+        toast.error('Please add at least one product.');
         return;
       }
 
@@ -185,7 +182,7 @@ const StockInComponent: React.FC = () => {
 
       console.log('📤 Sending payload to API:', payload);
       await create(payload);
-      alert('✅ Order saved successfully');
+      toast.success('✅ Order saved successfully');
       
       // Reset بعد النجاح
       setProducts([]);
@@ -196,7 +193,7 @@ const StockInComponent: React.FC = () => {
       setCurrency('SR');
     } catch (err) {
       console.error('❌ Save purchase order error:', err);
-      alert('Failed to save order. Check console for details.');
+      toast.error('Failed to save order. Check console for details.');
     }
   };
 

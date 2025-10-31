@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
-import { Calendar, ChevronDown, Trash2 } from 'lucide-react';
-import { useSaleOrders } from '../../Sales/hooks/useSaleOrders';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Calendar, ChevronDown, Trash2, Save } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { usePurchaseOrder } from '../../Precious/hooks/useCreatePurchaseOrder';
 import { useProducts } from '../../product/hooks/useProducts';
 import { useInventories } from '../../inventory/hooks/useInventories';
-import { useCustomers } from '../../Sales/hooks/useCustomers';
+import { useSuppliers } from '../../Precious/hooks/useSuppliers';
 import { toast } from 'react-hot-toast';
 
 interface ProductRow {
@@ -24,74 +25,85 @@ const truncate = (s: string | undefined, n = 30) => {
   return s.length > n ? s.slice(0, n - 1) + '…' : s;
 };
 
-const StockOutComponent: React.FC = () => {
-  // ===== جدول المنتجات =====
-  const [products, setProducts] = useState<ProductRow[]>([
-    { id: '1', productId: '1', inventoryId: 'a', name: 'Product 1', inventoryName: 'Abu Dhabi', code: '99282', units: 10, price: 1140.95, discount: 13, total: 9990.0 },
-    { id: '2', productId: '2', inventoryId: 'a', name: 'Product 2', inventoryName: 'Abu Dhabi', code: '323-14', units: 10, price: 1710.55, discount: 13, total: 9400.0 },
-    { id: '3', productId: '3', inventoryId: 'b', name: 'Wireless Bluetooth Earbuds', inventoryName: 'New capital', code: '326x1', units: 10, price: 1102.55, discount: 11, total: 9400.0 },
-    { id: '4', productId: '4', inventoryId: 'a', name: 'Product 2', inventoryName: 'Abu Dhabi', code: '322-14', units: 10, price: 1710.55, discount: 23, total: 9400.0 },
-  ]);
+const EditPurchaseOrderComponent: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
 
-  const total = useMemo(() => products.reduce((sum, product) => sum + product.total, 0), [products]);
+  const { item, loading: orderLoading, error: orderError, patch } = usePurchaseOrder(id);
+  const { products: productsFromHook = [], loading: productsLoading = false } = useProducts() as any;
+  const { inventories = [], isLoading: inventoriesLoading = false } = useInventories() as any;
+  const { suppliers = [], loading: suppliersLoading = false } = useSuppliers() as any;
 
-  // ===== form state for Add Products =====
-  const [formProduct, setFormProduct] = useState({
-    name: '',
-    inventory: '',
-    code: '96269',
-    units: '0',
-    price: '0',
-    discount: '0',
-  });
-
-  // ===== selected ids =====
-  const [customerId, setCustomerId] = useState<string>('');
-  const [selectedProductId, setSelectedProductId] = useState<string>('');
-  const [selectedInventoryId, setSelectedInventoryId] = useState<string>('');
-
-  // ===== الحقول الإضافية المطلوبة للـ API =====
+  // ===== State =====
+  const [products, setProducts] = useState<ProductRow[]>([]);
+  const [supplierId, setSupplierId] = useState<string>('');
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<string>('');
   const [orderDate, setOrderDate] = useState<string>('');
   const [currency, setCurrency] = useState<string>('SR');
   const [notes, setNotes] = useState<string>('');
-  
-  // ⚠️ غيّر الـ IDs دي حسب بياناتك (أو اجلبهم من localStorage/Context)
-  const [organizationId] = useState<string>('68c2d89e2ee5fae98d57bef1');
-  const [createdBy] = useState<string>('68c699af13bdca2885ed4d27');
 
+  // Form state for adding new products
+  const [formProduct, setFormProduct] = useState({
+    name: '',
+    inventory: '',
+    code: '96060',
+    units: '0',
+    price: '0',
+    discount: '0',
+  });
+  const [selectedProductId, setSelectedProductId] = useState<string>('');
+  const [selectedInventoryId, setSelectedInventoryId] = useState<string>('');
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
 
-  // ===== hooks =====
-  // useSaleOrdersList: افتراض إنه يرجع create + loading
-  const { create, loading } = useSaleOrders(undefined, false);
-  const { products: productsFromHook = [], loading: productsLoading = false } = useProducts() as any;
-  const { inventories = [], isLoading: inventoriesLoading = false } = useInventories() as any;
-  const { customers = [], loading: customersLoading = false } = useCustomers() as any;
+  // ===== تحميل البيانات من الـ API وتعبئة الفورم =====
+  useEffect(() => {
+    if (item) {
+      console.log('📦 Loaded Order Data:', item);
+      
+      setSupplierId(item.supplierId || '');
+      setExpectedDeliveryDate(item.expectedDeliveryDate || '');
+      setOrderDate(item.createdAt ? item.createdAt.split('T')[0] : '');
+      setCurrency(item.currency || 'SR');
+      setNotes(item.notes || '');
+
+      // تحويل المنتجات للـ ProductRow format
+      if (item.products && item.products.length > 0) {
+        const mappedProducts: ProductRow[] = item.products.map((p: any, idx: number) => ({
+          id: p._id || `product-${idx}`,
+          productId: p.productId || '',
+          inventoryId: p.inventoryId || '',
+          name: p.name || '-',
+          inventoryName: p.inventoryName || '-',
+          code: p.code || '96060',
+          units: p.quantity || 0,
+          price: p.price || 0,
+          discount: p.discount || 0,
+          total: (p.quantity || 0) * (p.price || 0) * (1 - (p.discount || 0) / 100),
+        }));
+        setProducts(mappedProducts);
+      }
+    }
+  }, [item]);
+
+  const total = useMemo(() => products.reduce((sum, product) => sum + product.total, 0), [products]);
 
   const computedFormTotal = useMemo(() => {
     const u = Number(formProduct.units || 0);
     const p = Number(formProduct.price || 0);
     const d = Number(formProduct.discount || 0);
     const tot = u * p * (1 - d / 100);
-    return isFinite(tot) ? tot.toFixed(2) + ' SR' : '0.00 SR';
-  }, [formProduct.units, formProduct.price, formProduct.discount]);
+    return isFinite(tot) ? tot.toFixed(2) + ' ' + currency : '0.00 ' + currency;
+  }, [formProduct.units, formProduct.price, formProduct.discount, currency]);
 
-  // ===== handlers =====
+  // ===== Handlers =====
   const handleFormChange = (key: keyof typeof formProduct, value: string) => {
     setFormProduct((s) => ({ ...s, [key]: value }));
   };
 
   const handleResetForm = () => {
-    setFormProduct({ name: '', inventory: '', code: '96269', units: '0', price: '0', discount: '0' });
+    setFormProduct({ name: '', inventory: '', code: '96060', units: '0', price: '0', discount: '0' });
     setSelectedProductId('');
     setSelectedInventoryId('');
-  };
-
-  const handleCustomerSelect = (id: string) => {
-    setCustomerId(id);
-    const c = customers.find((x: any) => x._id === id);
-    setFormProduct((f) => ({ ...f, name: c?.name ?? '' }));
   };
 
   const handleProductSelect = (productId: string) => {
@@ -112,7 +124,7 @@ const StockOutComponent: React.FC = () => {
 
   const handleAddProduct = () => {
     if (!selectedProductId || !selectedInventoryId || Number(formProduct.units) <= 0 || Number(formProduct.price) <= 0) {
-      toast('Please select product & inventory and fill Units (>0) and Price (>0)');
+      toast.error('Please select product & inventory and fill Units (>0) and Price (>0)');
       return;
     }
 
@@ -126,11 +138,11 @@ const StockOutComponent: React.FC = () => {
 
     const newProduct: ProductRow = {
       id: Date.now().toString(),
-      productId: selectedProductId,    // <-- نحتفظ بالـ ID هنا
-      inventoryId: selectedInventoryId,// <-- ونحتفظ بــ inventoryId كـ ID
+      productId: selectedProductId,
+      inventoryId: selectedInventoryId,
       name: productName,
       inventoryName,
-      code: formProduct.code || '96269',
+      code: formProduct.code || '96060',
       units,
       price,
       discount,
@@ -139,6 +151,7 @@ const StockOutComponent: React.FC = () => {
 
     setProducts((prev) => [...prev, newProduct]);
     handleResetForm();
+    toast.success('✅ Product added');
   };
 
   const handleCheckboxToggle = (id: string) => {
@@ -148,9 +161,10 @@ const StockOutComponent: React.FC = () => {
   const handleDeleteProduct = (id: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== id));
     setSelectedProducts((prev) => prev.filter((x) => x !== id));
+    toast.success('🗑️ Product removed');
   };
 
-  // ===== تحويل المنتجات للـ payload المطلوب =====
+  // ===== تحويل المنتجات للـ payload =====
   function mapProductsForApi(p: ProductRow[]) {
     return p.map((prod) => ({
       productId: prod.productId,
@@ -162,60 +176,73 @@ const StockOutComponent: React.FC = () => {
     }));
   }
 
-  // ===== حفظ الطلب وإرساله للـ API =====
-  const handleSave = async () => {
+  // ===== حفظ التعديلات =====
+  const handleUpdate = async () => {
     try {
-      if (!customerId) {
-        toast('Please select a customer before saving.');
-        return;
-      }
-      
-      if (products.length === 0) {
-        toast('Please add at least one product.');
+      if (!supplierId) {
+        toast.error('Please select a supplier before updating.');
         return;
       }
 
-      // لو في شيك بوكس محدد -> نرسلهم فقط، وإلا نرسل كل الجدول
-      const productsToSend = selectedProducts.length
-        ? products.filter((p) => selectedProducts.includes(p.id))
-        : products;
+      if (products.length === 0) {
+        toast.error('Please add at least one product.');
+        return;
+      }
 
       const payload: any = {
-        customerId,
-        organizationId,
-        products: mapProductsForApi(productsToSend),
+        supplierId,
+        products: mapProductsForApi(products),
         expectedDeliveryDate: expectedDeliveryDate || undefined,
         currency: currency || 'SR',
         notes: notes || undefined,
-        createdBy,
       };
 
-      console.log('📤 Sending sale order payload to API:', payload);
-
-      await create(payload);
-      toast.success('✅ Sale order saved successfully');
+      console.log('🔄 Updating order with payload:', payload);
+      await patch(payload);
+      toast.success('✅ Order updated successfully');
       
-      // Reset بعد النجاح
-      setProducts([]);
-      setCustomerId('');
-      setExpectedDeliveryDate('');
-      setOrderDate('');
-      setNotes('');
-      setCurrency('SR');
-      setSelectedProducts([]);
+      // رجوع للصفحة السابقة بعد 1 ثانية
+      setTimeout(() => {
+        navigate(-1);
+      }, 1000);
     } catch (err) {
-      console.error('❌ Save sale order error:', err);
-      toast.error('Failed to save sale order. Check console for details.');
+      console.error('❌ Update error:', err);
+      toast.error('Failed to update order. Check console for details.');
     }
   };
+
+  // ===== Loading & Error States =====
+  if (orderLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="text-lg text-gray-600">Loading order data...</div>
+      </div>
+    );
+  }
+
+  if (orderError) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="text-lg text-red-600">Error loading order: {orderError.message}</div>
+      </div>
+    );
+  }
+
+  if (!item) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="text-lg text-gray-600">Order not found</div>
+      </div>
+    );
+  }
 
   // ===== UI =====
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Inventory Management</h1>
-        <p className="text-sm text-gray-500">Dashboard &gt; Inventory &gt; Stock out</p>
+        <h1 className="text-2xl font-semibold text-gray-900">Edit Purchase Order</h1>
+        <p className="text-sm text-gray-500">Dashboard &gt; Purchase Orders &gt; Edit #{item.invoiceNumber || id}</p>
       </div>
 
       {/* Main Form */}
@@ -223,17 +250,17 @@ const StockOutComponent: React.FC = () => {
         {/* Top Section */}
         <div className="grid grid-cols-4 gap-4 mb-8">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Customer</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Supplier</label>
             <div className="relative">
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
-                value={customerId}
-                onChange={(e) => handleCustomerSelect(e.target.value)}
+                value={supplierId}
+                onChange={(e) => setSupplierId(e.target.value)}
               >
-                <option value="">{customersLoading ? 'Loading customers...' : 'Select customer'}</option>
-                {customers.map((c: any) => (
-                  <option key={c._id ?? c.id ?? c.name} value={c._id}>
-                    {truncate(c.name, 36)}
+                <option value="">{suppliersLoading ? 'Loading suppliers...' : 'Select supplier'}</option>
+                {suppliers.map((s: any) => (
+                  <option key={s._id ?? s.id ?? s.name} value={s._id}>
+                    {truncate(s.name, 36)}
                   </option>
                 ))}
               </select>
@@ -259,9 +286,9 @@ const StockOutComponent: React.FC = () => {
             <div className="relative">
               <input
                 type="date"
-                className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-gray-50"
                 value={orderDate}
-                onChange={(e) => setOrderDate(e.target.value)}
+                readOnly
               />
               <Calendar className="absolute right-2 top-3 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
@@ -287,7 +314,7 @@ const StockOutComponent: React.FC = () => {
 
         {/* Add Products Section */}
         <div className="mb-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Add Products</h2>
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Add More Products</h2>
           <div className="grid grid-cols-7 gap-3 items-end">
             {/* Product dropdown */}
             <div className="relative">
@@ -297,9 +324,9 @@ const StockOutComponent: React.FC = () => {
                 value={selectedProductId}
                 onChange={(e) => handleProductSelect(e.target.value)}
               >
-                <option value="">{productsLoading ? 'Loading' : 'Select pro'}</option>
+                <option value="">{productsLoading ? 'Loading...' : 'Select'}</option>
                 {productsFromHook.map((p: any) => (
-                  <option key={p._id ?? p.id ?? p.productId ?? p.name} value={p._id ?? p.id}>
+                  <option key={p._id ?? p.id} value={p._id ?? p.id}>
                     {truncate(p.name, 36)}
                   </option>
                 ))}
@@ -315,9 +342,9 @@ const StockOutComponent: React.FC = () => {
                 value={selectedInventoryId}
                 onChange={(e) => handleInventorySelect(e.target.value)}
               >
-                <option value="">{inventoriesLoading ? 'Loading ' : 'Select inv'}</option>
+                <option value="">{inventoriesLoading ? 'Loading...' : 'Select'}</option>
                 {inventories.map((inv: any) => (
-                  <option key={inv._id ?? inv.id ?? inv.name} value={inv._id}>
+                  <option key={inv._id ?? inv.id} value={inv._id}>
                     {truncate(inv.name, 36)}
                   </option>
                 ))}
@@ -337,16 +364,15 @@ const StockOutComponent: React.FC = () => {
             </div>
 
             {/* Units */}
-            <div className="relative">
+            <div>
               <label className="block text-xs text-gray-600 mb-1">Units</label>
               <input
                 type="number"
-                className="w-full px-3 py-2 border border-gray-300 rounded-full pr-6 text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
                 value={formProduct.units}
                 onChange={(e) => handleFormChange('units', e.target.value)}
                 min={0}
               />
-              <ChevronDown className="absolute right-2 top-8 w-4 h-4 text-gray-400" />
             </div>
 
             {/* Price */}
@@ -403,9 +429,9 @@ const StockOutComponent: React.FC = () => {
           </div>
         </div>
 
-        {/* Received Products Section */}
+        {/* Products Table */}
         <div className="mb-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Received Products</h2>
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Order Products</h2>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -435,19 +461,14 @@ const StockOutComponent: React.FC = () => {
                     <td className="py-3 text-sm text-gray-900">{product.name}</td>
                     <td className="py-3 text-sm text-gray-600">{product.inventoryName}</td>
                     <td className="py-3 text-sm text-gray-600">{product.code}</td>
-                    <td className="py-3 text-sm text-gray-600">
-                      <div className="flex items-center gap-1">
-                        {product.units}
-                        <ChevronDown className="w-3 h-3 text-gray-400" />
-                      </div>
-                    </td>
+                    <td className="py-3 text-sm text-gray-600">{product.units}</td>
                     <td className="py-3 text-sm text-gray-600">{product.price.toFixed(2)}</td>
                     <td className="py-3 text-sm text-gray-600">{product.discount}%</td>
                     <td className="py-3 text-sm text-gray-900">{product.total.toFixed(2)} {currency}</td>
                     <td className="py-3">
                       <button
                         onClick={() => handleDeleteProduct(product.id)}
-                        className="text-gray-400 hover:text-red-500 rounded-full"
+                        className="text-gray-400 hover:text-red-500"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -466,7 +487,7 @@ const StockOutComponent: React.FC = () => {
           </div>
         </div>
 
-        {/* Notes & Action Buttons */}
+        {/* Notes */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
           <textarea
@@ -478,16 +499,21 @@ const StockOutComponent: React.FC = () => {
           ></textarea>
         </div>
 
+        {/* Action Buttons */}
         <div className="flex justify-end gap-3">
-          <button className="px-6 py-2 border border-gray-300 text-gray-700 rounded-full text-sm hover:bg-gray-50">
+          <button
+            onClick={() => navigate(-1)}
+            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-full text-sm hover:bg-gray-50"
+          >
             Cancel
           </button>
           <button
-            onClick={handleSave}
-            disabled={loading}
-            className="px-6 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleUpdate}
+            disabled={orderLoading}
+            className="px-6 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            {loading ? 'Saving...' : 'Save Order'}
+            <Save className="w-4 h-4" />
+            {orderLoading ? 'Updating...' : 'Update Order'}
           </button>
         </div>
       </div>
@@ -495,4 +521,4 @@ const StockOutComponent: React.FC = () => {
   );
 };
 
-export default StockOutComponent;
+export default EditPurchaseOrderComponent;

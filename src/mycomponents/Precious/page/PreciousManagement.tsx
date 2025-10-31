@@ -1,8 +1,14 @@
 // src/mycomponents/Precious/page/PreciousManagement.tsx
 import React, { useEffect, useState, useMemo } from "react";
-import { usePurchaseOrdersList } from "../hooks/useCreatePurchaseOrder";
+import { useNavigate } from "react-router-dom";
+import {
+  approvePurchaseOrder,
+  deliverPurchaseOrder,
+} from "../../Precious/services/purchaseOrders";
+import { usePurchaseOrdersList } from "../../Precious/hooks/useCreatePurchaseOrder";
 import { useSuppliers } from "../../Precious/hooks/useSuppliers";
 import { useUsers } from "../../user/hooks/useUsers";
+import { toast } from 'react-hot-toast';
 
 type TabType = "draft" | "approved" | "delivered";
 
@@ -10,14 +16,12 @@ const PreciousManagement = () => {
   const [activeTab, setActiveTab] = useState<TabType>("draft");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const navigate = useNavigate();
 
   const { items, loading, error, fetch } = usePurchaseOrdersList(activeTab);
-
-  // suppliers + users hooks
   const { suppliers, loading: suppliersLoading } = useSuppliers();
   const { users, loading: usersLoading } = useUsers();
 
-  // build maps for O(1) lookup: id -> name
   const suppliersMap = useMemo(() => {
     const m = new Map<string, string>();
     for (const s of suppliers) {
@@ -46,17 +50,14 @@ const PreciousManagement = () => {
     currentPage * itemsPerPage
   );
 
-  // helper to display supplier name (fallback to id if not found)
   const getSupplierName = (supplierId?: string | null) => {
     if (!supplierId) return "-";
     const name = suppliersMap.get(supplierId);
     if (name) return name;
-    // if still loading, show placeholder
     if (suppliersLoading) return "Loading supplier...";
-    return supplierId; // fallback show id
+    return supplierId;
   };
 
-  // helper to display createdBy name (fallback to id)
   const getCreatedByName = (userId?: string | null) => {
     if (!userId) return "-";
     const name = usersMap.get(userId);
@@ -68,7 +69,9 @@ const PreciousManagement = () => {
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">Purchase Orders Management</h1>
+        <h1 className="text-2xl font-bold mb-2">
+          Purchase Orders Management
+        </h1>
         <div className="text-sm text-gray-500">
           Dashboard {'>'} Purchase Orders
         </div>
@@ -94,7 +97,8 @@ const PreciousManagement = () => {
       {/* Info */}
       <div className="text-right text-sm text-gray-500 mb-4">
         Showing {items.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-
-        {Math.min(currentPage * itemsPerPage, items.length)} of {items.length} orders
+        {Math.min(currentPage * itemsPerPage, items.length)} of {items.length}{" "}
+        orders
       </div>
 
       {/* Table */}
@@ -122,34 +126,70 @@ const PreciousManagement = () => {
               <tbody>
                 {paginatedData.map((order) => (
                   <tr key={order._id} className="border-b last:border-0">
-                    <td className="py-4 text-sm">{order.invoiceNumber || "-"}</td>
-
-                    {/* show supplier name instead of id */}
-                    <td className="py-4 text-sm">{getSupplierName(order.supplierId)}</td>
-
+                    <td className="py-4 text-sm">
+                      {order.invoiceNumber || "-"}
+                    </td>
+                    <td className="py-4 text-sm">
+                      {getSupplierName(order.supplierId)}
+                    </td>
                     <td className="py-4 text-sm">{order.currency || "EGP"}</td>
                     <td className="py-4 text-sm">
                       {order.totalAmount?.toLocaleString() || "0"}
                     </td>
-
-                    {/* show createdBy name instead of id */}
-                    <td className="py-4 text-sm">{getCreatedByName(order.createdBy)}</td>
-
+                    <td className="py-4 text-sm">
+                      {getCreatedByName(order.createdBy)}
+                    </td>
                     <td className="py-4 text-sm">
                       {order.createdAt
                         ? new Date(order.createdAt).toLocaleDateString("en-GB")
                         : "-"}
                     </td>
+
                     <td className="py-4">
                       <div className="flex gap-2">
-                        <button className="px-4 py-1.5 text-sm text-white bg-slate-700 rounded-full hover:bg-slate-800 transition-colors">
+                        {/* Approve / Deliver / Invoice */}
+                        <button
+                          className="px-4 py-1.5 text-sm text-white bg-slate-700 rounded-full hover:bg-slate-800 transition-colors"
+                          onClick={async () => {
+                            try {
+                              if (activeTab === "draft") {
+                                await approvePurchaseOrder(order._id);
+                                toast("✅ Order approved successfully!");
+                                void fetch(activeTab);
+                              } else if (activeTab === "approved") {
+                                await deliverPurchaseOrder(order._id);
+                                toast("🚚 Order delivered successfully!");
+                                void fetch(activeTab);
+                              } else {
+                                navigate(`/dashboard/stock-in-draft/${order._id}`, {
+                                  state: { status: "invoice" },
+                                });
+                              }
+                            } catch (err: any) {
+                              console.error(err);
+                              alert(`❌ Failed: ${err.message}`);
+                            }
+                          }}
+                        >
                           {activeTab === "draft"
                             ? "Approve"
                             : activeTab === "approved"
                             ? "Deliver"
                             : "Invoice"}
                         </button>
-                        <button className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors">
+
+                      
+    {/* View */}
+    <button
+      className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+      onClick={() => {
+        console.log("👁️ Viewing Order ID:", order._id);
+        console.log("📦 Status:", activeTab);
+        navigate(`/dashboard/stock-in-draft/${order._id}`, {
+          state: { status: activeTab },
+        });
+      }}
+    >
                           View
                         </button>
                       </div>
@@ -159,7 +199,10 @@ const PreciousManagement = () => {
 
                 {paginatedData.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="text-center py-6 text-gray-500">
+                    <td
+                      colSpan={7}
+                      className="text-center py-6 text-gray-500"
+                    >
                       No orders found for this status.
                     </td>
                   </tr>

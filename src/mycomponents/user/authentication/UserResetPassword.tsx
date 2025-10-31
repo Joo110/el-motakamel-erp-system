@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Lock, EyeOff, Eye } from "lucide-react";
 import { useState, useEffect } from "react";
-import { toast } from "react-toastify";
+import { toast } from 'react-hot-toast';
 import { useResetPassword } from "../hooks/useResetPassword";
 
 type FormData = {

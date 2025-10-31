@@ -8,6 +8,8 @@ import type {
 } from "@/types/inventory";
 import { buildInventoryPayload } from "@/utils/inventoryPayload";
 
+
+
 // ✅ Get all inventories
 export const getInventoriesService = async (): Promise<GetInventoriesResponse> => {
   const response = await axiosClient.get<GetInventoriesResponse>("/inventories");
@@ -29,7 +31,6 @@ export const createInventoryService = async (inventory: InventoryInput): Promise
     const response = await axiosClient.post("/inventories", payload);
     console.log("createInventoryService success:", response.data);
 
-    // ✅ السيرفر بيرجع الـ inventory في data.newInventory
     const newInventory = response.data?.data?.newInventory;
 
     if (!newInventory || !newInventory._id) {
@@ -85,17 +86,16 @@ export const searchInventoriesService = async (q: string): Promise<Inventory[]> 
 };
 
 // ✅ Get stocks for specific inventory
+// services/inventories.ts
 export const getInventoryStocksService = async (inventoryId: string) => {
-  const response = await axiosClient.get(
-    `/inventories/${inventoryId}/stocks`
-  );
+  const response = await axiosClient.get(`/inventories/${inventoryId}/stocks`);
   console.log("getInventoryStocksService response:", response.data);
-  return response.data;
+  return response.data.data;
 };
+
 
 // ✅ Get all stocks
 export const getAllStocksService = async () => {
-  // ✅ أضف populate للـ from و to
   const response = await axiosClient.get("/stocks");
   console.log("getAllStocksService response:", response.data);
   return response.data;

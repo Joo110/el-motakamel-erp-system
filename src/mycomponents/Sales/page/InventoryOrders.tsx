@@ -1,87 +1,86 @@
-// src/mycomponents/Inventory/InventoryOrders.tsx
+// src/mycomponents/inventory/page/InventoryOrders.tsx
 import React, { useEffect, useMemo, useState } from 'react';
-import { useSaleOrdersList } from '../../Sales/hooks/useSaleOrders';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
+
+// hooks
+import { useSaleOrders } from '../../Sales/hooks/useSaleOrders';
 import { useCustomers } from '../../Sales/hooks/useCustomers';
 import { useInventories } from '../../inventory/hooks/useInventories';
-import axiosClient from '@/lib/axiosClient';
+import { useUsers } from '../../user/hooks/useUsers';
 
 type TabType = 'draft' | 'approved' | 'delivered';
 
 const InventoryOrders: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('draft');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(10);
 
-  // sale orders hook (autoFetch = false so we control fetch by tab)
-  const { items, loading, error, fetch } = useSaleOrdersList(undefined, false);
+  const navigate = useNavigate();
 
-  // customers & inventories hooks
+  const { items, loading, error, fetch, approve, markDelivered } = useSaleOrders(undefined, false);
   const { customers, fetchCustomers } = useCustomers(true) as any;
   const { inventories } = useInventories() as any;
+  const { users, loading: usersLoading } = useUsers();
 
-  // local cache for createdBy => name
-  const [userNames, setUserNames] = useState<Record<string, string>>({});
+  const usersMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const u of users) {
+      const name = u.name ?? u.fullname ?? u.email ?? u._id;
+      m.set(u._id, name);
+    }
+    return m;
+  }, [users]);
 
-  // fetch orders on tab change
   useEffect(() => {
     void (async () => {
       try {
+        console.log('📦 Fetching sale orders for tab:', activeTab);
         await fetch(activeTab);
       } catch (err) {
-        // fetch handles error state inside hook
-        console.error('Failed to fetch sale orders for', activeTab, err);
+        console.error('❌ Failed to fetch orders for', activeTab, err);
       }
     })();
   }, [activeTab, fetch]);
 
-  // ensure customers loaded (if hook didn't auto fetch)
   useEffect(() => {
-    // fetchCustomers may be undefined depending on your hook signature, guard it
     if (typeof fetchCustomers === 'function') void fetchCustomers();
   }, [fetchCustomers]);
 
-  // helper: fetch user name (createdBy) and cache it
-  const fetchUserName = async (userId?: string) => {
-    if (!userId) return;
-    if (userNames[userId]) return; // cached
-    try {
-      const res = await axiosClient.get<any>(`/users/${userId}`);
-      const payload = res?.data ?? res;
-      // best-effort unwrap common shapes:
-      const name =
-        payload?.data?.user?.fullname ||
-        payload?.data?.user?.name ||
-        payload?.data?.user?.username ||
-        payload?.data?.name ||
-        payload?.name ||
-        (typeof payload === 'string' ? payload : undefined);
-
-      setUserNames((prev) => ({ ...prev, [userId]: name ?? userId }));
-    } catch (err) {
-      // fallback: store id so we at least don't re-request repeatedly
-      setUserNames((prev) => ({ ...prev, [userId]: userId }));
-      console.debug('Failed to fetch user name for', userId, err);
-    }
-  };
-
-  // whenever items change, prefetch createdBy names
-  useEffect(() => {
-    if (!items || items.length === 0) return;
-    items.forEach((it) => {
-      if (it.createdBy && !userNames[it.createdBy]) void fetchUserName(it.createdBy);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items]);
-
-  // pagination + derived data
   const data = items ?? [];
-  const totalPages = Math.max(1, Math.ceil(data.length / itemsPerPage));
   const paginatedData = useMemo(
     () => data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage),
     [data, currentPage, itemsPerPage]
   );
 
-  // map order -> row values (keep UI same)
+  // ✅ enhanced: better logging for approve/deliver/invoice
+  const handleActionClick = async (orderId: string) => {
+    console.log('🟡 handleActionClick triggered', { orderId, activeTab });
+    try {
+      if (activeTab === 'draft') {
+        console.log('🟢 Approving order:', orderId);
+        if (!approve) throw new Error('Approve function not available');
+        const result = await approve(orderId);
+        console.log('✅ Approve API response:', result);
+        toast.success('✅ Order approved successfully!');
+        await fetch(activeTab);
+      } else if (activeTab === 'approved') {
+        console.log('🟣 Marking as delivered:', orderId);
+        if (!markDelivered) throw new Error('markDelivered function not available');
+        const result = await markDelivered(orderId);
+        console.log('✅ Deliver API response:', result);
+        toast.success('🚚 Order marked as delivered!');
+        await fetch(activeTab);
+      } else {
+        console.log('🧾 Navigating to invoice screen for:', orderId);
+        navigate(`/dashboard/stock-out-draft/${orderId}`, { state: { status: 'invoice' } });
+      }
+    } catch (err: any) {
+      console.error('❌ Action failed:', err);
+      toast.error('❌ Failed: ' + (err?.message || String(err)));
+    }
+  };
+
   const rowFor = (order: any) => {
     const orderNumber = order.invoiceNumber || order._id || '-';
     const customer =
@@ -89,7 +88,6 @@ const InventoryOrders: React.FC = () => {
       order.customerId ||
       '-';
 
-    // choose first product's inventory name if exists
     let inventory = '-';
     if (Array.isArray(order.products) && order.products.length > 0) {
       const invId = order.products[0].inventoryId;
@@ -98,7 +96,9 @@ const InventoryOrders: React.FC = () => {
     }
 
     const totalPrice = (order.totalAmount ?? order.total ?? 0).toString();
-    const createdByName = userNames[order.createdBy] ?? order.createdBy ?? '-';
+    const createdByName =
+      usersMap.get(order.createdBy) ||
+      (usersLoading ? 'Loading user...' : order.createdBy || '-');
     const orderTime = order.createdAt
       ? new Date(order.createdAt).toLocaleString()
       : order.orderTime ?? '-';
@@ -118,45 +118,29 @@ const InventoryOrders: React.FC = () => {
 
       {/* Tabs */}
       <div className="flex gap-4 mb-6">
-        <button
-          onClick={() => {
-            setActiveTab('draft');
-            setCurrentPage(1);
-          }}
-          className={`px-6 py-2 rounded-full transition-colors ${
-            activeTab === 'draft' ? 'bg-slate-700 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'
-          }`}
-        >
-          Draft
-        </button>
-        <button
-          onClick={() => {
-            setActiveTab('approved');
-            setCurrentPage(1);
-          }}
-          className={`px-6 py-2 rounded-full transition-colors ${
-            activeTab === 'approved' ? 'bg-slate-700 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'
-          }`}
-        >
-          Approved
-        </button>
-        <button
-          onClick={() => {
-            setActiveTab('delivered');
-            setCurrentPage(1);
-          }}
-          className={`px-6 py-2 rounded-full transition-colors ${
-            activeTab === 'delivered' ? 'bg-slate-700 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'
-          }`}
-        >
-          Delivered
-        </button>
+        {(['draft', 'approved', 'delivered'] as TabType[]).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => {
+              console.log('🔁 Switched tab to:', tab);
+              setActiveTab(tab);
+              setCurrentPage(1);
+            }}
+            className={`px-6 py-2 rounded-full transition-colors ${
+              activeTab === tab
+                ? 'bg-slate-700 text-white'
+                : 'bg-white text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+          </button>
+        ))}
       </div>
 
-      {/* Info Text */}
+      {/* Info */}
       <div className="text-right text-sm text-gray-500 mb-4">
         Showing {data.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-
-        {Math.min(currentPage * itemsPerPage, data.length)} of {data.length} products
+        {Math.min(currentPage * itemsPerPage, data.length)} of {data.length} orders
       </div>
 
       {/* Table */}
@@ -187,11 +171,23 @@ const InventoryOrders: React.FC = () => {
                     <td className="py-4 text-sm">{row.orderTime}</td>
                     <td className="py-4">
                       <div className="flex gap-2">
-                        <button className="px-4 py-1.5 text-sm text-white bg-slate-700 rounded-full hover:bg-slate-800 transition-colors">
+                        <button
+                          className="px-4 py-1.5 text-sm text-white bg-slate-700 rounded-full hover:bg-slate-800 transition-colors"
+                          onClick={() => handleActionClick(item._id)}
+                        >
                           {row.action}
                         </button>
-                        <button className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors">
-                          view
+                        <button
+                          className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+                          onClick={() => {
+                            console.log('👁️ Viewing Order ID:', item._id);
+                            console.log('📦 Status:', activeTab);
+                            navigate(`/dashboard/stock-out-draft/${item._id}`, {
+                              state: { status: activeTab },
+                            });
+                          }}
+                        >
+                          View
                         </button>
                       </div>
                     </td>
@@ -207,54 +203,6 @@ const InventoryOrders: React.FC = () => {
               )}
             </tbody>
           </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="flex items-center justify-between mt-6">
-          <div className="flex items-center gap-2 text-sm">
-            <span>Show</span>
-            <select
-              value={itemsPerPage}
-              onChange={(e) => {
-                setItemsPerPage(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-              className="px-4 py-1.5 border border-gray-300 rounded-full bg-white focus:outline-none focus:ring-2 focus:ring-slate-700"
-            >
-              <option>10</option>
-              <option>20</option>
-              <option>50</option>
-            </select>
-            <span>entries</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1.5 border border-gray-300 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            {[...Array(Math.max(1, Math.min(5, totalPages)))].map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrentPage(Math.min(totalPages, i + 1))}
-                className={`w-8 h-8 rounded-full ${
-                  currentPage === i + 1 ? 'bg-slate-700 text-white' : 'border border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                {i + 1}
-              </button>
-            ))}
-            <button
-              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1.5 border border-gray-300 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
-          </div>
         </div>
       </div>
     </div>

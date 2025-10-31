@@ -1,22 +1,287 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ArrowRight } from 'lucide-react';
+import { useInventories } from '@/mycomponents/inventory/hooks/useInventories';
+import { useStockTransfer } from '../hooks/useStockTransfer'; // عدّل المسار لو مختلف
+import { toast } from 'react-hot-toast';
 
 interface TransferredProduct {
   id: string;
+  productId?: string; // مهم علشان نبعت الـ productId للباك
   name: string;
   code: string;
   units: number;
+  price: number;
   from: string;
   to: string;
+  reference?: string;
+  shippingCost?: string;
 }
 
 const TransferComponent: React.FC = () => {
-  const [products] = useState<TransferredProduct[]>([
-    { id: '1', name: 'Product 1', code: '99282', units: 10, from: 'Wherehouse', to: 'Wherehouse2' },
-    { id: '2', name: 'Product 2', code: '322-14', units: 10, from: 'Wherehouse', to: 'Wherehouse2' },
-    { id: '3', name: 'Wireless Bluetooth Earbuds', code: '326x1', units: 10, from: 'Wherehouse', to: 'Wherehouse2' },
-    { id: '4', name: 'Product 2', code: '322-14', units: 10, from: 'Wherehouse', to: 'Wherehouse2' },
-  ]);
+  // hooks
+  const { inventories, getStocks } = useInventories();
+  const { createStockTransfer, loading: creatingTransfer} = useStockTransfer();
+
+  // local table state
+  const [productsTable, setProductsTable] = useState<TransferredProduct[]>([]); // ابدأ فاضي أو خليه فيه عينات لو بتحب
+
+  // form fields
+  const [reference, setReference] = useState('');
+  const [shippingCost, setShippingCost] = useState('');
+
+  const [selectedFrom, setSelectedFrom] = useState<string>('');
+  const [selectedTo, setSelectedTo] = useState<string>('');
+  const [availableProducts, setAvailableProducts] = useState<any[]>([]);
+  const [selectedProductStockId, setSelectedProductStockId] = useState<string>('');
+  const [selectedProductCode, setSelectedProductCode] = useState<string>('');
+  const [selectedProductName, setSelectedProductName] = useState<string>('');
+  const [selectedUnits, setSelectedUnits] = useState<number>(1);
+  const [selectedPrice, setSelectedPrice] = useState<number>(0);
+
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [transferring, setTransferring] = useState(false);
+
+  // helper to extract stocks array from service response
+  function extractStocksArray(stocksData: any): any[] {
+    if (!stocksData) return [];
+    if (Array.isArray(stocksData)) return stocksData;
+    if (Array.isArray(stocksData.stocks)) return stocksData.stocks;
+    if (Array.isArray(stocksData.data)) return stocksData.data;
+    if (Array.isArray(stocksData.data?.stocks)) return stocksData.data.stocks;
+    if (Array.isArray(stocksData.result)) return stocksData.result;
+    if (Array.isArray(stocksData.data?.result)) return stocksData.data.result;
+    return [];
+  }
+
+  // load available products when From changes
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setAvailableProducts([]);
+      setSelectedProductStockId('');
+      setSelectedProductCode('');
+      setSelectedProductName('');
+      setSelectedUnits(1);
+      setSelectedPrice(0);
+      if (!selectedFrom) return;
+
+      setLoadingProducts(true);
+      try {
+        const resp = await getStocks(selectedFrom);
+        const stocksArray = extractStocksArray(resp);
+
+        const mapped = stocksArray.map((s: any, idx: number) => {
+          const productObj = s.product ?? s.productId ?? {};
+          const productId = typeof productObj === 'object' ? (productObj._id ?? productObj.id) : productObj;
+          const name = productObj?.name ?? productObj?.productName ?? s.name ?? `Product ${idx+1}`;
+          const code = productObj?.code ?? productObj?.sku ?? s.code ?? '';
+          const price = productObj?.price ? Number(productObj.price) : (s.price ? Number(s.price) : 0);
+          const availableUnits = typeof s.quantity === 'number' ? s.quantity : Number(s.quantity ?? 0);
+          const stockId = s._id ?? s.id ?? `${productId ?? 'p'}-${idx}`;
+
+          return {
+            stockId,
+            productId,
+            name,
+            code,
+            price,
+            availableUnits,
+            raw: s,
+          };
+        });
+
+        if (!cancelled) setAvailableProducts(mapped);
+      } catch (err) {
+        console.error('Failed to load products for inventory', selectedFrom, err);
+        if (!cancelled) setAvailableProducts([]);
+      } finally {
+        if (!cancelled) setLoadingProducts(false);
+      }
+    };
+
+    load();
+    return () => { cancelled = true; };
+  }, [selectedFrom, getStocks]);
+
+  // when selected product changes populate code/price/units
+  useEffect(() => {
+    if (!selectedProductStockId) {
+      setSelectedProductCode('');
+      setSelectedProductName('');
+      setSelectedUnits(1);
+      setSelectedPrice(0);
+      return;
+    }
+    const found = availableProducts.find((p) => p.stockId === selectedProductStockId);
+    if (found) {
+      setSelectedProductCode(found.code ?? '');
+      setSelectedProductName(found.name ?? '');
+      setSelectedUnits(Math.max(1, found.availableUnits ?? 1));
+      setSelectedPrice(Number(found.price ?? 0));
+    }
+  }, [selectedProductStockId, availableProducts]);
+
+  // sorted inventory options
+  const inventoryOptions = useMemo(() => {
+    return (inventories || []).slice().sort((a: any, b: any) => {
+      const na = (a.name ?? '').toString().toLowerCase();
+      const nb = (b.name ?? '').toString().toLowerCase();
+      return na.localeCompare(nb);
+    });
+  }, [inventories]);
+
+// Transfer: add row to local table (and try transferStock API if hook provides it)
+const handleTransfer = async () => {
+  if (!selectedFrom) { toast.error('Please select "Transfer from" inventory.'); return; }
+  if (!selectedTo) { toast.error('Please select "To" inventory.'); return; }
+  if (selectedFrom === selectedTo) { alert('From and To must be different.'); return; }
+
+  const productName = selectedProductName || (selectedProductStockId ? (availableProducts.find(p => p.stockId === selectedProductStockId)?.name ?? '') : '');
+  const productCode = selectedProductCode || (selectedProductStockId ? (availableProducts.find(p => p.stockId === selectedProductStockId)?.code ?? '') : '');
+  const priceToUse = Number(selectedPrice ?? 0);
+  const unitsToUse = Number(selectedUnits ?? 1);
+
+  if (!productName) { toast('Please select a product (or ensure product name is present).'); return; }
+  if (!unitsToUse || unitsToUse <= 0) { toast('Units must be > 0.'); return; }
+
+  setTransferring(true);
+  try {
+    // ❌ تعطيل النقل الفعلي هنا مؤقتًا لأن createStockTransfer هو اللي بينفذه فعلاً
+    /*
+    try {
+      const selected = availableProducts.find((p) => p.stockId === selectedProductStockId);
+      if (selected) {
+        const productIdToSend = selected.productId ?? selected.stockId;
+        const qtyToSend = Math.min(unitsToUse, selected.availableUnits ?? unitsToUse);
+        if (typeof transferStock === 'function') {
+          await transferStock(selectedFrom, selectedTo, productIdToSend, qtyToSend);
+          setAvailableProducts(prev => 
+            prev.map(p => 
+              p.stockId === selected.stockId 
+                ? { ...p, availableUnits: (p.availableUnits ?? 0) - qtyToSend } 
+                : p
+            )
+          );
+        }
+      }
+    } catch (apiErr) {
+      console.warn('transferStock API call failed (continuing to add row locally):', apiErr);
+    }
+    */
+
+    // ✅ فقط أضف الصف محليًا لجدول التحويل
+    const selected = availableProducts.find((p) => p.stockId === selectedProductStockId);
+    const newRow: TransferredProduct = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      productId: selected?.productId ?? undefined,
+      name: productName,
+      code: productCode,
+      units: unitsToUse,
+      price: priceToUse,
+      from: (inventoryOptions.find((inv: any) => (inv._id ?? inv.id) === selectedFrom)?.name) ?? selectedFrom,
+      to: (inventoryOptions.find((inv: any) => (inv._id ?? inv.id) === selectedTo)?.name) ?? selectedTo,
+      reference: reference || undefined,
+      shippingCost: shippingCost || undefined,
+    };
+
+    setProductsTable(prev => [newRow, ...prev]);
+
+    // reset product inputs but keep From/To for ease of adding more
+    setSelectedProductStockId('');
+    setSelectedProductCode('');
+    setSelectedProductName('');
+    setSelectedUnits(1);
+    setSelectedPrice(0);
+    setReference('');
+    setShippingCost('');
+  } catch (err) {
+    console.error('Transfer failed:', err);
+    toast('Transfer failed. Check console for details.');
+  } finally {
+    setTransferring(false);
+  }
+};
+
+  // Save Transfer: build payload and call createStockTransfer
+// داخل TransferComponent: استبدل handleSaveTransfer الحالي بهذا
+// داخل TransferComponent: استبدل handleSaveTransfer الحالي بهذا
+const handleSaveTransfer = async () => {
+  if (!selectedFrom) { toast('Please select "Transfer from" before saving.'); return; }
+  if (!selectedTo) { toast('Please select "To" before saving.'); return; }
+  if (productsTable.length === 0) { toast('No transferred products to save.'); return; }
+
+  // دمج المنتجات اللي ليها نفس productId
+  const mergedProductsMap: Record<string, { productId: string; unit: number; price: number }> = {};
+
+  for (const row of productsTable) {
+    if (!row.productId) continue;
+    if (!mergedProductsMap[row.productId]) {
+      mergedProductsMap[row.productId] = {
+        productId: row.productId,
+        unit: Number(row.units),
+        price: Number(row.price),
+      };
+    } else {
+      mergedProductsMap[row.productId].unit += Number(row.units);
+    }
+  }
+
+  const productsPayload = Object.values(mergedProductsMap);
+
+  if (productsPayload.length === 0) {
+    toast('None of the table rows contain valid productId — please add products from the product dropdown.');
+    return;
+  }
+
+
+const payload = {
+  status: 'pending',
+  reference: reference || `TRF-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+  from: selectedFrom,
+  to: selectedTo,
+  products: productsPayload
+    .filter(p => p.productId)
+    .map(p => ({
+      productId: p.productId as string,
+      unit: p.unit,
+      price: p.price,
+    })),
+  shippingCost: Number(shippingCost || 0),
+};
+
+  if (shippingCost) payload.shippingCost = Number(shippingCost);
+
+  console.log('📤 createStockTransfer payload:', JSON.stringify(payload, null, 2));
+
+  try {
+for (const row of productsTable) {
+  const productInStock = availableProducts.find(p => p.productId === row.productId);
+  if (productInStock && row.units > productInStock.availableUnits) {
+    toast(`❌ الكمية المطلوبة (${row.units}) أكبر من المتاحة (${productInStock.availableUnits}) للمنتج ${row.name}`);
+    return;
+  }
+}
+
+    const res = await createStockTransfer(payload);
+    console.log('✅ createStockTransfer success response:', res);
+    toast('✅ Stock transfer created successfully');
+    setProductsTable([]);
+    setSelectedFrom('');
+    setSelectedTo('');
+    setSelectedProductStockId('');
+    setAvailableProducts([]);
+    setSelectedUnits(1);
+    setSelectedPrice(0);
+    setReference('');
+    setShippingCost('');
+  } catch (err: any) {
+    console.error('Failed to create stock transfer - full error:', err);
+    console.error('err.response?.status:', err?.response?.status);
+    console.error('err.response?.data:', err?.response?.data);
+    console.error('err.request:', err?.request);
+    toast(`Failed to save transfer. See console for details. server status: ${err?.response?.status || err?.code || err?.message}`);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -35,35 +300,138 @@ const TransferComponent: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Product</label>
               <div className="relative">
-                <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8" />
-                <ChevronDown className="absolute right-2 top-3 w-4 h-4 text-gray-400" />
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 appearance-none"
+                  value={selectedProductStockId}
+                  onChange={(e) => setSelectedProductStockId(e.target.value)}
+                  disabled={loadingProducts || availableProducts.length === 0}
+                >
+                  <option value="">{loadingProducts ? 'Loading products...' : 'Select product'}</option>
+                  {availableProducts.map((p) => (
+                    <option key={p.stockId} value={p.stockId}>
+                      {p.name} {p.code ? `(${p.code})` : ''} — {p.availableUnits ?? 0} available
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-gray-400 pointer-events-none" />
               </div>
             </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Transfer from</label>
               <div className="relative">
-                <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8" />
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
+                  value={selectedFrom}
+                  onChange={(e) => setSelectedFrom(e.target.value)}
+                >
+                  <option value="">{inventories.length === 0 ? 'Loading inventories...' : 'Select inventory'}</option>
+                  {inventoryOptions.map((inv: any) => (
+                    <option key={inv._id ?? inv.id} value={inv._id ?? inv.id}>
+                      {inv.name}
+                    </option>
+                  ))}
+                </select>
                 <ChevronDown className="absolute right-2 top-3 w-4 h-4 text-gray-400" />
               </div>
             </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">To</label>
               <div className="relative flex items-center gap-2">
                 <ArrowRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
                 <div className="relative flex-1">
-                  <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8" />
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
+                    value={selectedTo}
+                    onChange={(e) => setSelectedTo(e.target.value)}
+                  >
+                    <option value="">{inventories.length === 0 ? 'Loading inventories...' : 'Select inventory'}</option>
+                    {inventoryOptions.map((inv: any) => (
+                      <option key={inv._id ?? inv.id} value={inv._id ?? inv.id}>
+                        {inv.name}
+                      </option>
+                    ))}
+                  </select>
                   <ChevronDown className="absolute right-2 top-3 w-4 h-4 text-gray-400" />
                 </div>
               </div>
             </div>
           </div>
-          <div className="flex justify-end gap-2 mt-4">
-            <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded-full text-sm hover:bg-gray-300">
-              Reset
-            </button>
-            <button className="px-4 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-blue-800">
-              Transfer
-            </button>
+          
+          {/* Reference & Shipping Cost */}
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Reference</label>
+              <input 
+                type="text" 
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                placeholder="Enter reference number"
+                className="w-full px-3 py-2 border border-gray-300 rounded-full" 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Shipping Cost</label>
+              <input 
+                type="number" 
+                value={shippingCost}
+                onChange={(e) => setShippingCost(e.target.value)}
+                placeholder="0.00"
+                className="w-full px-3 py-2 border border-gray-300 rounded-full" 
+              />
+            </div>
+          </div>
+
+          {/* quantity & price inputs */}
+          <div className="grid grid-cols-3 gap-4 mt-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Units</label>
+              <input
+                type="number"
+                min={1}
+                value={selectedUnits}
+                onChange={(e) => setSelectedUnits(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-full"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Price</label>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={selectedPrice}
+                onChange={(e) => setSelectedPrice(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-full"
+              />
+            </div>
+            <div className="flex items-end justify-end">
+              <div className="flex justify-end gap-2 mt-2">
+                <button
+                  onClick={() => {
+                    // reset product-form (keeps table)
+                    setSelectedProductStockId('');
+                    setSelectedProductCode('');
+                    setSelectedProductName('');
+                    setSelectedUnits(1);
+                    setSelectedPrice(0);
+                    setReference('');
+                    setShippingCost('');
+                  }}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-full text-sm hover:bg-gray-300"
+                >
+                  Reset
+                </button>
+                <button
+                  onClick={handleTransfer}
+                  disabled={transferring}
+                  className="px-4 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-blue-800"
+                >
+                  {transferring ? 'Transferring...' : 'Transfer'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -78,12 +446,13 @@ const TransferComponent: React.FC = () => {
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">Product</th>
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">Code</th>
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">Units</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Price</th>
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">From</th>
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">To</th>
                 </tr>
               </thead>
               <tbody>
-                {products.map((product) => (
+                {productsTable.map((product) => (
                   <tr key={product.id} className="border-b border-gray-100">
                     <td className="py-3">
                       <input type="checkbox" className="w-4 h-4 rounded-full border-gray-300" />
@@ -96,6 +465,7 @@ const TransferComponent: React.FC = () => {
                         <ChevronDown className="w-3 h-3 text-gray-400" />
                       </div>
                     </td>
+                    <td className="py-3 text-sm text-gray-600">${product.price.toFixed(2)}</td>
                     <td className="py-3 text-sm text-gray-600">{product.from}</td>
                     <td className="py-3 text-sm text-gray-600">{product.to}</td>
                   </tr>
@@ -108,7 +478,7 @@ const TransferComponent: React.FC = () => {
         {/* Notes Section */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-          <textarea className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm" rows={4}></textarea>
+          <textarea className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" rows={4}></textarea>
         </div>
 
         {/* Action Buttons */}
@@ -116,8 +486,12 @@ const TransferComponent: React.FC = () => {
           <button className="px-6 py-2 border border-gray-300 text-gray-700 rounded-full text-sm hover:bg-gray-50">
             Cancel
           </button>
-          <button className="px-6 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-blue-800">
-            Save Transfer
+          <button
+            className="px-6 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-blue-800"
+            onClick={handleSaveTransfer}
+            disabled={creatingTransfer}
+          >
+            {creatingTransfer ? 'Saving...' : 'Save Transfer'}
           </button>
         </div>
       </div>

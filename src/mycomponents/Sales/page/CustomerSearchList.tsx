@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Search, Edit2, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCustomers } from '../../Sales/hooks/useCustomers';
-
+import { toast } from 'react-hot-toast';
 
 const CustomerSearchList: React.FC = () => {
   const { customers, loading, error, fetchCustomers, removeCustomer } = useCustomers(true);
@@ -34,14 +34,14 @@ const handleDelete = async (id?: string) => {
 
     if (isDeleted) {
       console.log('✅ Customer deleted successfully');
-      await fetchCustomers(); // إعادة تحميل البيانات بعد الحذف
+      await fetchCustomers(); 
     } else {
       console.warn('⚠️ Unexpected delete response:', res);
-      alert('Customer may not have been deleted. Check console for details.');
+      toast('Customer may not have been deleted. Check console for details.');
     }
   } catch (err) {
     console.error('❌ Delete failed:', err);
-    alert('Delete failed. Check console.');
+    toast('Delete failed. Check console.');
   }
 };
 

@@ -1,6 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Search, RotateCcw, ChevronDown } from 'lucide-react';
 import { useInventories } from "@/mycomponents/inventory/hooks/useInventories";
+import { useProducts } from "@/mycomponents/product/hooks/useProducts";
+import { useCategories } from "@/mycomponents/category/hooks/useCategories";
+import { getInventoriesService } from "@/mycomponents/inventory/services/inventories";
 
 interface StockItem {
   _id: string;
@@ -35,10 +38,23 @@ interface Transaction {
   createdAt: string;
 }
 
+interface CategoryItem {
+  id: string;
+  name: string;
+}
+
 const StockSearchView: React.FC = () => {
-  const { getAllStocks, getAllStockTransfers, isLoading, error } = useInventories();
-  
-  const [activeTab, setActiveTab] = useState<'transfer' | 'stock-out' | 'stock-in'>('transfer');
+  const {
+    getAllStocks,
+    getAllStockTransfers,
+    isLoading,
+    error,
+    inventories,
+  } = useInventories();
+
+  const { getProductById } = useProducts();
+  const { categories: apiCategories } = useCategories();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [stockPageSize, setStockPageSize] = useState(5);
@@ -47,18 +63,40 @@ const StockSearchView: React.FC = () => {
   const [transCurrentPage, setTransCurrentPage] = useState(1);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [categories, setCategories] = useState<string[]>(['All Categories']);
 
   useEffect(() => {
     loadAllStocksAndTransfers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const categories: CategoryItem[] = useMemo(() => {
+    const map = new Map<string, string>();
+
+    (apiCategories ?? []).forEach((c: any) => {
+      const id = c._id ?? c.id ?? String(c);
+      const name = c.name ?? c.category ?? c.title ?? id;
+      map.set(id, name);
+    });
+
+    const arr: CategoryItem[] = [{ id: "All Categories", name: "All Categories" }];
+    for (const [id, name] of map.entries()) {
+      arr.push({ id, name });
+    }
+    return arr;
+  }, [apiCategories]);
+
+  const resolveCategoryNameById = (id: string | undefined) => {
+    if (!id) return "—";
+    const found = (apiCategories ?? []).find((c: any) => (c._id ?? c.id) === id);
+    if (found) return found.name ?? found.category ?? found.title ?? id;
+    return id;
+  };
 
   const loadAllStocksAndTransfers = async () => {
     try {
       const stockRes = await getAllStocks();
       const transferRes = await getAllStockTransfers();
 
-      // مرن في التعامل مع طبقات الـ response المختلفة
       const stockPayload = stockRes?.data?.data ?? stockRes?.data ?? stockRes;
       const transferPayload = transferRes?.data?.data ?? transferRes?.data ?? transferRes;
 
@@ -70,27 +108,31 @@ const StockSearchView: React.FC = () => {
       console.log("🚚 rawTransfers length:", Array.isArray(rawTransfers) ? rawTransfers.length : 'not-array');
       console.log("🚚 rawTransfers sample:", rawTransfers);
 
-      // Mapping مرن يدعم الحقول المختلفة اللي ممكن تجي من الـ API
       const mappedStocks: StockItem[] = (Array.isArray(rawStocks) ? rawStocks : []).map((s: any) => {
-        // product يمكن يكون داخل productId أو product أو مجرد كائن/id
         const productObj =
           s.productId ??
           s.product ??
           (s.productInfo ? s.productInfo : undefined);
 
-        // inventory ممكن يكون داخل inventoryId أو inventory
         const inventoryObj = s.inventoryId ?? s.inventory ?? (s.location ?? undefined);
 
-        // category ممكن يكون string أو object with name
-        let category: string | undefined = undefined;
+        let categoryId: string | undefined = undefined;
         if (productObj) {
-          if (typeof productObj.category === 'string') category = productObj.category;
-          else if (productObj.category?.name) category = productObj.category.name;
+          if (typeof productObj.category === 'string') {
+            categoryId = productObj.category;
+          } else if (productObj.category?._id) {
+            categoryId = productObj.category._id;
+          } else if (productObj.category?.id) {
+            categoryId = productObj.category.id;
+          }
         } else if (s.category) {
-          category = typeof s.category === 'string' ? s.category : s.category?.name;
+          if (typeof s.category === 'string') {
+            categoryId = s.category;
+          } else {
+            categoryId = s.category._id ?? s.category.id;
+          }
         }
 
-        // quantity ممكن يجي كـ quantity أو unit
         const quantity = s.quantity ?? s.unit ?? s.qty ?? 0;
 
         return {
@@ -98,7 +140,7 @@ const StockSearchView: React.FC = () => {
           product: {
             _id: productObj?._id ?? productObj?.id ?? "",
             name: productObj?.name ?? productObj?.title ?? s.productName ?? "N/A",
-            category,
+            category: categoryId,
           },
           inventory: {
             _id: inventoryObj?._id ?? inventoryObj?.id ?? "",
@@ -111,38 +153,121 @@ const StockSearchView: React.FC = () => {
 
       setStockItems(mappedStocks);
 
-      // بناء قائمة الفئات من الماب
-      const cats = new Set<string>();
-      mappedStocks.forEach((stock) => {
-        if (stock.product?.category) cats.add(stock.product.category);
-      });
-      setCategories(["All Categories", ...Array.from(cats)]);
-
-      // Transactions mapping (نفس اللي اشتغل مع الترانسفيرز)
       if (Array.isArray(rawTransfers) && rawTransfers.length > 0) {
-        const mappedTransactions: Transaction[] = rawTransfers.map((t: any) => {
+        const transfersArr = rawTransfers;
+
+        const productIdsToFetch = new Set<string>();
+        transfersArr.forEach((t: any) => {
           const firstProduct = t.products?.[0] ?? null;
-          // product name might be populated object or id — try to read name if populated
-          const prodName =
-            firstProduct?.productId?.name ??
-            (typeof firstProduct?.productId === 'string' ? firstProduct.productId : undefined) ??
-            firstProduct?.name ??
-            t.productName ??
-            "N/A";
+          const pid = firstProduct?.productId;
+          if (pid && typeof pid === 'string') productIdsToFetch.add(pid);
+        });
+
+        const productIdArray = Array.from(productIdsToFetch);
+        const productIdNameMap: Record<string, string> = {};
+
+        if (productIdArray.length > 0) {
+          await Promise.all(
+            productIdArray.map(async (id) => {
+              try {
+                const p = await getProductById(id);
+                const name = p?.name ?? String(id);
+                productIdNameMap[id] = name;
+              } catch (err) {
+                productIdNameMap[id] = String(id);
+                console.warn("Failed to fetch product for id", id, err);
+              }
+            })
+          );
+        }
+
+        let inventoryArray: any[] = Array.isArray(inventories) && inventories.length > 0 ? inventories : [];
+
+        if (!inventoryArray || inventoryArray.length === 0) {
+          try {
+            const invRes = await getInventoriesService();
+            const invPayload = invRes?.data ?? invRes?.data ?? invRes;
+            inventoryArray = invPayload?.inventories ?? invPayload ?? [];
+          } catch (err) {
+            console.warn("Failed to fetch inventories from service, falling back to hook state", err);
+            inventoryArray = Array.isArray(inventories) ? inventories : [];
+          }
+        }
+
+        const inventoryMap: Record<string, string> = {};
+        (inventoryArray ?? []).forEach((inv: any) => {
+          if (!inv) return;
+          const key = inv._id ?? inv.id;
+          if (key) inventoryMap[key] = inv.name ?? inv.title ?? key;
+        });
+
+        console.log("📍 Inventory Map built:", inventoryMap);
+
+        const mappedTransactions: Transaction[] = transfersArr.map((t: any) => {
+          const firstProduct = t.products?.[0] ?? null;
+
+          let prodName = "N/A";
+          let categoryId: string | undefined = undefined;
+
+          if (firstProduct) {
+            const pid = firstProduct.productId;
+            if (!pid) {
+              prodName = firstProduct.name ?? t.productName ?? "N/A";
+            } else if (typeof pid === 'string') {
+              prodName = productIdNameMap[pid] ?? pid;
+            } else if (typeof pid === 'object') {
+              prodName = pid.name ?? pid.title ?? "N/A";
+              if (typeof pid.category === 'string') {
+                categoryId = pid.category;
+              } else if (pid.category?._id) {
+                categoryId = pid.category._id;
+              }
+            } else {
+              prodName = firstProduct.name ?? "N/A";
+            }
+
+            if (!categoryId && firstProduct.category) {
+              if (typeof firstProduct.category === 'string') {
+                categoryId = firstProduct.category;
+              } else {
+                categoryId = firstProduct.category._id ?? firstProduct.category.id;
+              }
+            }
+          } else {
+            prodName = t.productName ?? "N/A";
+          }
+
+          const resolveInventoryName = (invField: any, fieldName: string) => {
+            if (!invField) return "N/A";
+            if (typeof invField === 'string') {
+              const resolved = inventoryMap[invField] ?? invField;
+              console.log(`🔍 Resolving ${fieldName}:`, invField, "→", resolved);
+              return resolved;
+            }
+            if (typeof invField === 'object') {
+              const idCandidate = invField._id ?? invField.id;
+              if (idCandidate && inventoryMap[idCandidate]) return inventoryMap[idCandidate];
+              return invField.name ?? invField.title ?? (idCandidate ?? "N/A");
+            }
+            return "N/A";
+          };
+
+          const fromName = resolveInventoryName(t.from, 'from');
+          const toName = resolveInventoryName(t.to, 'to');
 
           return {
-            _id: t._id,
+            _id: t._id ?? t.transferId ?? "N/A",
             product: {
               name: prodName,
-              category: firstProduct?.productId?.category ?? undefined,
+              category: categoryId,
             },
-            transactionNumber: t.reference ?? t.ref ?? "N/A",
-            quantity: firstProduct?.unit ?? firstProduct?.quantity ?? 0,
+            transactionNumber: t.reference ?? t.ref ?? t.transferNumber ?? "N/A",
+            quantity: firstProduct?.unit ?? firstProduct?.quantity ?? t.quantity ?? 0,
             type: 'Transfer',
-            fromInventory: { name: (t.from && typeof t.from === 'string') ? t.from : (t.from?.name ?? "N/A") },
-            toInventory: { name: (t.to && typeof t.to === 'string') ? t.to : (t.to?.name ?? "N/A") },
+            fromInventory: { name: fromName },
+            toInventory: { name: toName },
             createdAt: t.createdAt ?? t.updatedAt ?? undefined,
-          };
+          } as Transaction;
         });
 
         setTransactions(mappedTransactions);
@@ -160,9 +285,13 @@ const StockSearchView: React.FC = () => {
       const productId = item._id?.toLowerCase() || '';
       const matchesSearch = productName.includes(searchQuery.toLowerCase()) ||
                            productId.includes(searchQuery.toLowerCase());
-      const matchesCategory = selectedCategory === 'All Categories' || 
-                             item.product?.category === selectedCategory;
-      return matchesSearch && matchesCategory;
+
+      if (selectedCategory === 'All Categories') return matchesSearch;
+
+      const cat = item.product?.category;
+      if (!cat) return false;
+
+      return matchesSearch && cat === selectedCategory;
     });
   }, [searchQuery, selectedCategory, stockItems]);
 
@@ -172,9 +301,13 @@ const StockSearchView: React.FC = () => {
       const transNum = trans.transactionNumber?.toLowerCase() || '';
       const matchesSearch = productName.includes(searchQuery.toLowerCase()) ||
                            transNum.includes(searchQuery.toLowerCase());
-      const matchesCategory = selectedCategory === 'All Categories' || 
-                             trans.product?.category === selectedCategory;
-      return matchesSearch && matchesCategory;
+
+      if (selectedCategory === 'All Categories') return matchesSearch;
+
+      const cat = trans.product?.category;
+      if (!cat) return false;
+
+      return matchesSearch && cat === selectedCategory;
     });
   }, [searchQuery, selectedCategory, transactions]);
 
@@ -206,9 +339,9 @@ const StockSearchView: React.FC = () => {
   const formatDate = (date?: string) => {
     if (!date) return '-';
     const d = new Date(date);
-    return d.toLocaleDateString('en-US', { 
-      day: 'numeric', 
-      month: 'short', 
+    return d.toLocaleDateString('en-US', {
+      day: 'numeric',
+      month: 'short',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
@@ -231,7 +364,7 @@ const StockSearchView: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">Error loading inventory data</p>
-          <button 
+          <button
             onClick={loadAllStocksAndTransfers}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
@@ -247,44 +380,11 @@ const StockSearchView: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-            <span>Dashboard</span>
-            <span>›</span>
-            <span className="text-gray-700">Stock</span>
           </div>
           <h1 className="text-2xl font-bold">Inventory Management</h1>
-        </div>
-
-        <div className="flex gap-3 mb-6">
-          <button
-            onClick={() => setActiveTab('transfer')}
-            className={`px-6 py-2 rounded-full transition-colors ${
-              activeTab === 'transfer'
-                ? 'bg-amber-200 text-gray-800'
-                : 'bg-white text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            Transfer
-          </button>
-          <button
-            onClick={() => setActiveTab('stock-out')}
-            className={`px-6 py-2 rounded-full transition-colors ${
-              activeTab === 'stock-out'
-                ? 'bg-gray-800 text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            Stock out
-          </button>
-          <button
-            onClick={() => setActiveTab('stock-in')}
-            className={`px-6 py-2 rounded-full transition-colors ${
-              activeTab === 'stock-in'
-                ? 'bg-gray-800 text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            Stock in
-          </button>
+          <span>Dashboard</span>
+            <span> › </span>
+            <span className="text-gray-700">Stock Search</span>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
@@ -307,21 +407,23 @@ const StockSearchView: React.FC = () => {
                 className="appearance-none px-4 py-2 pr-10 border border-gray-300 rounded-full bg-white focus:outline-none"
               >
                 {categories.map(cat => (
-                  <option key={cat}>{cat}</option>
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
                 ))}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
             </div>
-            <button 
+            <button
               onClick={handleSearch}
               className="px-6 py-2 bg-slate-700 text-white rounded-full hover:bg-blue-800 transition-colors flex items-center gap-2"
             >
               <Search size={18} />
               Search
             </button>
-            <button 
+            <button
               onClick={handleReset}
-              className="px-6 py-2 bg-amber-200 text-gray-800 rounded-full hover:bg-amber-300 transition-colors flex items-center gap-2"
+              className="px-6 py-2 bg-gray-400 text-gray-800 rounded-full hover:bg-gray-500 transition-colors flex items-center gap-2"
             >
               <RotateCcw size={18} />
               Reset
@@ -345,34 +447,35 @@ const StockSearchView: React.FC = () => {
                   <th className="pb-3 font-medium">Inventory</th>
                   <th className="pb-3 font-medium">Units/Inventory</th>
                   <th className="pb-3 font-medium">Last update</th>
-                  <th className="pb-3 font-medium">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedStockItems.length > 0 ? (
-                  paginatedStockItems.map((item) => (
-                    <tr key={item._id} className="border-b last:border-b-0">
-                      <td className="py-4 flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
-                        <span>{item.product?.name || 'N/A'}</span>
-                      </td>
-                      <td className="py-4 text-blue-600 underline cursor-pointer">
-                        {item.inventory?.name || '-'}
-                      </td>
-                      <td className="py-4">{item.quantity || 0}</td>
-                      <td className="py-4 text-sm text-gray-600">
-                        {formatDate(item.lastUpdate)}
-                      </td>
-                      <td className="py-4">
-                        <button className="px-4 py-1.5 bg-amber-200 text-gray-800 rounded-full hover:bg-amber-300 transition-colors text-sm">
-                          Transfer
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                  paginatedStockItems.map((item) => {
+                    const categoryName = resolveCategoryNameById(item.product?.category);
+                    
+                    return (
+                      <tr key={item._id} className="border-b last:border-b-0">
+                        <td className="py-4 flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                          <div>
+                            <div className="font-medium">{item.product?.name || 'N/A'}</div>
+                            <div className="text-sm text-gray-500">{categoryName}</div>
+                          </div>
+                        </td>
+                        <td className="py-4 text-blue-600 underline cursor-pointer">
+                          {item.inventory?.name || '-'}
+                        </td>
+                        <td className="py-4">{item.quantity || 0}</td>
+                        <td className="py-4 text-sm text-gray-600">
+                          {formatDate(item.lastUpdate)}
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-gray-500">
+                    <td colSpan={4} className="py-8 text-center text-gray-500">
                       No products found
                     </td>
                   </tr>
@@ -384,7 +487,7 @@ const StockSearchView: React.FC = () => {
           <div className="flex items-center justify-between mt-4">
             <div className="flex items-center gap-2 text-sm">
               <span>Show</span>
-              <select 
+              <select
                 value={stockPageSize}
                 onChange={(e) => {
                   setStockPageSize(Number(e.target.value));
@@ -400,7 +503,7 @@ const StockSearchView: React.FC = () => {
               <span>entries</span>
             </div>
             <div className="flex gap-2">
-              <button 
+              <button
                 onClick={() => setStockCurrentPage(prev => Math.max(1, prev - 1))}
                 disabled={stockCurrentPage === 1}
                 className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -420,7 +523,7 @@ const StockSearchView: React.FC = () => {
                   {page}
                 </button>
               ))}
-              <button 
+              <button
                 onClick={() => setStockCurrentPage(prev => Math.min(stockTotalPages, prev + 1))}
                 disabled={stockCurrentPage === stockTotalPages}
                 className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -442,58 +545,64 @@ const StockSearchView: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="border-b">
-  <tr className="text-left text-sm text-gray-600">
-    <th className="pb-3 font-medium">Product</th>
-    <th className="pb-3 font-medium">Trans. Number</th>
-    <th className="pb-3 font-medium">Units</th>
-    <th className="pb-3 font-medium">Type</th>
-    <th className="pb-3 font-medium">From</th>
-    <th className="pb-3 font-medium">To</th>
-    <th className="pb-3 font-medium">Time/Date</th>
-  </tr>
-</thead>
-<tbody>
-  {paginatedTransactions.length > 0 ? (
-    paginatedTransactions.map((trans) => (
-      <tr key={trans._id} className="border-b last:border-b-0">
-        <td className="py-4 flex items-center gap-3">
-          <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
-          <span>{trans.product?.name || 'N/A'}</span>
-        </td>
-        <td className="py-4">{trans.transactionNumber || '-'}</td>
-        <td className="py-4">{trans.quantity || 0}</td>
-        <td className="py-4">
-          <span className={`px-2 py-1 rounded-full text-xs ${
-            trans.type === 'In' ? 'bg-green-100 text-green-700' :
-            trans.type === 'Out' ? 'bg-red-100 text-red-700' :
-            'bg-blue-100 text-blue-700'
-          }`}>
-            {trans.type}
-          </span>
-        </td>
-        <td className="py-4">{trans.fromInventory?.name || '-'}</td>
-        <td className="py-4">{trans.toInventory?.name || '-'}</td>
-        <td className="py-4 text-sm text-gray-600">
-          {formatDate(trans.createdAt)}
-        </td>
-      </tr>
-    ))
-  ) : (
-    <tr>
-      <td colSpan={7} className="py-8 text-center text-gray-500">
-        No transactions found
-      </td>
-    </tr>
-  )}
-</tbody>
-
+                <tr className="text-left text-sm text-gray-600">
+                  <th className="pb-3 font-medium">Product</th>
+                  <th className="pb-3 font-medium">Trans. Number</th>
+                  <th className="pb-3 font-medium">Units</th>
+                  <th className="pb-3 font-medium">Type</th>
+                  <th className="pb-3 font-medium">From</th>
+                  <th className="pb-3 font-medium">To</th>
+                  <th className="pb-3 font-medium">Time/Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedTransactions.length > 0 ? (
+                  paginatedTransactions.map((trans) => {
+                    const categoryName = resolveCategoryNameById(trans.product?.category);
+                    
+                    return (
+                      <tr key={trans._id} className="border-b last:border-b-0">
+                        <td className="py-4 flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                          <div>
+                            <div className="font-medium">{trans.product?.name || 'N/A'}</div>
+                            <div className="text-sm text-gray-500">{categoryName}</div>
+                          </div>
+                        </td>
+                        <td className="py-4">{trans.transactionNumber || '-'}</td>
+                        <td className="py-4">{trans.quantity || 0}</td>
+                        <td className="py-4">
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            trans.type === 'In' ? 'bg-green-100 text-green-700' :
+                            trans.type === 'Out' ? 'bg-red-100 text-red-700' :
+                            'bg-blue-100 text-blue-700'
+                          }`}>
+                            {trans.type}
+                          </span>
+                        </td>
+                        <td className="py-4">{trans.fromInventory?.name || '-'}</td>
+                        <td className="py-4">{trans.toInventory?.name || '-'}</td>
+                        <td className="py-4 text-sm text-gray-600">
+                          {formatDate(trans.createdAt)}
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-gray-500">
+                      No transactions found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
             </table>
           </div>
 
           <div className="flex items-center justify-between mt-4">
             <div className="flex items-center gap-2 text-sm">
               <span>Show</span>
-              <select 
+              <select
                 value={transPageSize}
                 onChange={(e) => {
                   setTransPageSize(Number(e.target.value));
@@ -509,7 +618,7 @@ const StockSearchView: React.FC = () => {
               <span>entries</span>
             </div>
             <div className="flex gap-2">
-              <button 
+              <button
                 onClick={() => setTransCurrentPage(prev => Math.max(1, prev - 1))}
                 disabled={transCurrentPage === 1}
                 className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -529,7 +638,7 @@ const StockSearchView: React.FC = () => {
                   {page}
                 </button>
               ))}
-              <button 
+              <button
                 onClick={() => setTransCurrentPage(prev => Math.min(transTotalPages, prev + 1))}
                 disabled={transCurrentPage === transTotalPages}
                 className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"

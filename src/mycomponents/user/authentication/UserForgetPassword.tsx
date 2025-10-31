@@ -5,10 +5,9 @@ import {
   Mail,
 } from "lucide-react";
 import axios from "axios";
-import { toast } from "react-toastify";
 import { publicAxiosInstance } from "../Services/Urls/Urls";
 import { useNavigate } from "react-router-dom";
-
+import { toast } from 'react-hot-toast';
 
 
 type FormData = {

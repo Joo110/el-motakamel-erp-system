@@ -54,26 +54,42 @@ export const getProductByIdService = async (id: string): Promise<Product> => {
   return response.data.data.product;
 };
 
-export const createProductService = async (product: Product): Promise<Product> => {
-  const payload = {
-    name: product.name,
-    code: product.code,
-    price: product.price,
-    tax: product.tax,
-    description: product.description,
-    category: product.category,
-    unit: product.unit,
-    img: product.img.map(i => (typeof i === "string" ? i : "daf")), // أي File يتحول لاسم افتراضي
-  };
 
-  console.log("📤 Sending payload:", payload);
+// productService.ts
+export const createProductService = async (product: any) => {
+  try {
+    console.log("📤 Sending payload:", product);
 
-  const response = await axiosClient.post<SingleProductResponse>("/products", payload);
+    // إذا المنتج FormData أرسله كما هو مع header المناسب
+    if (product instanceof FormData) {
+      const res = await axiosClient.post("/products", product, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return res.data?.data?.product;
+    }
 
-  console.log("✅ createProductService response:", response.data);
-  return response.data.data.product;
+    // تأكد من تحويل الأنواع الرقمية
+    const normalized = {
+      ...product,
+      price: product.price !== undefined ? parseFloat(product.price) : product.price,
+      tax: product.tax !== undefined ? parseFloat(product.tax) : product.tax,
+      unit: product.unit !== undefined ? (typeof product.unit === "string" ? parseInt(product.unit, 10) : product.unit) : product.unit,
+      // لا تُرسل placeholders في img — تأكد أنها إما [] أو array of strings (URLs/base64)
+      img: Array.isArray(product.img) ? product.img.filter(Boolean) : [],
+    };
+
+    const res = await axiosClient.post("/products", normalized);
+    return res.data?.data?.product;
+  } catch (err: any) {
+    // طبع أقصى معلومات من الخطأ
+    console.error("❌ createProductService error:", err);
+    if (err?.response) {
+      console.error("❌ server response data:", err.response.data);
+      console.error("❌ server response status:", err.response.status);
+    }
+    throw err;
+  }
 };
-
 
 
 // 4️⃣ Update product

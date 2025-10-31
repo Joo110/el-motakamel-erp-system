@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from 'react-hot-toast';
 
 type TransferItem = {
   transferNumber: string;
@@ -44,7 +45,7 @@ const TransferManagement = () => {
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-2">Inventory Management</h1>
-        <div className="text-sm text-gray-500">Dashboard {'>'} Inventory {'>'} Stock In</div>
+        <div className="text-sm text-gray-500">Dashboard {'>'} Inventory {'>'} Transfer Management</div>
       </div>
 
       {/* Tabs */}

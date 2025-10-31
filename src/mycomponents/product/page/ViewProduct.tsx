@@ -2,36 +2,61 @@ import React, { useEffect, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useProducts } from "../hooks/useProducts";
+import { useCategories } from "@/mycomponents/category/hooks/useCategories";
 import type { Product } from "../services/productService";
 
 const ViewProduct: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { getProductById, loading, error } = useProducts();
-
-  const categories = [
-  { id: "68d97beed92afa6728644e3c", name: "electronics" },
-  { id: "68d97beed92afa6728644e3d", name: "footwear" },
-  { id: "68d97beed92afa6728644e3e", name: "clothing" },
-  { id: "68d97beed92afa6728644e3f", name: "accessories" },
-];
-
+  const { categories: apiCategories } = useCategories();
 
   const [product, setProduct] = useState<Product | null>(null);
 
-useEffect(() => {
-  if (id) {
-    getProductById(id)
-      .then(setProduct)
-      .catch(console.error);
-  }
-}, [id]);
-
+  useEffect(() => {
+    if (!id) return;
+    let mounted = true;
+    const fetch = async () => {
+      try {
+        const p = await getProductById(id);
+        if (!mounted) return;
+        setProduct(p ?? null);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetch();
+    return () => { mounted = false; };
+  }, [id, getProductById]);
 
   if (loading || !product) return <p>Loading...</p>;
   if (error) return <p className="text-red-500">{error}</p>;
 
-  const total = product.price * product.unit + product.tax;
+  const total = (product.price || 0) * (product.unit || 0) + (product.tax || 0);
+
+  // resolve category display name
+  const resolveCategoryName = (prodCat: any) => {
+    if (!prodCat) return "Unknown";
+    if (typeof prodCat === "string") {
+      const found = (apiCategories ?? []).find((c: any) => (c._id ?? c.id) === prodCat);
+      if (found) return found.name ?? found.category ?? found.title ?? prodCat;
+      return prodCat;
+    }
+    if (typeof prodCat === "object") {
+      // if product.category is populated object prefer its name/category field
+      const name = prodCat.name ?? prodCat.category;
+      if (name) return name;
+      // else try to match by id
+      const idCandidate = prodCat._id ?? prodCat.id;
+      if (idCandidate) {
+        const found = (apiCategories ?? []).find((c: any) => (c._id ?? c.id) === idCandidate);
+        if (found) return found.name ?? found.category ?? found.title ?? idCandidate;
+        return idCandidate;
+      }
+      return "Unknown";
+    }
+    return "Unknown";
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -70,9 +95,8 @@ useEffect(() => {
                 Category
               </label>
               <p className="text-lg text-gray-900">
-  {categories.find(c => c.id === product.category)?.name || "Unknown"}
-</p>
-
+                {resolveCategoryName(product.category)}
+              </p>
             </div>
 
             <div>
@@ -123,15 +147,16 @@ useEffect(() => {
             <div className="w-full max-w-md">
               <div className="bg-gray-50 rounded-2xl p-8 flex items-center justify-center">
                 <img
-  src={
-    product.img[0] instanceof File
-      ? URL.createObjectURL(product.img[0])
-      : product.img[0] ?? "https://via.placeholder.com/200"
-  }
-  alt={product.name}
-  className="w-64 h-64 object-contain"
-/>
-
+                  src={
+                    product.img && product.img.length > 0 && product.img[0] instanceof File
+                      ? URL.createObjectURL(product.img[0])
+                      : product.img && product.img.length > 0
+                        ? (product.img[0] as any)
+                        : "https://via.placeholder.com/200"
+                  }
+                  alt={product.name}
+                  className="w-64 h-64 object-contain"
+                />
               </div>
               <div className="mt-4 text-center">
                 <p className="text-sm text-gray-500">Product Image</p>

@@ -2,14 +2,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useCustomers } from '../../Sales/hooks/useCustomers';
-import { useSaleOrdersList } from '../../Sales/hooks/useSaleOrders';
+import { useSaleOrders } from '../../Sales/hooks/useSaleOrders';
 import { useInventories } from '../../inventory/hooks/useInventories';
 import { useUsers } from '../../user/hooks/useUsers';
 
 const CustomerDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { getCustomer } = useCustomers(false);
-  const { items: orders, fetch: fetchOrders } = useSaleOrdersList(undefined, false);
+  const { items: orders, fetch: fetchOrders } = useSaleOrders(undefined, false);
 const { inventories, refetch: refetchInventories } = useInventories();
 const { users, refetch: refetchUsers } = useUsers();
 
@@ -39,7 +39,6 @@ await Promise.all([fetchOrders(), refetchInventories(), refetchUsers()]);
     return orders.filter((o) => o.customerId === id);
   }, [orders, id]);
 
-  // 🧠 تحويل الـ IDs إلى أسماء
   const getInventoryName = (invId?: string) => {
     if (!invId) return '-';
     return inventories?.find((inv: any) => inv._id === invId)?.name ?? invId;
