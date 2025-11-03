@@ -25,7 +25,6 @@ const truncate = (s: string | undefined, n = 30) => {
 };
 
 const StockOutComponent: React.FC = () => {
-  // ===== جدول المنتجات =====
   const [products, setProducts] = useState<ProductRow[]>([
     { id: '1', productId: '1', inventoryId: 'a', name: 'Product 1', inventoryName: 'Abu Dhabi', code: '99282', units: 10, price: 1140.95, discount: 13, total: 9990.0 },
     { id: '2', productId: '2', inventoryId: 'a', name: 'Product 2', inventoryName: 'Abu Dhabi', code: '323-14', units: 10, price: 1710.55, discount: 13, total: 9400.0 },
@@ -50,20 +49,17 @@ const StockOutComponent: React.FC = () => {
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [selectedInventoryId, setSelectedInventoryId] = useState<string>('');
 
-  // ===== الحقول الإضافية المطلوبة للـ API =====
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<string>('');
   const [orderDate, setOrderDate] = useState<string>('');
   const [currency, setCurrency] = useState<string>('SR');
   const [notes, setNotes] = useState<string>('');
   
-  // ⚠️ غيّر الـ IDs دي حسب بياناتك (أو اجلبهم من localStorage/Context)
   const [organizationId] = useState<string>('68c2d89e2ee5fae98d57bef1');
   const [createdBy] = useState<string>('68c699af13bdca2885ed4d27');
 
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
 
   // ===== hooks =====
-  // useSaleOrdersList: افتراض إنه يرجع create + loading
   const { create, loading } = useSaleOrders(undefined, false);
   const { products: productsFromHook = [], loading: productsLoading = false } = useProducts() as any;
   const { inventories = [], isLoading: inventoriesLoading = false } = useInventories() as any;
@@ -111,8 +107,15 @@ const StockOutComponent: React.FC = () => {
   };
 
   const handleAddProduct = () => {
+    console.groupCollapsed('[StockOut] handleAddProduct start');
+    console.log('selectedProductId:', selectedProductId);
+    console.log('selectedInventoryId:', selectedInventoryId);
+    console.log('formProduct:', formProduct);
+
     if (!selectedProductId || !selectedInventoryId || Number(formProduct.units) <= 0 || Number(formProduct.price) <= 0) {
       toast('Please select product & inventory and fill Units (>0) and Price (>0)');
+      console.warn('[StockOut] validation failed in handleAddProduct');
+      console.groupEnd();
       return;
     }
 
@@ -126,8 +129,8 @@ const StockOutComponent: React.FC = () => {
 
     const newProduct: ProductRow = {
       id: Date.now().toString(),
-      productId: selectedProductId,    // <-- نحتفظ بالـ ID هنا
-      inventoryId: selectedInventoryId,// <-- ونحتفظ بــ inventoryId كـ ID
+      productId: selectedProductId,
+      inventoryId: selectedInventoryId,
       name: productName,
       inventoryName,
       code: formProduct.code || '96269',
@@ -137,8 +140,10 @@ const StockOutComponent: React.FC = () => {
       total: Math.round((tot + Number.EPSILON) * 100) / 100,
     };
 
+    console.log('[StockOut] newProduct:', newProduct);
     setProducts((prev) => [...prev, newProduct]);
     handleResetForm();
+    console.groupEnd();
   };
 
   const handleCheckboxToggle = (id: string) => {
@@ -150,52 +155,103 @@ const StockOutComponent: React.FC = () => {
     setSelectedProducts((prev) => prev.filter((x) => x !== id));
   };
 
-  // ===== تحويل المنتجات للـ payload المطلوب =====
   function mapProductsForApi(p: ProductRow[]) {
-    return p.map((prod) => ({
-      productId: prod.productId,
-      inventoryId: prod.inventoryId,
-      name: prod.name,
-      quantity: prod.units,
-      price: prod.price,
-      discount: prod.discount,
-    }));
+    console.groupCollapsed('[StockOut] mapProductsForApi');
+    console.log('Input products array:', p);
+    const mapped = p.map((prod) => {
+      const mappedItem = {
+        productId: prod.productId,
+        inventoryId: prod.inventoryId,
+        name: prod.name,
+        quantity: prod.units,
+        price: prod.price,
+        discount: prod.discount,
+      };
+      // log warnings if something suspicious
+      if (!mappedItem.productId) console.warn('[StockOut] missing productId for', prod);
+      if (!mappedItem.inventoryId) console.warn('[StockOut] missing inventoryId for', prod);
+      if (typeof mappedItem.quantity !== 'number' || Number.isNaN(mappedItem.quantity)) console.warn('[StockOut] quantity is not a number for', prod);
+      console.log('Mapped item:', mappedItem);
+      return mappedItem;
+    });
+    console.groupEnd();
+    return mapped;
   }
 
   // ===== حفظ الطلب وإرساله للـ API =====
   const handleSave = async () => {
     try {
+      console.group('[StockOut] handleSave START');
+      console.log('customerId:', customerId);
+      console.log('organizationId:', organizationId);
+      console.log('createdBy:', createdBy);
+      console.log('products (local):', products);
+      console.log('selectedProducts:', selectedProducts);
+      console.log('expectedDeliveryDate:', expectedDeliveryDate);
+      console.log('currency:', currency);
+      console.log('notes:', notes);
+
       if (!customerId) {
         toast('Please select a customer before saving.');
+        console.warn('[StockOut] missing customerId');
+        console.groupEnd();
         return;
       }
       
       if (products.length === 0) {
         toast('Please add at least one product.');
+        console.warn('[StockOut] products array empty');
+        console.groupEnd();
         return;
       }
 
-      // لو في شيك بوكس محدد -> نرسلهم فقط، وإلا نرسل كل الجدول
       const productsToSend = selectedProducts.length
         ? products.filter((p) => selectedProducts.includes(p.id))
         : products;
 
+      console.log('[StockOut] productsToSend:', productsToSend);
+
+      const mappedProducts = mapProductsForApi(productsToSend);
+
+      // extra validation before sending
+      const invalid = mappedProducts.find((mp) => !mp.productId || !mp.inventoryId || typeof mp.quantity !== 'number' || mp.quantity <= 0);
+      if (invalid) {
+        console.error('[StockOut] Found invalid mapped product before API call:', invalid);
+        toast.error('One or more products are missing required fields (productId/inventoryId/quantity). Check console.');
+        console.groupEnd();
+        return;
+      }
+
       const payload: any = {
         customerId,
         organizationId,
-        products: mapProductsForApi(productsToSend),
+        products: mappedProducts,
         expectedDeliveryDate: expectedDeliveryDate || undefined,
         currency: currency || 'SR',
         notes: notes || undefined,
         createdBy,
       };
+console.log('payload from React:', JSON.stringify(payload, null, 2));
 
       console.log('📤 Sending sale order payload to API:', payload);
 
-      await create(payload);
-      toast.success('✅ Sale order saved successfully');
-      
-      // Reset بعد النجاح
+      // call create and catch result
+      try {
+        const res = await create(payload);
+        console.log('✅ create() resolved with:', res);
+        toast.success('✅ Sale order saved successfully');
+      } catch (err: any) {
+        // Log full error details - helpful to inspect server response
+        console.error('❌ create() threw error:', err);
+        console.error('err.response?.status:', err?.response?.status);
+        console.error('err.response?.data:', err?.response?.data);
+        console.error('err.request:', err?.request);
+        toast.error('Failed to save sale order. Check console for details.');
+        console.groupEnd();
+        return;
+      }
+
+      // reset UI state after success
       setProducts([]);
       setCustomerId('');
       setExpectedDeliveryDate('');
@@ -203,8 +259,10 @@ const StockOutComponent: React.FC = () => {
       setNotes('');
       setCurrency('SR');
       setSelectedProducts([]);
+
+      console.groupEnd();
     } catch (err) {
-      console.error('❌ Save sale order error:', err);
+      console.error('❌ Save sale order unexpected error:', err);
       toast.error('Failed to save sale order. Check console for details.');
     }
   };

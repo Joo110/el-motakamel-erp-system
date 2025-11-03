@@ -121,6 +121,28 @@ const InventoriesListView: React.FC<InventoriesListViewProps> = ({
       navigate(`/dashboard/edit-inventory/${id}`);
     }
   };
+const getPageNumbers = () => {
+  if (maxPages === 0) return [];
+  const pages: number[] = [];
+  const maxVisiblePages = 5;
+  let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+  const endPage = Math.min(maxPages, startPage + maxVisiblePages - 1);
+
+  if (endPage - startPage < maxVisiblePages - 1) {
+    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  }
+
+  for (let i = startPage; i <= endPage; i++) {
+    pages.push(i);
+  }
+  return pages;
+};
+
+React.useEffect(() => {
+  if (currentPage > maxPages) {
+    setCurrentPage(maxPages || 1);
+  }
+}, [maxPages]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -263,33 +285,38 @@ const InventoriesListView: React.FC<InventoriesListViewProps> = ({
             </select>
             <span>entries</span>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1 border border-gray-300 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            {Array.from({ length: Math.min(3, maxPages) }, (_, i) => i + 1).map((pageNum) => (
-              <button
-                key={pageNum}
-                onClick={() => setCurrentPage(pageNum)}
-                className={`px-3 py-1 rounded-full ${
-                  currentPage === pageNum ? 'bg-slate-700 text-white' : 'border border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                {pageNum}
-              </button>
-            ))}
-            <button
-              onClick={() => setCurrentPage(Math.min(maxPages, currentPage + 1))}
-              disabled={currentPage >= maxPages}
-              className="px-3 py-1 border border-gray-300 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
-          </div>
+         <div className="flex gap-2">
+  <button
+    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+    disabled={currentPage === 1}
+    className="px-3 py-1 border border-gray-300 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+  >
+    Previous
+  </button>
+
+  {getPageNumbers().map((pageNum) => (
+    <button
+      key={pageNum}
+      onClick={() => setCurrentPage(pageNum)}
+      className={`px-3 py-1 rounded-full ${
+        currentPage === pageNum
+          ? 'bg-slate-700 text-white'
+          : 'border border-gray-300 hover:bg-gray-50'
+      }`}
+    >
+      {pageNum}
+    </button>
+  ))}
+
+  <button
+    onClick={() => setCurrentPage(Math.min(maxPages, currentPage + 1))}
+    disabled={currentPage >= maxPages}
+    className="px-3 py-1 border border-gray-300 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+  >
+    Next
+  </button>
+</div>
+
         </div>
       </div>
     </div>

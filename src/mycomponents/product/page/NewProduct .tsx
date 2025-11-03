@@ -6,6 +6,7 @@ import { useCategories } from "@/mycomponents/category/hooks/useCategories";
 
 const NewProduct = () => {
   const { addProduct } = useProducts();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { categories: apiCategories, isLoading: catLoading } = useCategories();
 
   const [formData, setFormData] = useState({
@@ -71,8 +72,8 @@ const NewProduct = () => {
     const payload = {
       name: formData.name,
       code: formData.code,
-      price: parseFloat(formData.price) || 0,      // ✅ Convert to number
-      tax: parseFloat(formData.tax) || 0,          // ✅ Convert to number
+      price: parseFloat(formData.price) || 0,
+      tax: parseFloat(formData.tax) || 0,
       description: formData.description,
       category: selectedCategoryId,
       unit: parseInt(formData.unit) || 1,

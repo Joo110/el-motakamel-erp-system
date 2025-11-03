@@ -1,4 +1,3 @@
-// src/hooks/usePurchaseOrders.ts
 import { useCallback, useEffect, useState } from 'react';
 import type { CreatePurchaseOrderPayload, PurchaseOrder } from '../services/saleOrders';
 import {
@@ -137,9 +136,27 @@ export function usePurchaseOrder(id?: string) {
     }
   }, [id]);
 
+  // ✅ PATCH (Update existing sale order)
+  const patch = useCallback(async (payload: Partial<CreatePurchaseOrderPayload>) => {
+    if (!id) throw new Error('Missing order id to update');
+    setLoading(true);
+    setError(null);
+    try {
+      const updated = await updatePurchaseOrder(id, payload);
+      setItem(updated);
+      return updated;
+    } catch (err) {
+      const e = err instanceof Error ? err : new Error('Failed to update purchase order');
+      setError(e);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
   useEffect(() => {
     if (id) void fetch(id);
   }, [id, fetch]);
 
-  return { item, loading, error, fetch, setItem } as const;
+  return { item, loading, error, fetch, patch, setItem } as const;
 }

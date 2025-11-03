@@ -10,6 +10,7 @@ const Sidebar = () => {
     sales: false,
     customer: false,
     suppliers: false,
+    hr: false
   });
   const location = useLocation();
 
@@ -201,19 +202,7 @@ const Sidebar = () => {
                 <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
                   location.pathname === "/dashboard/transfer" ? "opacity-100" : "opacity-0 group-hover/item:opacity-100"
                 }`}></div>
-              </Link>
-
-              <Link
-                to="/dashboard/transfer-draft"
-                className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
-                  location.pathname === "/dashboard/transfer-draft" ? "text-[#334155] font-medium" : "text-gray-600 hover:text-[#334155]"
-                }`}
-              >
-                Transfer Draft
-                <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
-                  location.pathname === "/dashboard/transfer-draft" ? "opacity-100" : "opacity-0 group-hover/item:opacity-100"
-                }`}></div>
-              </Link>
+              </Link>        
             </div>
           )}
         </div>
@@ -453,7 +442,83 @@ const Sidebar = () => {
             </div>
           )}
         </div>
+        {/* HR Management */}
+<div className="mb-1 relative group">
+  <button
+    onClick={() => toggleMenu("hr")}
+    className={`flex justify-between items-center w-full px-6 py-3 transition-colors ${
+      openMenus["hr"]
+        ? "text-[#334155] bg-gray-50"
+        : "text-gray-600 hover:text-[#334155]"
+    }`}
+  >
+    <span className="flex items-center gap-3 text-sm font-medium">
+      <Users size={18} strokeWidth={2} />
+      <span>HR Management</span>
+    </span>
+    <ChevronDown
+      size={16}
+      className={`transition-all ${
+        openMenus["hr"] ? "rotate-180 text-[#334155]" : "text-gray-400 group-hover:text-[#334155]"
+      }`}
+    />
+  </button>
+  <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
+    openMenus["hr"] ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+  }`}></div>
 
+  {openMenus["hr"] && (
+    <div className="bg-gray-50 py-2">
+      <Link
+        to="/dashboard/hr/employees"
+        className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+          location.pathname === "/dashboard/hr/employees"
+            ? "text-[#334155] font-medium"
+            : "text-gray-600 hover:text-[#334155]"
+        }`}
+      >
+        Employees
+        <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
+          location.pathname === "/dashboard/hr/employees"
+            ? "opacity-100"
+            : "opacity-0 group-hover/item:opacity-100"
+        }`}></div>
+      </Link>
+
+      <Link
+        to="/dashboard/hr/employee/new"
+        className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+          location.pathname === "/dashboard/hr/employee/new"
+            ? "text-[#334155] font-medium"
+            : "text-gray-600 hover:text-[#334155]"
+        }`}
+      >
+        Add Employee
+        <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
+          location.pathname === "/dashboard/hr/employee/new"
+            ? "opacity-100"
+            : "opacity-0 group-hover/item:opacity-100"
+        }`}></div>
+      </Link>
+
+      <Link
+        to="/dashboard/hr/payroll"
+        className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+          location.pathname === "/dashboard/hr/payroll"
+            ? "text-[#334155] font-medium"
+            : "text-gray-600 hover:text-[#334155]"
+        }`}
+      >
+        Payroll
+        <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
+          location.pathname === "/dashboard/hr/payroll"
+            ? "opacity-100"
+            : "opacity-0 group-hover/item:opacity-100"
+        }`}></div>
+      </Link>
+    </div>
+  )}
+</div>
         {/* More User Management Items */}
         {[...Array(7)].map((_, i) => (
           <div key={`user-extra-${i}`} className="mb-1 relative group">

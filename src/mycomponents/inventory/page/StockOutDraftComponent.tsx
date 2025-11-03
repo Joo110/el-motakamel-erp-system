@@ -4,8 +4,9 @@ import { Eye, Download } from 'lucide-react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import { usePurchaseOrder } from '../../Sales/hooks/useSaleOrders';
 import { useOrganization } from '../../organizations/hooks/useOrganization';
-import axiosClient from '@/lib/axiosClient';
 import { toast } from 'react-hot-toast';
+import axiosClient from '@/lib/axiosClient';
+import { createInvoiceForSaleOrder } from '../../Sales/services/saleInvoices';
 
 type StatusType = 'Draft' | 'Sales Order Approved' | 'Quotation' | 'Invoice';
 
@@ -66,54 +67,92 @@ const StockOutDraftComponent: React.FC = () => {
 
   const warehouseName = extractOrgName(organizationData) || orderData?.organizationId || '-';
 
-  const handleCreateInvoice = async () => {
-    if (!id) return;
-    setApiError(null);
-    setCreating(true);
-    try {
-      const resp = await axiosClient.post(`/salesInvoices/${id}`);
+// وضع هذه الدوال داخل نفس الكمبوننت (فوق أو أسفل handleCreateInvoice)
+const findExistingInvoice = (resp: any, saleOrderId: string) => {
+  if (!resp) return null;
+  const payload = resp?.data ?? resp;
 
-      const contentType =
-        typeof resp?.headers?.get === 'function'
-          ? (resp.headers.get('content-type') ?? '')
-          : String((resp?.headers as any)?.['content-type'] ?? '');
+  // حسب الـ response اللي بعته: payload.data.saleorderInvoices is the array
+  const invoices = payload?.data?.saleorderInvoices ?? payload?.saleorderInvoices ?? null;
+  if (!Array.isArray(invoices) || invoices.length === 0) return null;
 
-      const body = resp?.data;
+  // filter invoices that match the saleOrder id (some entries might belong to other orders)
+  const matches = invoices.filter((inv: any) => String(inv.saleOrder) === String(saleOrderId));
+  if (matches.length === 0) return null;
 
-      const isHtmlText =
-        typeof body === 'string' ||
-        (typeof contentType === 'string' && contentType.includes('text/html'));
+  // اختر الأحدث حسب createdAt (fallback إلى أول عنصر لو ما فيش createdAt)
+  matches.sort((a: any, b: any) => {
+    const ta = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const tb = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return tb - ta;
+  });
 
-      if (isHtmlText) {
-        if (typeof resp?.data === "string") {
-          const normalized = resp.data.toLowerCase().trim();
-          if (normalized.includes("welcome to erp")) {
-            toast.error("Unexpected server response — please contact your administrator.");
-            return;
-          }
-        }
-      }
+  return matches[0];
+};
 
-      const returnedInvoice = resp?.data?.data?.invoice ?? resp?.data?.invoice ?? resp?.data ?? resp;
-      console.log('Create invoice response:', returnedInvoice);
-      toast.success('Invoice created successfully!');
-      navigate(`/dashboard/sales-invoices/${id}`);
-    } catch (err: any) {
-      console.error('Create invoice error:', err?.response?.data ?? err);
-      const serverBody = err?.response?.data;
-      if (typeof serverBody === 'string' && serverBody.includes('Welcome to ERP')) {
-        const msg = 'Server returned "Welcome to ERP" — request hit wrong endpoint (dev server).';
-        setApiError(msg);
-        toast.error(msg);
+const handleCreateInvoice = async () => {
+  if (!id) return;
+  setApiError(null);
+  setCreating(true);
+
+  try {
+    // 1) استخدم الـ endpoint اللي بعته بالظبط
+    const checkResp = await axiosClient.get('/api/v1/saleInvoices', { params: { saleOrder: id } });
+
+    // 2) حاول نوجد فاتورة موجودة لنفس saleOrder
+    const existing = findExistingInvoice(checkResp, id);
+    if (existing) {
+      const invoiceId = existing._id ?? existing.id ?? null;
+      toast.success('Invoice already exists — opening it now.');
+      if (invoiceId) {
+        navigate(`/dashboard/sales-invoices/${invoiceId}`);
       } else {
-        const msg = err?.response?.data?.message || err?.message || String(err);
-        setApiError(String(msg));
-        toast.error('Failed to create invoice: ' + msg);
+        navigate(`/dashboard/sales-invoices/${id}`);
       }
-    } finally {
-      setCreating(false);
+      return; // ما ننشئش فاتورة جديدة
     }
-  };
+
+    // 3) لو ما لقيتش -> انشئ الفاتورة
+    const created = await createInvoiceForSaleOrder(id);
+
+    // حماية ضد استجابة نصية أو HTML غير متوقعة
+    const rawString = typeof created === 'string' ? created : JSON.stringify(created ?? '');
+    if (rawString.toLowerCase().includes('welcome to erp')) {
+      const msg = 'Unexpected server response — please contact your administrator.';
+      setApiError(msg);
+      toast.error(msg);
+      return;
+    }
+
+    // محاولة استخراج كائن الفاتورة من الرد
+    const invoiceObj = created?.data?.invoice ?? created?.invoice ?? created;
+    const invoiceId = invoiceObj?._id ?? invoiceObj?.id ?? null;
+
+    console.log('Create invoice response:', created);
+    toast.success('Invoice created successfully!');
+
+    if (invoiceId) {
+      navigate(`/dashboard/sales-invoices/${invoiceId}`);
+    } else {
+      navigate(`/dashboard/sales-invoices/${id}`);
+    }
+  } catch (err: any) {
+    console.error('Create invoice error:', err?.response?.data ?? err);
+    const serverBody = err?.response?.data;
+    if (typeof serverBody === 'string' && serverBody.toLowerCase().includes('welcome to erp')) {
+      const msg = 'Server returned "Welcome to ERP" — request hit wrong endpoint (dev server).';
+      setApiError(msg);
+      toast.error(msg);
+    } else {
+      const msg = err?.response?.data?.message || err?.message || String(err);
+      setApiError(String(msg));
+      toast.error('Failed to create invoice: ' + msg);
+    }
+  } finally {
+    setCreating(false);
+  }
+};
+
 
   if (loading) {
     return (
@@ -198,7 +237,7 @@ const StockOutDraftComponent: React.FC = () => {
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Customer</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Name:</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">CustomerId:</label>
                   <input
                     type="text"
                     value={orderData?.customerName || orderData?.customerId || '-'}
@@ -241,7 +280,7 @@ const StockOutDraftComponent: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Warehouse:</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">WarehouseId:</label>
                   <input
                     type="text"
                     value={warehouseName}

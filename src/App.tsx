@@ -1,6 +1,6 @@
 import './App.css'; 
 import { createHashRouter, RouterProvider } from "react-router-dom";
-import { Toaster } from 'react-hot-toast'; // ✅ بديل احترافي وخفيف
+import { Toaster } from 'react-hot-toast';
 
 // Authentication Pages
 import UserLogin from './mycomponents/user/authentication/UserLogin';
@@ -36,11 +36,18 @@ import StockOutDraft from './mycomponents/inventory/page/StockOutDraftComponent'
 import Transfer from './mycomponents/inventory/page/TransferComponent';
 import TransferDraft from './mycomponents/inventory/page/TransferDraftComponent';
 
+import UpdateTransferComponent from './mycomponents/inventory/page/UpdateTransferComponent';
 import TransferManagement from './mycomponents/inventory/page/TransferManagement';
 import InventoryOrders from './mycomponents/Sales/page/InventoryOrders';
 import PreciousManagement from './mycomponents/Precious/page/PreciousManagement';
 import EditPurchaseOrderComponent from './mycomponents/Precious/page/EditPurchaseOrderComponent';
 import EditSaleOrderComponent from './mycomponents/Sales/page/EditSaleOrderComponent';
+
+import EmployeeList from './mycomponents/HR/page/EmployeeListScreen';
+import AddEmployeeScreen from './mycomponents/HR/page/AddEmployeeScreen';
+import EditEmployeeScreen from './mycomponents/HR/page/EditEmployeeScreen';
+import EmployeeView from './mycomponents/HR/page/ViewEmployeeScreen';
+import PayrollManagement from './mycomponents/HR/page/PayrollScreen';
 
 //  Sales Management Pages (Customer)
 import CustomerSearchList from './mycomponents/Sales/page/CustomerSearchList';
@@ -53,6 +60,7 @@ import SupplierSearchList from './mycomponents/Precious/page/SupplierSearchList'
 import SupplierDetails from './mycomponents/Precious/page/SupplierDetails';
 import SupplierEditFilled from './mycomponents/Precious/page/SupplierEditFilled';
 import SupplierAdd from './mycomponents/Precious/page/SupplierAdd';
+
 
 function App() {
   const routes = createHashRouter([
@@ -97,9 +105,10 @@ function App() {
         { path: "stock-out", element: <StockOut /> },
         { path: "stock-out-draft/:id", element: <StockOutDraft /> },
         { path: "transfer", element: <Transfer /> },
-        { path: "transfer-draft", element: <TransferDraft /> },
+        { path: "transfer-draft/:id", element: <TransferDraft /> },
 
         // Old Management Routes
+        { path: "UpdateTransferComponent/:id", element: <UpdateTransferComponent /> },
         { path: "transfermanagement", element: <TransferManagement /> },
         { path: "inventoryorders", element: <InventoryOrders /> },
         { path: "preciousmanagement", element: <PreciousManagement /> },
@@ -117,6 +126,13 @@ function App() {
         { path: "precious/supplier/:id", element: <SupplierDetails /> },
         { path: "precious/supplier/edit/:id", element: <SupplierEditFilled /> },
         { path: "precious/supplier/new", element: <SupplierAdd /> },
+
+        // 🆕 HR Management Routes
+    { path: "hr/employees", element: <EmployeeList /> },
+    { path: "hr/employee/new", element: <AddEmployeeScreen /> },
+    { path: "hr/employee/edit/:id", element: <EditEmployeeScreen /> },
+    { path: "hr/employee/view/:id", element: <EmployeeView /> },
+    { path: "hr/payroll", element: <PayrollManagement /> },
       ],
     },
 

@@ -84,13 +84,11 @@ function extractSingleFromResponse(resData: any): PurchaseOrder | null {
    ---------------------- */
 
 export async function getsalesOrders(status?: 'draft' | 'approved' | 'delivered', config?: AxiosRequestConfig): Promise<PurchaseOrder[]> {
-  const url = BASE;
-  const { data } = await axiosClient.get(url, {
-    params: status ? { status } : {},
-    ...config,
-  });
+  const url = status ? `${BASE}/status=${status}` : BASE;
+  const { data } = await axiosClient.get(url, config);
   return extractListFromResponse(data);
 }
+
 
 export async function getsaleseOrderById(id: string, config?: AxiosRequestConfig): Promise<PurchaseOrder | null> {
   const { data } = await axiosClient.get(`${BASE}/${id}`, config);
@@ -122,12 +120,11 @@ export async function deletesaleseOrder(id: string, config?: AxiosRequestConfig)
 // Approve sale order
 // Approve sale order
 export async function approveSaleOrder(id: string): Promise<PurchaseOrder | null> {
-  const { data } = await axiosClient.patch(`${BASE}/${id}?status=approved`);
+  const { data } = await axiosClient.patch(`${BASE}/${id}/approve`);
   return extractSingleFromResponse(data);
 }
 
-// Mark sale order as delivered
 export async function markSaleOrderDelivered(id: string): Promise<PurchaseOrder | null> {
-  const { data } = await axiosClient.patch(`${BASE}/${id}?status=delivered`);
+  const { data } = await axiosClient.get(`${BASE}/${id}/deliver`);
   return extractSingleFromResponse(data);
 }

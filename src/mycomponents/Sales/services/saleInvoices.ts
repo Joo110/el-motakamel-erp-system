@@ -1,10 +1,12 @@
+// src/services/saleInvoices.ts
 import axiosClient from '@/lib/axiosClient';
 
 export type SaleInvoice = {
   _id: string;
-  saleOrderId?: string;
-  totalAmount?: number;
-  status?: string;
+  invoiceNumber?: string;
+  saleOrder?: string;
+  totalPayment?: number;
+  paymentStatus?: string;
   createdAt?: string;
   updatedAt?: string;
   [k: string]: any;
@@ -12,7 +14,12 @@ export type SaleInvoice = {
 
 const BASE = '/saleInvoices';
 
+export async function createInvoiceForSaleOrder(saleOrderId: string): Promise<SaleInvoice> {
+  const { data } = await axiosClient.post(`${BASE}/${saleOrderId}`);
+  return data?.data?.invoice ?? data?.invoice ?? data;
+}
+
 export async function getSaleInvoiceById(id: string): Promise<SaleInvoice | null> {
-  const { data } = await axiosClient.post(`${BASE}/${id}`);
-  return data?.data?.invoice || data?.invoice || data;
+  const { data } = await axiosClient.get(`${BASE}/${id}`);
+  return data?.data?.invoice ?? data?.invoice ?? data ?? null;
 }

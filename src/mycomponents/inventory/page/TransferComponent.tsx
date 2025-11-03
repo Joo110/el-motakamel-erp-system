@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ArrowRight } from 'lucide-react';
 import { useInventories } from '@/mycomponents/inventory/hooks/useInventories';
-import { useStockTransfer } from '../hooks/useStockTransfer'; // عدّل المسار لو مختلف
+import { useStockTransfer } from '../hooks/useStockTransfer';
 import { toast } from 'react-hot-toast';
 
 interface TransferredProduct {
   id: string;
-  productId?: string; // مهم علشان نبعت الـ productId للباك
+  productId?: string;
   name: string;
   code: string;
   units: number;
@@ -23,7 +23,7 @@ const TransferComponent: React.FC = () => {
   const { createStockTransfer, loading: creatingTransfer} = useStockTransfer();
 
   // local table state
-  const [productsTable, setProductsTable] = useState<TransferredProduct[]>([]); // ابدأ فاضي أو خليه فيه عينات لو بتحب
+  const [productsTable, setProductsTable] = useState<TransferredProduct[]>([]);
 
   // form fields
   const [reference, setReference] = useState('');
@@ -169,7 +169,6 @@ const handleTransfer = async () => {
     }
     */
 
-    // ✅ فقط أضف الصف محليًا لجدول التحويل
     const selected = availableProducts.find((p) => p.stockId === selectedProductStockId);
     const newRow: TransferredProduct = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -202,15 +201,11 @@ const handleTransfer = async () => {
   }
 };
 
-  // Save Transfer: build payload and call createStockTransfer
-// داخل TransferComponent: استبدل handleSaveTransfer الحالي بهذا
-// داخل TransferComponent: استبدل handleSaveTransfer الحالي بهذا
 const handleSaveTransfer = async () => {
   if (!selectedFrom) { toast('Please select "Transfer from" before saving.'); return; }
   if (!selectedTo) { toast('Please select "To" before saving.'); return; }
   if (productsTable.length === 0) { toast('No transferred products to save.'); return; }
 
-  // دمج المنتجات اللي ليها نفس productId
   const mergedProductsMap: Record<string, { productId: string; unit: number; price: number }> = {};
 
   for (const row of productsTable) {
@@ -235,7 +230,7 @@ const handleSaveTransfer = async () => {
 
 
 const payload = {
-  status: 'pending',
+  status: 'draft',
   reference: reference || `TRF-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
   from: selectedFrom,
   to: selectedTo,

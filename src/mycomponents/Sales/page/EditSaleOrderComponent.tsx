@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Calendar, ChevronDown, Trash2, Save } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useSaleOrders } from '../../Sales/hooks/useSaleOrders';
-import { usePurchaseOrder } from '../../Precious/hooks/useCreatePurchaseOrder';
+import { usePurchaseOrder } from '../../Sales/hooks/useSaleOrders'; // ✅ استخدم نفس الـ hook
 import { useProducts } from '../../product/hooks/useProducts';
 import { useInventories } from '../../inventory/hooks/useInventories';
 import { useSuppliers } from '../../Precious/hooks/useSuppliers';
@@ -30,9 +29,8 @@ const EditSaleOrderComponent: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  // ===== Hooks =====
-const { item, loading: orderLoading, error: orderError } = usePurchaseOrder(id);
-  const { update } = useSaleOrders(); // Hook العام للتحديث
+  // ✅ استخدم نفس الـ hook اللي في StockOutDraftComponent
+  const { item, loading: orderLoading, error: orderError, patch } = usePurchaseOrder(id);
   const { products: productsFromHook = [], loading: productsLoading = false } = useProducts() as any;
   const { inventories = [], isLoading: inventoriesLoading = false } = useInventories() as any;
   const { suppliers = [], loading: suppliersLoading = false } = useSuppliers() as any;
@@ -57,8 +55,11 @@ const { item, loading: orderLoading, error: orderError } = usePurchaseOrder(id);
   const [selectedInventoryId, setSelectedInventoryId] = useState<string>('');
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
 
+  // ✅ تحميل البيانات من الـ API
   useEffect(() => {
     if (item) {
+      console.log('📦 Loaded Sale Order Data:', item);
+      
       setSupplierId(item.supplierId || '');
       setExpectedDeliveryDate(item.expectedDeliveryDate || '');
       setOrderDate(item.createdAt ? item.createdAt.split('T')[0] : '');
@@ -175,6 +176,7 @@ const { item, loading: orderLoading, error: orderError } = usePurchaseOrder(id);
     }));
   };
 
+  // ✅ استخدم patch بدل update
   const handleUpdate = async () => {
     try {
       if (!supplierId) {
@@ -195,8 +197,10 @@ const { item, loading: orderLoading, error: orderError } = usePurchaseOrder(id);
         notes: notes || undefined,
       };
 
-      await update(id!, payload);
+      console.log('🔄 Updating sale order with payload:', payload);
+      await patch(payload);
       toast.success('✅ Sale order updated successfully');
+      
       setTimeout(() => navigate(-1), 1000);
     } catch (err: any) {
       console.error('❌ Update error:', err);
@@ -287,7 +291,6 @@ const { item, loading: orderLoading, error: orderError } = usePurchaseOrder(id);
         <div className="mb-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Add More Products</h2>
           <div className="grid grid-cols-7 gap-3 items-end">
-            {/* Product dropdown */}
             <div className="relative">
               <label className="block text-xs text-gray-600 mb-1">Product</label>
               <select
@@ -305,7 +308,6 @@ const { item, loading: orderLoading, error: orderError } = usePurchaseOrder(id);
               <ChevronDown className="absolute right-2 top-8 w-4 h-4 text-gray-400" />
             </div>
 
-            {/* Inventory dropdown */}
             <div className="relative">
               <label className="block text-xs text-gray-600 mb-1">Inventory</label>
               <select
@@ -323,7 +325,6 @@ const { item, loading: orderLoading, error: orderError } = usePurchaseOrder(id);
               <ChevronDown className="absolute right-2 top-8 w-4 h-4 text-gray-400" />
             </div>
 
-            {/* Code */}
             <div>
               <label className="block text-xs text-gray-600 mb-1">Code</label>
               <input
@@ -334,7 +335,6 @@ const { item, loading: orderLoading, error: orderError } = usePurchaseOrder(id);
               />
             </div>
 
-            {/* Units */}
             <div>
               <label className="block text-xs text-gray-600 mb-1">Units</label>
               <input
@@ -346,7 +346,6 @@ const { item, loading: orderLoading, error: orderError } = usePurchaseOrder(id);
               />
             </div>
 
-            {/* Price */}
             <div>
               <label className="block text-xs text-gray-600 mb-1">Price</label>
               <input
@@ -359,7 +358,6 @@ const { item, loading: orderLoading, error: orderError } = usePurchaseOrder(id);
               />
             </div>
 
-            {/* Discount */}
             <div>
               <label className="block text-xs text-gray-600 mb-1">Discount</label>
               <input
@@ -372,7 +370,6 @@ const { item, loading: orderLoading, error: orderError } = usePurchaseOrder(id);
               />
             </div>
 
-            {/* Total */}
             <div>
               <label className="block text-xs text-gray-600 mb-1">Total</label>
               <input

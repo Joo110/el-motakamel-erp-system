@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useProducts } from "../hooks/useProducts";
 import { useCategories } from "@/mycomponents/category/hooks/useCategories";
 import type { Product } from "../services/productService";
+//import { toast } from 'react-hot-toast';
 
 interface CategoryItem {
   id: string;
