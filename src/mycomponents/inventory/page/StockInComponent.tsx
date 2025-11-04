@@ -25,13 +25,11 @@ const truncate = (s: string | undefined, n = 30) => {
 };
 
 const StockInComponent: React.FC = () => {
-  // ===== جدول المنتجات =====
 const [products, setProducts] = useState<ProductRow[]>([]);
 
 
   const total = useMemo(() => products.reduce((sum, product) => sum + product.total, 0), [products]);
 
-  // ===== form state for Add Products =====
   const [formProduct, setFormProduct] = useState({
     name: '',
     inventory: '',
@@ -41,18 +39,15 @@ const [products, setProducts] = useState<ProductRow[]>([]);
     discount: '0',
   });
 
-  // ===== selected ids =====
   const [supplierId, setSupplierId] = useState<string>('');
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [selectedInventoryId, setSelectedInventoryId] = useState<string>('');
 
-  // ===== الحقول الإضافية المطلوبة للـ API =====
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<string>('');
   const [orderDate, setOrderDate] = useState<string>('');
   const [currency, setCurrency] = useState<string>('SR');
   const [notes, setNotes] = useState<string>('');
   
-  // ⚠️ غيّر الـ IDs دي حسب بياناتك (أو اجلبهم من localStorage/Context)
   const [organizationId] = useState<string>('68c2d89e2ee5fae98d57bef1');
   const [createdBy] = useState<string>('68c699af13bdca2885ed4d27');
 
@@ -105,36 +100,55 @@ const [products, setProducts] = useState<ProductRow[]>([]);
     setFormProduct((f) => ({ ...f, inventory: inv?.name ?? '' }));
   };
 
-  const handleAddProduct = () => {
-    if (!selectedProductId || !selectedInventoryId || Number(formProduct.units) <= 0 || Number(formProduct.price) <= 0) {
-      toast.error('Please select product & inventory and fill Units (>0) and Price (>0)');
-      return;
-    }
+const handleAddProduct = () => {
+  // ✅ Validation
+  if (!selectedProductId) {
+    toast.error('Please select a product.');
+    return;
+  }
+  if (!selectedInventoryId) {
+    toast.error('Please select an inventory.');
+    return;
+  }
+  if (!formProduct.units || Number(formProduct.units) <= 0) {
+    toast.error('Units must be greater than 0.');
+    return;
+  }
+  if (!formProduct.price || Number(formProduct.price) <= 0) {
+    toast.error('Price must be greater than 0.');
+    return;
+  }
 
-    const units = Number(formProduct.units);
-    const price = Number(formProduct.price);
-    const discount = Number(formProduct.discount || 0);
-    const tot = units * price * (1 - discount / 100);
+  // ===== Add product logic =====
+  const units = Number(formProduct.units);
+  const price = Number(formProduct.price);
+  const discount = Number(formProduct.discount || 0);
+  const tot = units * price * (1 - discount / 100);
 
-    const productName = productsFromHook.find((p: any) => p._id === selectedProductId || p.id === selectedProductId)?.name ?? formProduct.name;
-    const inventoryName = inventories.find((i: any) => i._id === selectedInventoryId || i.id === selectedInventoryId)?.name ?? formProduct.inventory;
+  const productName =
+    productsFromHook.find((p: any) => p._id === selectedProductId || p.id === selectedProductId)?.name ??
+    formProduct.name;
+  const inventoryName =
+    inventories.find((i: any) => i._id === selectedInventoryId || i.id === selectedInventoryId)?.name ??
+    formProduct.inventory;
 
-    const newProduct: ProductRow = {
-      id: Date.now().toString(),
-      productId: selectedProductId,
-      inventoryId: selectedInventoryId,
-      name: productName,
-      inventoryName,
-      code: formProduct.code || '96060',
-      units,
-      price,
-      discount,
-      total: Math.round((tot + Number.EPSILON) * 100) / 100,
-    };
-
-    setProducts((prev) => [...prev, newProduct]);
-    handleResetForm();
+  const newProduct: ProductRow = {
+    id: Date.now().toString(),
+    productId: selectedProductId,
+    inventoryId: selectedInventoryId,
+    name: productName,
+    inventoryName,
+    code: formProduct.code || '96060',
+    units,
+    price,
+    discount,
+    total: Math.round((tot + Number.EPSILON) * 100) / 100,
   };
+
+  setProducts((prev) => [...prev, newProduct]);
+  handleResetForm();
+};
+
 
   const handleCheckboxToggle = (id: string) => {
     setSelectedProducts((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -145,7 +159,6 @@ const [products, setProducts] = useState<ProductRow[]>([]);
     setSelectedProducts((prev) => prev.filter((x) => x !== id));
   };
 
-  // ===== تحويل المنتجات للـ payload المطلوب =====
   function mapProductsForApi(p: ProductRow[]) {
     return p.map((prod) => ({
       productId: prod.productId,
@@ -157,7 +170,6 @@ const [products, setProducts] = useState<ProductRow[]>([]);
     }));
   }
 
-  // ===== حفظ الطلب وإرساله للـ API =====
   const handleSave = async () => {
     try {
       if (!supplierId) {
@@ -184,7 +196,6 @@ const [products, setProducts] = useState<ProductRow[]>([]);
       await create(payload);
       toast.success('✅ Order saved successfully');
       
-      // Reset بعد النجاح
       setProducts([]);
       setSupplierId('');
       setExpectedDeliveryDate('');

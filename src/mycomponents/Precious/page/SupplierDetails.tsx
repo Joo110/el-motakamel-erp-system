@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Suppliers } from "../hooks/Suppliers";
+//import { toast } from 'react-hot-toast';
 
 const SupplierDetails = () => {
   const { id } = useParams();
@@ -24,7 +25,6 @@ const SupplierDetails = () => {
   if (!supplier)
     return <p className="p-6 text-gray-600">Loading supplier details...</p>;
 
-  // بيانات تجريبية للـ Orders (ممكن بعدين تربطها بـ API)
   const orders = [
     {
       number: "3523543235",
@@ -71,12 +71,6 @@ const SupplierDetails = () => {
               className="bg-red-300 hover:bg-red-400 text-white px-4 py-2 rounded-full"
             >
               Delete Supplier
-            </button>
-            <button
-              onClick={() => navigate(`/precious/supplier/edit/${supplier._id}`)}
-              className="bg-gray-800 hover:bg-blue-800 text-white px-4 py-2 rounded-full"
-            >
-              Edit Details
             </button>
           </div>
         </div>

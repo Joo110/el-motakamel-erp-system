@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Suppliers } from "../hooks/Suppliers";
+import { toast } from "react-hot-toast";
 
 const SupplierAdd = () => {
   const navigate = useNavigate();
@@ -16,13 +17,52 @@ const SupplierAdd = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const validateForm = () => {
+    if (!form.name.trim()) {
+      toast.error("Please enter supplier name.");
+      return false;
+    }
+    if (!form.address.trim()) {
+      toast.error("Please enter address.");
+      return false;
+    }
+    if (!form.email.trim()) {
+      toast.error("Please enter email.");
+      return false;
+    }
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email)) {
+      toast.error("Invalid email format.");
+      return false;
+    }
+    if (!form.phone.trim()) {
+      toast.error("Please enter phone number.");
+      return false;
+    }
+    // Basic phone validation (digits only, length 6-15)
+    const phoneRegex = /^[0-9]{6,15}$/;
+    if (!phoneRegex.test(form.phone)) {
+      toast.error("Invalid phone number. Only digits allowed (6-15 characters).");
+      return false;
+    }
+    return true;
+  };
+
   const handleSave = async () => {
-    await addSupplier({
-      ...form,
-      organizationId: ["68c2d89e2ee5fae98d57bef1"],
-      createdBy: "68c034e28feb5edb98b6ee36",
-    });
-    navigate("/dashboard/supplier");
+    if (!validateForm()) return; // Stop if validation fails
+    try {
+      await addSupplier({
+        ...form,
+        organizationId: ["68c2d89e2ee5fae98d57bef1"],
+        createdBy: "68c034e28feb5edb98b6ee36",
+      });
+      toast.success("Supplier added successfully!");
+      navigate("/dashboard/supplier");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to add supplier.");
+    }
   };
 
   return (

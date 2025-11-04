@@ -1,52 +1,97 @@
-import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { X } from "lucide-react";
+import { toast } from "react-hot-toast";
+import axiosClient from "@/lib/axiosClient";
+import { useDepartments } from "../../Department/hooks/useDepartments";
+import { useRoles } from "../../Roles/hooks/useRoles";
+import { useEmployees } from "../../HR/hooks/useEmployees";
 
 type Employee = {
+  _id: string;
   name: string;
   jobTitle: string;
   nationalId: string;
   address: string;
-  dateOfBirth: string;
+  birthDate: string;
   email: string;
   phone: string;
-  alternatePhone: string;
+  alternativePhone: string;
   department: string;
   workLocation: string;
   role: string;
-  level: string;
+  experienceLevel: string;
   employmentType: string;
   manager: string;
-  salary: string;
-  dateOfEmployment: string;
+  salary: number;
+  employmentDate: string;
+  avatar?: string;
 };
 
 const ViewEmployeeScreen: React.FC = () => {
-  const [employee] = useState<Employee>({
-    name: 'Anwar Tarek Mohammed Youssef',
-    jobTitle: 'Back-End Developer',
-    nationalId: '30108577305730',
-    address: 'Mdigromt, Abo Natiom -Bosts Street',
-    dateOfBirth: '19-3-2025',
-    email: 'antar1998@gmail.com',
-    phone: '0120831246453',
-    alternatePhone: '01198742909BL',
-    department: 'Software',
-    workLocation: 'Mansoura office',
-    role: 'Employee',
-    level: 'Senior',
-    employmentType: 'Full Time',
-    manager: 'Aali Hassan',
-    salary: '78,000 SR',
-    dateOfEmployment: '19/10/2025',
-  });
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [employee, setEmployee] = useState<Employee | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleEdit = () => {
-    console.log('Edit employee');
+  const fetchEmployee = async () => {
+    try {
+      setLoading(true);
+      const res = await axiosClient.get(`/employees/${id}`);
+      const emp = res.data.data.employee;
+      if (!emp) {
+        toast.error("Employee not found");
+        navigate(-1);
+        return;
+      }
+
+      setEmployee({
+        ...emp,
+        birthDate: emp.birthDate?.split("T")[0],
+        employmentDate: emp.employmentDate?.split("T")[0],
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to fetch employee details");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleClose = () => {
-    console.log('Close view');
-  };
+  const { departments } = useDepartments();
+  const { roles } = useRoles();
+  const { employees: allEmployees } = useEmployees();
+
+  useEffect(() => {
+    if (id) fetchEmployee();
+  }, [id]);
+
+  const handleClose = () => navigate(-1);
+
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-500">
+        Loading employee details...
+      </div>
+    );
+
+  if (!employee)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-500">
+        No employee found.
+      </div>
+    );
+
+  const departmentName =
+    departments.find((d) => d._id === employee.department)?.name ??
+    employee.department;
+
+  const roleName =
+roles.find((r) => r._id === employee.role)?.role ?? employee.role;
+
+  const managerName =
+    allEmployees.find((m) => m._id === employee.manager)?.name ??
+    employee.manager;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -61,12 +106,12 @@ const ViewEmployeeScreen: React.FC = () => {
                 <span>&gt;</span>
                 <span>HR</span>
                 <span>&gt;</span>
-                <span>Anwar Tarek M.Yousef</span>
+                <span>{employee.name}</span>
                 <span>&gt;</span>
-                <span>Edit</span>
+                <span>View</span>
               </div>
             </div>
-            <button 
+            <button
               onClick={handleClose}
               className="text-gray-600 hover:text-gray-800"
             >
@@ -79,131 +124,169 @@ const ViewEmployeeScreen: React.FC = () => {
       {/* Main Content */}
       <div className="max-w-5xl mx-auto px-6 py-6">
         <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h2 className="text-base font-semibold text-gray-900 mb-5">Personal Details</h2>
-          
-          {/* Personal Details Grid - Read Only */}
+          <h2 className="text-base font-semibold text-gray-900 mb-5">
+            Personal Details
+          </h2>
+
+          {/* Personal Info */}
           <div className="grid grid-cols-3 gap-5 mb-5">
             <div className="col-span-2 space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Employee Name</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  Employee Name
+                </label>
                 <div className="text-sm text-gray-900 py-2">{employee.name}</div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Job Title</label>
-                <div className="text-sm text-gray-900 py-2">{employee.jobTitle}</div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  Job Title
+                </label>
+                <div className="text-sm text-gray-900 py-2">
+                  {employee.jobTitle}
+                </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">National Id</label>
-                <div className="text-sm text-gray-900 py-2">{employee.nationalId}</div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  National ID
+                </label>
+                <div className="text-sm text-gray-900 py-2">
+                  {employee.nationalId}
+                </div>
               </div>
             </div>
 
-            {/* Image Display Section */}
+            {/* Avatar */}
             <div>
-              <div className="w-full h-36 bg-gray-100 rounded flex items-center justify-center text-gray-400 mb-2 text-xs">
-                Image preview
-              </div>
-              <div className="flex gap-2">
-                <button className="flex-1 px-3 py-1.5 bg-gray-200 text-gray-700 rounded text-xs">
-                  Edit Image
-                </button>
-                <button className="flex-1 px-3 py-1.5 bg-gray-700 text-white rounded text-xs">
-                  Upload Image
-                </button>
+              <div className="w-full h-36 bg-gray-100 rounded flex items-center justify-center overflow-hidden text-gray-400 mb-2 text-xs">
+                {employee.avatar ? (
+                  <img
+                    src={employee.avatar}
+                    alt="Employee Avatar"
+                    className="w-full h-full object-contain object-center bg-gray-100"
+                  />
+                ) : (
+                  <span>No image</span>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Contact Information - Read Only */}
+          {/* Contact Info */}
           <div className="grid grid-cols-2 gap-5 mb-5">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Address</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Address
+              </label>
               <div className="text-sm text-gray-900 py-2">{employee.address}</div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Date of Birth</label>
-              <div className="text-sm text-gray-900 py-2">{employee.dateOfBirth}</div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Date of Birth
+              </label>
+              <div className="text-sm text-gray-900 py-2">
+                {employee.birthDate}
+              </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Email</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Email
+              </label>
               <div className="text-sm text-gray-900 py-2">{employee.email}</div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Phone</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Phone
+              </label>
               <div className="text-sm text-gray-900 py-2">{employee.phone}</div>
             </div>
 
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-500 mb-1">Alternate Phone</label>
-              <div className="text-sm text-gray-900 py-2">{employee.alternatePhone}</div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Alternate Phone
+              </label>
+              <div className="text-sm text-gray-900 py-2">
+                {employee.alternativePhone}
+              </div>
             </div>
           </div>
 
-          {/* Job Details Section - Read Only */}
-          <h2 className="text-base font-semibold text-gray-900 mb-5 mt-6">Job Details</h2>
+          {/* Job Details */}
+          <h2 className="text-base font-semibold text-gray-900 mb-5 mt-6">
+            Job Details
+          </h2>
 
           <div className="grid grid-cols-3 gap-5 mb-5">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Department</label>
-              <div className="text-sm text-gray-900 py-2">{employee.department}</div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Department
+              </label>
+              <div className="text-sm text-gray-900 py-2">{departmentName}</div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Work Location</label>
-              <div className="text-sm text-gray-900 py-2">{employee.workLocation}</div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Work Location
+              </label>
+              <div className="text-sm text-gray-900 py-2">
+                {employee.workLocation}
+              </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Position</label>
-              <div className="text-sm text-gray-900 py-2">{employee.role}</div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Position (Role)
+              </label>
+              <div className="text-sm text-gray-900 py-2">{roleName}</div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Level of Experience</label>
-              <div className="text-sm text-gray-900 py-2">{employee.level}</div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Level of Experience
+              </label>
+              <div className="text-sm text-gray-900 py-2">
+                {employee.experienceLevel}
+              </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Employment Type</label>
-              <div className="text-sm text-gray-900 py-2">{employee.employmentType}</div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Employment Type
+              </label>
+              <div className="text-sm text-gray-900 py-2">
+                {employee.employmentType}
+              </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Manager</label>
-              <div className="text-sm text-gray-900 py-2">{employee.manager}</div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Manager
+              </label>
+              <div className="text-sm text-gray-900 py-2">{managerName}</div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Salary</label>
-              <div className="text-sm text-gray-900 py-2">{employee.salary}</div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Salary
+              </label>
+              <div className="text-sm text-gray-900 py-2">
+                {employee.salary} EGP
+              </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Date of Employment</label>
-              <div className="text-sm text-gray-900 py-2">{employee.dateOfEmployment}</div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Date of Employment
+              </label>
+              <div className="text-sm text-gray-900 py-2">
+                {employee.employmentDate}
+              </div>
             </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-3 mt-6">
-            <button 
-              onClick={handleClose}
-              className="px-5 py-2 border border-gray-300 text-gray-700 rounded text-sm hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button 
-              onClick={handleEdit}
-              className="px-5 py-2 bg-slate-700 text-white rounded text-sm hover:bg-slate-800"
-            >
-              Save Details
-            </button>
-          </div>
+          </div>    
         </div>
       </div>
     </div>

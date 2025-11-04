@@ -34,7 +34,6 @@ const EditPurchaseOrderComponent: React.FC = () => {
   const { inventories = [], isLoading: inventoriesLoading = false } = useInventories() as any;
   const { suppliers = [], loading: suppliersLoading = false } = useSuppliers() as any;
 
-  // ===== State =====
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [supplierId, setSupplierId] = useState<string>('');
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<string>('');
@@ -42,7 +41,6 @@ const EditPurchaseOrderComponent: React.FC = () => {
   const [currency, setCurrency] = useState<string>('SR');
   const [notes, setNotes] = useState<string>('');
 
-  // Form state for adding new products
   const [formProduct, setFormProduct] = useState({
     name: '',
     inventory: '',
@@ -55,18 +53,15 @@ const EditPurchaseOrderComponent: React.FC = () => {
   const [selectedInventoryId, setSelectedInventoryId] = useState<string>('');
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
 
-  // ===== تحميل البيانات من الـ API وتعبئة الفورم =====
+  // Load data
   useEffect(() => {
     if (item) {
-      console.log('📦 Loaded Order Data:', item);
-      
       setSupplierId(item.supplierId || '');
       setExpectedDeliveryDate(item.expectedDeliveryDate || '');
       setOrderDate(item.createdAt ? item.createdAt.split('T')[0] : '');
       setCurrency(item.currency || 'SR');
       setNotes(item.notes || '');
 
-      // تحويل المنتجات للـ ProductRow format
       if (item.products && item.products.length > 0) {
         const mappedProducts: ProductRow[] = item.products.map((p: any, idx: number) => ({
           id: p._id || `product-${idx}`,
@@ -95,7 +90,6 @@ const EditPurchaseOrderComponent: React.FC = () => {
     return isFinite(tot) ? tot.toFixed(2) + ' ' + currency : '0.00 ' + currency;
   }, [formProduct.units, formProduct.price, formProduct.discount, currency]);
 
-  // ===== Handlers =====
   const handleFormChange = (key: keyof typeof formProduct, value: string) => {
     setFormProduct((s) => ({ ...s, [key]: value }));
   };
@@ -123,10 +117,11 @@ const EditPurchaseOrderComponent: React.FC = () => {
   };
 
   const handleAddProduct = () => {
-    if (!selectedProductId || !selectedInventoryId || Number(formProduct.units) <= 0 || Number(formProduct.price) <= 0) {
-      toast.error('Please select product & inventory and fill Units (>0) and Price (>0)');
-      return;
-    }
+    // ✅ Validation
+    if (!selectedProductId) return toast.error('Select a product.');
+    if (!selectedInventoryId) return toast.error('Select an inventory.');
+    if (Number(formProduct.units) <= 0) return toast.error('Units must be greater than 0.');
+    if (Number(formProduct.price) <= 0) return toast.error('Price must be greater than 0.');
 
     const units = Number(formProduct.units);
     const price = Number(formProduct.price);
@@ -164,7 +159,6 @@ const EditPurchaseOrderComponent: React.FC = () => {
     toast.success('🗑️ Product removed');
   };
 
-  // ===== تحويل المنتجات للـ payload =====
   function mapProductsForApi(p: ProductRow[]) {
     return p.map((prod) => ({
       productId: prod.productId,
@@ -176,19 +170,12 @@ const EditPurchaseOrderComponent: React.FC = () => {
     }));
   }
 
-  // ===== حفظ التعديلات =====
   const handleUpdate = async () => {
+    // ✅ Form Validation
+    if (!supplierId) return toast.error('Select a supplier.');
+    if (products.length === 0) return toast.error('Add at least one product.');
+
     try {
-      if (!supplierId) {
-        toast.error('Please select a supplier before updating.');
-        return;
-      }
-
-      if (products.length === 0) {
-        toast.error('Please add at least one product.');
-        return;
-      }
-
       const payload: any = {
         supplierId,
         products: mapProductsForApi(products),
@@ -197,19 +184,19 @@ const EditPurchaseOrderComponent: React.FC = () => {
         notes: notes || undefined,
       };
 
-      console.log('🔄 Updating order with payload:', payload);
       await patch(payload);
       toast.success('✅ Order updated successfully');
-      
-      // رجوع للصفحة السابقة بعد 1 ثانية
-      setTimeout(() => {
-        navigate(-1);
-      }, 1000);
+
+      setTimeout(() => navigate(-1), 1000);
     } catch (err) {
       console.error('❌ Update error:', err);
-      toast.error('Failed to update order. Check console for details.');
+      toast.error('Failed to update order.');
     }
   };
+
+  if (orderLoading) return <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">Loading order...</div>;
+  if (orderError) return <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center text-red-600">Error: {orderError.message}</div>;
+  if (!item) return <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">Order not found</div>;
 
   // ===== Loading & Error States =====
   if (orderLoading) {
@@ -223,7 +210,7 @@ const EditPurchaseOrderComponent: React.FC = () => {
   if (orderError) {
     return (
       <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
-        <div className="text-lg text-red-600">Error loading order: {orderError.message}</div>
+        <div className="text-lg text-red-600">Error loading order: {orderError}</div>
       </div>
     );
   }

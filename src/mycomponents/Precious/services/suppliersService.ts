@@ -26,31 +26,31 @@ export type SupplierResponse = {
    SERVICE FUNCTIONS
 ============================================================ */
 
-// ✅ Get all suppliers
+// Get all suppliers
 export async function getSuppliers(config?: AxiosRequestConfig): Promise<Supplier[]> {
   const { data } = await axiosClient.get<SupplierResponse>("/suppliers", config);
   return data?.data?.suppliers || [];
 }
 
-// ✅ Get single supplier by ID
+// Get single supplier by ID
 export async function getSupplierById(id: string, config?: AxiosRequestConfig): Promise<Supplier | null> {
   const { data } = await axiosClient.get<SupplierResponse>(`/suppliers/${id}`, config);
   return data?.data?.supplier || null;
 }
 
-// ✅ Create supplier
+// Create supplier
 export async function createSupplier(body: Supplier, config?: AxiosRequestConfig): Promise<Supplier> {
   const { data } = await axiosClient.post<SupplierResponse>("/suppliers", body, config);
   return data?.data?.supplier || (data as unknown as Supplier);
 }
 
-// ✅ Update supplier
+// Update supplier
 export async function updateSupplier(id: string, body: Partial<Supplier>, config?: AxiosRequestConfig): Promise<Supplier> {
-  const { data } = await axiosClient.put<SupplierResponse>(`/suppliers/${id}`, body, config);
+  const { data } = await axiosClient.patch<SupplierResponse>(`/suppliers/${id}`, body, config);
   return data?.data?.supplier || (data as unknown as Supplier);
 }
 
-// ✅ Delete supplier
+// Delete supplier
 export async function deleteSupplier(id: string, config?: AxiosRequestConfig): Promise<{ message?: string }> {
   const { data } = await axiosClient.delete<{ message?: string }>(`/suppliers/${id}`, config);
   return data;

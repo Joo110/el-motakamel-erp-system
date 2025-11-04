@@ -16,7 +16,7 @@ const EditProductForm: React.FC = () => {
   const [saving, setSaving] = useState(false);
 
   const [productName, setProductName] = useState("");
-  const [category, setCategory] = useState(""); // will store category _id
+  const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [code, setCode] = useState("");
   const [price, setPrice] = useState("");
@@ -24,7 +24,6 @@ const EditProductForm: React.FC = () => {
   const [units, setUnits] = useState("");
   const [image, setImage] = useState("");
 
-  // helper: resolve category id from various product.category shapes
   const resolveCategoryId = (prodCat: any) => {
     if (!prodCat) return "";
     // if it's a string assume it's the id
@@ -85,9 +84,9 @@ const EditProductForm: React.FC = () => {
   }, [productId, getProductById, apiCategories]);
 
   const calculateTotal = () => {
-    const priceNum = parseFloat(price) || 0;
-    const taxNum = parseFloat(tax) || 0;
-    const unitsNum = parseFloat(units) || 0;
+    const priceNum = parseFloat((price || "").toString().replace(",", ".")) || 0;
+    const taxNum = parseFloat((tax || "").toString().replace(",", ".")) || 0;
+    const unitsNum = parseFloat((units || "").toString().replace(",", ".")) || 0;
     return ((priceNum + taxNum) * unitsNum).toFixed(3);
   };
 
@@ -95,14 +94,57 @@ const EditProductForm: React.FC = () => {
     try {
       setSaving(true);
 
-      // build payload: ensure category id is sent
+      // ===== validation =====
+      if (!productId) {
+        toast.error("Product ID missing. Cannot save.");
+        setSaving(false);
+        return;
+      }
+
+      // normalize price (allow comma or dot as decimal separator)
+      const normalizedPriceStr = (price || "").toString().trim().replace(",", ".");
+      const priceNum = parseFloat(normalizedPriceStr);
+
+      if (isNaN(priceNum)) {
+        toast.error("Please enter a valid price (numbers only).");
+        setSaving(false);
+        return;
+      }
+
+      if (priceNum < 0) {
+        toast.error("Price cannot be negative.");
+        setSaving(false);
+        return;
+      }
+
+      // units validation: if empty, fallback to 1 for calculations and payload
+      let unitsNum = parseFloat((units || "").toString().replace(",", ".")) || 1;
+      if (isNaN(unitsNum) || unitsNum <= 0) {
+        // use fallback 1 but warn user
+        unitsNum = 1;
+      }
+
+      // tax validation (if provided) - ensure numeric
+      const taxNormalized = (tax || "").toString().trim().replace(",", ".");
+      const taxNum = taxNormalized === "" ? 0 : parseFloat(taxNormalized);
+      if (taxNormalized !== "" && isNaN(taxNum)) {
+        toast.error("Invalid tax value.");
+        setSaving(false);
+        return;
+      }
+
+      // build payload: ensure category id is sent only if not empty
       const payload: any = {
-        price: parseFloat(price) || 0,
-        category: category || undefined,
+        price: priceNum,
       };
 
-      // If you don't want to overwrite category when it's empty, remove it from payload:
-      if (!payload.category) delete payload.category;
+      if (category && String(category).trim() !== "") {
+        payload.category = category;
+      }
+
+      // include units/tax in payload if meaningful (optional)
+      if (!isNaN(unitsNum)) payload.unit = unitsNum;
+      if (!isNaN(taxNum)) payload.tax = taxNum;
 
       console.log("📦 Payload to send:", payload);
 

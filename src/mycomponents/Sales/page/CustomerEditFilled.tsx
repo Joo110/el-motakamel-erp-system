@@ -29,16 +29,49 @@ const CustomerEditFilled: React.FC = () => {
     })();
   }, [id, getCustomer]);
 
+  // ===== فلديشن =====
+  const validateForm = () => {
+    if (!form.name.trim()) {
+      toast.error('Customer name is required');
+      return false;
+    }
+    if (!form.address.trim()) {
+      toast.error('Address is required');
+      return false;
+    }
+    if (!form.email.trim()) {
+      toast.error('Email is required');
+      return false;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email)) {
+      toast.error('Invalid email format');
+      return false;
+    }
+    if (!form.phone.trim()) {
+      toast.error('Phone number is required');
+      return false;
+    }
+    const phoneRegex = /^[0-9]{6,15}$/;
+    if (!phoneRegex.test(form.phone)) {
+      toast.error('Phone number should contain 6-15 digits only');
+      return false;
+    }
+    return true;
+  };
+
   const handleSave = async () => {
     if (!id) return;
+    if (!validateForm()) return; // تحقق من الفلديشن قبل الحفظ
+
     setSaving(true);
     try {
       await updateExistingCustomer(id, form);
-      toast('Saved');
+      toast.success('Customer saved successfully');
       navigate(`/dashboard/sales/customer/${id}`);
     } catch (err) {
       console.error('Save failed', err);
-      toast('Save failed. Check console.');
+      toast.error('Save failed. Check console.');
     } finally {
       setSaving(false);
     }

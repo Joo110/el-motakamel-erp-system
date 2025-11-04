@@ -107,44 +107,54 @@ const StockOutComponent: React.FC = () => {
   };
 
   const handleAddProduct = () => {
-    console.groupCollapsed('[StockOut] handleAddProduct start');
-    console.log('selectedProductId:', selectedProductId);
-    console.log('selectedInventoryId:', selectedInventoryId);
-    console.log('formProduct:', formProduct);
+  // ✅ Validation لكل الحقول المهمة
+  if (!selectedProductId) {
+    toast.error('Please select a product.');
+    return;
+  }
+  if (!selectedInventoryId) {
+    toast.error('Please select an inventory.');
+    return;
+  }
+  if (!formProduct.units || Number(formProduct.units) <= 0) {
+    toast.error('Units must be greater than 0.');
+    return;
+  }
+  if (!formProduct.price || Number(formProduct.price) <= 0) {
+    toast.error('Price must be greater than 0.');
+    return;
+  }
 
-    if (!selectedProductId || !selectedInventoryId || Number(formProduct.units) <= 0 || Number(formProduct.price) <= 0) {
-      toast('Please select product & inventory and fill Units (>0) and Price (>0)');
-      console.warn('[StockOut] validation failed in handleAddProduct');
-      console.groupEnd();
-      return;
-    }
+  // ===== Add product logic =====
+  const units = Number(formProduct.units);
+  const price = Number(formProduct.price);
+  const discount = Number(formProduct.discount || 0);
+  const tot = units * price * (1 - discount / 100);
 
-    const units = Number(formProduct.units);
-    const price = Number(formProduct.price);
-    const discount = Number(formProduct.discount || 0);
-    const tot = units * price * (1 - discount / 100);
+  const productName =
+    productsFromHook.find((p: any) => p._id === selectedProductId || p.id === selectedProductId)?.name ??
+    formProduct.name;
+  const inventoryName =
+    inventories.find((i: any) => i._id === selectedInventoryId || i.id === selectedInventoryId)?.name ??
+    formProduct.inventory;
 
-    const productName = productsFromHook.find((p: any) => p._id === selectedProductId || p.id === selectedProductId)?.name ?? formProduct.name;
-    const inventoryName = inventories.find((i: any) => i._id === selectedInventoryId || i.id === selectedInventoryId)?.name ?? formProduct.inventory;
-
-    const newProduct: ProductRow = {
-      id: Date.now().toString(),
-      productId: selectedProductId,
-      inventoryId: selectedInventoryId,
-      name: productName,
-      inventoryName,
-      code: formProduct.code || '96269',
-      units,
-      price,
-      discount,
-      total: Math.round((tot + Number.EPSILON) * 100) / 100,
-    };
-
-    console.log('[StockOut] newProduct:', newProduct);
-    setProducts((prev) => [...prev, newProduct]);
-    handleResetForm();
-    console.groupEnd();
+  const newProduct: ProductRow = {
+    id: Date.now().toString(),
+    productId: selectedProductId,
+    inventoryId: selectedInventoryId,
+    name: productName,
+    inventoryName,
+    code: formProduct.code || '96269',
+    units,
+    price,
+    discount,
+    total: Math.round((tot + Number.EPSILON) * 100) / 100,
   };
+
+  setProducts((prev) => [...prev, newProduct]);
+  handleResetForm();
+};
+
 
   const handleCheckboxToggle = (id: string) => {
     setSelectedProducts((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -192,14 +202,14 @@ const StockOutComponent: React.FC = () => {
       console.log('notes:', notes);
 
       if (!customerId) {
-        toast('Please select a customer before saving.');
+        toast.error('Please select a customer before saving.');
         console.warn('[StockOut] missing customerId');
         console.groupEnd();
         return;
       }
       
       if (products.length === 0) {
-        toast('Please add at least one product.');
+        toast.error('Please add at least one product.');
         console.warn('[StockOut] products array empty');
         console.groupEnd();
         return;

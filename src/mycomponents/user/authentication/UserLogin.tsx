@@ -1,39 +1,54 @@
 import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mail, Lock, EyeOff, Eye } from "lucide-react";
-import { useState } from "react";
-import { toast } from 'react-hot-toast';
+import { useState, useEffect } from "react";
+import Cookies from "js-cookie";
+import { toast } from "react-hot-toast";
 import { Link, useNavigate } from "react-router-dom";
 import { useLogin } from "@/mycomponents/user/hooks/useLogin";
 
-type FormData = {
-  email: string;
-  password: string;
-};
+const loginSchema = z.object({
+  email: z.string().nonempty("Email is required").email("Invalid email address"),
+  password: z.string().nonempty("Password is required").min(6, "Password must be at least 6 characters"),
+});
+
+type FormData = z.infer<typeof loginSchema>;
 
 const UserLogin = () => {
   const {
     register,
     handleSubmit,
     formState: { isSubmitting, errors },
-  } = useForm<FormData>();
+  } = useForm<FormData>({
+    resolver: zodResolver(loginSchema),
+    mode: "onSubmit",
+  });
 
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { login, loading } = useLogin();
+
+  // ✅ لو المستخدم عامل لوجن، يروح على الداشبورد
+  useEffect(() => {
+    const token = Cookies.get("authToken");
+    if (token) {
+      navigate("/dashboard");
+    }
+  }, [navigate]);
 
   const onSubmit = async (data: FormData) => {
     try {
       const response = await login(data.email, data.password);
 
       if (response.token || response.accessToken) {
-        toast.success("Login successful! 🎉");
+        toast.success("Login successful!");
         navigate("/dashboard");
       } else {
         toast.error("Login failed: No token received");
       }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       const errorMessage =
         error?.response?.data?.message ||
@@ -46,14 +61,12 @@ const UserLogin = () => {
 
   return (
     <div className="flex flex-col items-start space-y-6 max-w-md mx-auto mt-10">
-<img src="/images/Logo.png" alt="Logo" className="w-24 h-auto mb-2" />
-
+      <img src="/images/Logo.png" alt="Logo" className="w-24 h-auto mb-2" />
       <h2 className="text-black text-[32px] font-bold">
         Welcome back! Please log in to continue.
       </h2>
 
       <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-4">
-        {/* Email */}
         <div className="w-full">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Email
@@ -61,13 +74,7 @@ const UserLogin = () => {
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
-              {...register("email", {
-                required: "Email is required",
-                pattern: {
-                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                  message: "Invalid email address",
-                },
-              })}
+              {...register("email")}
               type="email"
               placeholder="Enter your email"
               className="pl-9 border-[2px] border-[#213555] rounded w-full"
@@ -80,7 +87,6 @@ const UserLogin = () => {
           )}
         </div>
 
-        {/* Password */}
         <div className="w-full">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Password
@@ -88,13 +94,7 @@ const UserLogin = () => {
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
-              {...register("password", {
-                required: "Password is required",
-                minLength: {
-                  value: 6,
-                  message: "Password must be at least 6 characters",
-                },
-              })}
+              {...register("password")}
               type={showPassword ? "text" : "password"}
               placeholder="Enter Your Password"
               className="pl-9 border-[2px] border-[#213555] rounded"
@@ -115,10 +115,7 @@ const UserLogin = () => {
         </div>
 
         <p className="text-sm text-gray-600 mt-4 text-right">
-          <Link
-            to="/user-forget-password"
-            className="text-[#213555] hover:text-[#1a2b45] font-medium"
-          >
+          <Link to="/user-forget-password" className="text-[#213555] hover:text-[#1a2b45] font-medium">
             Forget Password
           </Link>
         </p>
@@ -133,10 +130,7 @@ const UserLogin = () => {
 
         <p className="text-sm text-gray-600 mt-4 text-center">
           Don't have an account?{" "}
-          <Link
-            to="/user-register"
-            className="text-[#213555] hover:text-[#1a2b45] font-medium"
-          >
+          <Link to="/user-register" className="text-[#213555] hover:text-[#1a2b45] font-medium">
             Create a new account
           </Link>
         </p>

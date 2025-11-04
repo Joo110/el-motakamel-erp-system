@@ -24,19 +24,49 @@ const CustomerAdd: React.FC = () => {
 
   const onChange = (k: string, v: string) => setForm((s) => ({ ...s, [k]: v }));
 
-  const handleSave = async () => {
-    if (!form.name) {
-      toast('Customer name required');
-      return;
+  const validateForm = () => {
+    if (!form.name.trim()) {
+      toast.error('Customer name is required');
+      return false;
     }
+    if (!form.email.trim()) {
+      toast.error('Email is required');
+      return false;
+    }
+    // Basic email format check
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email)) {
+      toast.error('Invalid email format');
+      return false;
+    }
+    if (!form.phone.trim()) {
+      toast.error('Phone number is required');
+      return false;
+    }
+    // Optional: phone number format
+    const phoneRegex = /^[0-9]{6,15}$/;
+    if (!phoneRegex.test(form.phone)) {
+      toast.error('Phone number should contain 6-15 digits only');
+      return false;
+    }
+    if (!form.address.trim()) {
+      toast.error('Address is required');
+      return false;
+    }
+    return true;
+  };
+
+  const handleSave = async () => {
+    if (!validateForm()) return;
+
     setSaving(true);
     try {
       await createNewCustomer(ORG_ID, form);
-      toast('Customer created');
+      toast.success('Customer created successfully');
       navigate('/dashboard/sales/customers');
     } catch (err) {
       console.error('Create failed', err);
-      toast('Create failed. Check console.');
+      toast.error('Create failed. Check console.');
     } finally {
       setSaving(false);
     }

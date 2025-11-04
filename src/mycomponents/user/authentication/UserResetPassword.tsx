@@ -42,11 +42,17 @@ const UserResetPassword = () => {
         password: data.password,
         confirmPassword: data.confirmPassword,
       });
-      toast.success(response.message || "Password reset successfully ✅");
-    }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars 
-    catch (_error) {
-      toast.error("Failed to reset password. Please try again ❌");
+      toast.success(response?.message || "Password reset successfully ✅");
+    } catch (error: any) {
+      // عرض رسالة الخطأ من السيرفر إن وُجِدت، وإلا رسالة عامة
+      const errMsg =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to reset password. Please try again ❌";
+      toast.error(errMsg);
+      // useful for debugging without affecting UI
+      // eslint-disable-next-line no-console
+      console.error("Reset password error:", error);
     }
   };
 
@@ -67,6 +73,10 @@ const UserResetPassword = () => {
           <Input
             {...register("email", {
               required: "Email is required",
+              pattern: {
+                value: /^\S+@\S+\.\S+$/i,
+                message: "Invalid email address",
+              },
             })}
             type="email"
             placeholder="Enter your email"
@@ -88,8 +98,14 @@ const UserResetPassword = () => {
               {...register("password", {
                 required: "Password is required",
                 minLength: {
-                  value: 6,
-                  message: "Password must be at least 6 characters",
+                  value: 8,
+                  message: "Password must be at least 8 characters",
+                },
+                pattern: {
+                  // at least one lowercase, one uppercase, one digit, one special char
+                  value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{8,}$/,
+                  message:
+                    "Password must include uppercase, lowercase, number & special character",
                 },
               })}
               type={showPassword ? "text" : "password"}

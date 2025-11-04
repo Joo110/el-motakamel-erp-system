@@ -323,6 +323,24 @@ const StockSearchView: React.FC = () => {
 
   const stockTotalPages = Math.ceil(filteredStockItems.length / stockPageSize);
   const transTotalPages = Math.ceil(filteredTransactions.length / transPageSize);
+// Helper to generate pagination buttons dynamically
+const getPaginationPages = (current: number, total: number, maxVisible = 5) => {
+  const pages: number[] = [];
+  const half = Math.floor(maxVisible / 2);
+  let start = Math.max(1, current - half);
+  let end = Math.min(total, current + half);
+
+  if (end - start + 1 < maxVisible) {
+    if (start === 1) {
+      end = Math.min(total, start + maxVisible - 1);
+    } else if (end === total) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
+  }
+
+  for (let i = start; i <= end; i++) pages.push(i);
+  return pages;
+};
 
   const handleSearch = () => {
     setStockCurrentPage(1);
@@ -503,34 +521,35 @@ const StockSearchView: React.FC = () => {
               <span>entries</span>
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={() => setStockCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={stockCurrentPage === 1}
-                className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              {Array.from({ length: Math.min(3, stockTotalPages) }, (_, i) => i + 1).map(page => (
-                <button
-                  key={page}
-                  onClick={() => setStockCurrentPage(page)}
-                  className={`px-3 py-1 rounded-full ${
-                    stockCurrentPage === page
-                      ? 'bg-slate-700 text-white'
-                      : 'border hover:bg-gray-50'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
-              <button
-                onClick={() => setStockCurrentPage(prev => Math.min(stockTotalPages, prev + 1))}
-                disabled={stockCurrentPage === stockTotalPages}
-                className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
+  <button
+    onClick={() => setStockCurrentPage(prev => Math.max(1, prev - 1))}
+    disabled={stockCurrentPage === 1}
+    className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+  >
+    Previous
+  </button>
+
+  {getPaginationPages(stockCurrentPage, stockTotalPages).map(page => (
+    <button
+      key={page}
+      onClick={() => setStockCurrentPage(page)}
+      className={`px-3 py-1 rounded-full ${
+        stockCurrentPage === page ? 'bg-slate-700 text-white' : 'border hover:bg-gray-50'
+      }`}
+    >
+      {page}
+    </button>
+  ))}
+
+  <button
+    onClick={() => setStockCurrentPage(prev => Math.min(stockTotalPages, prev + 1))}
+    disabled={stockCurrentPage === stockTotalPages}
+    className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+  >
+    Next
+  </button>
+</div>
+
           </div>
         </div>
 
@@ -625,19 +644,18 @@ const StockSearchView: React.FC = () => {
               >
                 Previous
               </button>
-              {Array.from({ length: Math.min(3, transTotalPages) }, (_, i) => i + 1).map(page => (
-                <button
-                  key={page}
-                  onClick={() => setTransCurrentPage(page)}
-                  className={`px-3 py-1 rounded-full ${
-                    transCurrentPage === page
-                      ? 'bg-slate-700 text-white'
-                      : 'border hover:bg-gray-50'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
+              {getPaginationPages(transCurrentPage, transTotalPages).map(page => (
+  <button
+    key={page}
+    onClick={() => setTransCurrentPage(page)}
+    className={`px-3 py-1 rounded-full ${
+      transCurrentPage === page ? 'bg-slate-700 text-white' : 'border hover:bg-gray-50'
+    }`}
+  >
+    {page}
+  </button>
+))}
+
               <button
                 onClick={() => setTransCurrentPage(prev => Math.min(transTotalPages, prev + 1))}
                 disabled={transCurrentPage === transTotalPages}

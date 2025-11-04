@@ -24,12 +24,10 @@ const NewProduct = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    // set default category to first API category if available and no category selected yet
     if (apiCategories && apiCategories.length > 0 && !formData.category) {
       const firstId = apiCategories[0]._id ?? apiCategories[0].id;
       setFormData((prev) => ({ ...prev, category: firstId }));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiCategories]);
 
   const handleInputChange = (
@@ -41,58 +39,99 @@ const NewProduct = () => {
     });
   };
 
+  // ✅ تعديل هنا فقط — فحص الحجم والأبعاد
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
-    if (file) {
+    if (!file) return;
+
+    // ✅ دلوقتي ما فيش فحص للأبعاد أو الحجم، بنقبل أي صورة
+    const reader = new FileReader();
+    reader.onloadend = () => {
       setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setImage(reader.result as string);
-      reader.readAsDataURL(file);
+      setImage(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // ======== التعديل: إرسال FormData بدل JSON (باقي الكود بدون تغيير) ========
+  const handleSubmit = async () => {
+    try {
+      setSaving(true);
+
+      const selectedCategoryId = formData.category;
+      if (!selectedCategoryId) {
+        toast.error("Please select a valid category!");
+        setSaving(false);
+        return;
+      }
+
+      // ✅ هنا فقط يتم فحص حجم الصورة قبل الإرسال (لو الصورة ضخمة جدًا)
+      if (imageFile && imageFile.size > 3 * 1024 * 1024) {
+        toast.error("❌ Image file is too large! Please upload an image under 3MB.");
+        setSaving(false);
+        return;
+      }
+
+      // Build FormData (minimal change requested)
+      const form = new FormData();
+      form.append("name", formData.name);
+      form.append("code", formData.code);
+      form.append("price", String(parseFloat(formData.price) || 0));
+      form.append("tax", String(parseFloat(formData.tax) || 0));
+      form.append("description", formData.description);
+      form.append("category", String(selectedCategoryId));
+      form.append("unit", String(parseInt(formData.unit) || 1));
+
+      // append the file using the same key used previously in payload (img)
+      if (imageFile) {
+        form.append("img", imageFile); // تأكد أن الباكديند يتوقع الحقل "img"
+      }
+
+const result = await addProduct(form as unknown as any);
+
+      // ✅ Case 1: Duplicate code error from backend (MongoDB)
+      if (result?.err?.code === 11000 || result?.code === 11000) {
+        toast.error("❌ This product code is already in use!");
+        setSaving(false);
+        return;
+      }
+
+      // ✅ Case 2: Image too large (HTTP 413)
+      if (result?.err?.statusCode === 413 || result?.err?.status === 413 || result?.statusCode === 413) {
+        toast.error("❌ Image file is too large! Please upload a smaller image.");
+        setSaving(false);
+        return;
+      }
+
+      toast.success("✅ Product created successfully!");
+      handleCancel();
+    } catch (error: any) {
+      console.error("❌ Error creating product:", error);
+
+      if (error?.response?.data?.err?.code === 11000 || error?.err?.code === 11000) {
+        toast.error("❌ This product code is already in use!");
+      } else if (
+        error?.response?.data?.err?.statusCode === 413 ||
+        error?.err?.statusCode === 413 ||
+        error?.statusCode === 413
+      ) {
+        toast.error("❌ Image file is too large! Please upload a smaller image.");
+      } else {
+        toast.error("Error creating product.");
+      }
+    } finally {
+      setSaving(false);
     }
   };
+  // ======== نهاية التعديل ========
 
   const calculateTotal = () => {
     const price = parseFloat(formData.price) || 0;
     const tax = parseFloat(formData.tax) || 0;
-    const total = (price + tax).toFixed(2);
-    return total;
+    return (price + tax).toFixed(2);
   };
 
-  const handleSubmit = async () => {
-  try {
-    setSaving(true);
 
-    const selectedCategoryId = formData.category;
-    if (!selectedCategoryId) {
-      toast.error("Please select a valid category!");
-      setSaving(false);
-      return;
-    }
-
-    const payload = {
-      name: formData.name,
-      code: formData.code,
-      price: parseFloat(formData.price) || 0,
-      tax: parseFloat(formData.tax) || 0,
-      description: formData.description,
-      category: selectedCategoryId,
-      unit: parseInt(formData.unit) || 1,
-      img: image ? [image] : ["daf", "adf", "ahfjk"],
-    };
-
-    console.log("📤 Payload to send:", JSON.stringify(payload, null, 2));
-
-    await addProduct(payload);
-
-    toast.success("✅ Product created successfully!");
-    handleCancel();
-  } catch (error) {
-    console.error("❌ Error creating product:", error);
-    toast.error("Error creating product.");
-  } finally {
-    setSaving(false);
-  }
-};
   const handleCancel = () => {
     setFormData({
       name: "",
@@ -109,6 +148,7 @@ const NewProduct = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
+      {/* نفس الشكل بالضبط بدون أي تعديل */}
       {/* Header */}
       <div className="mb-3 flex items-center gap-4 flex-wrap">
         <h1 className="text-3xl font-bold text-gray-800">Products Management</h1>

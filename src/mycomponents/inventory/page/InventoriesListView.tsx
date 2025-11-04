@@ -8,6 +8,7 @@ interface Inventory {
   name: string;
   location: string;
   capacity: string;
+  avatar?: string;
   lastUpdate: string;
   image: string;
 }
@@ -29,41 +30,41 @@ const InventoriesListView: React.FC<InventoriesListViewProps> = ({
   const [entriesPerPage, setEntriesPerPage] = useState(6);
 
   const { inventories: rawInventories, isLoading } = useInventories();
+const mappedInventories: Inventory[] = useMemo(() => {
+  return rawInventories.map((inv: any, idx) => {
+    const id = inv._id ?? `inv-${idx}`;
+    const name = inv.name ?? 'Unnamed Inventory';
+    const location = inv.location ?? '';
+    const capacity =
+      typeof inv.capacity === 'number'
+        ? String(inv.capacity)
+        : inv.capacity ?? '';
 
-  const mappedInventories: Inventory[] = useMemo(() => {
-    return rawInventories.map((inv, idx) => {
-      const id = (inv as { _id?: string })._id ?? `inv-${idx}`;
-      const name = inv.name ?? 'Unnamed Inventory';
-      const location = inv.location ?? '';
-      const capacity =
-        typeof inv.capacity === 'number'
-          ? String(inv.capacity)
-          : inv.capacity ?? '';
-      const dateStr = (inv as { updatedAt?: string; createdAt?: string }).updatedAt ?? 
-                      (inv as { updatedAt?: string; createdAt?: string }).createdAt ?? '';
-      let lastUpdate = '';
-      if (dateStr) {
-        try {
-          const d = new Date(dateStr);
-          const opts: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric' };
-          lastUpdate = d.toLocaleDateString('en-GB', opts).toUpperCase();
-        } catch {
-          lastUpdate = String(dateStr).toUpperCase();
-        }
+    const dateStr = inv.updatedAt ?? inv.createdAt ?? '';
+    let lastUpdate = '';
+    if (dateStr) {
+      try {
+        const d = new Date(dateStr);
+        const opts: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric' };
+        lastUpdate = d.toLocaleDateString('en-GB', opts).toUpperCase();
+      } catch {
+        lastUpdate = String(dateStr).toUpperCase();
       }
+    }
 
-      const image = `https://picsum.photos/seed/${encodeURIComponent(id)}/400/300`;
+    const image = inv.avatar ?? '';
 
-      return {
-        id,
-        name,
-        location,
-        capacity,
-        lastUpdate,
-        image,
-      };
-    });
-  }, [rawInventories]);
+    return {
+      id,
+      name,
+      location,
+      capacity,
+      lastUpdate,
+      image,
+    };
+  });
+}, [rawInventories]);
+
 
   const filteredInventories = useMemo(() => {
     if (!searchQuery.trim()) {

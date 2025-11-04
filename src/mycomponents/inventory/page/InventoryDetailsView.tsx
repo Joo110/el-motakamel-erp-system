@@ -5,7 +5,7 @@ import { useInventories } from '@/mycomponents/inventory/hooks/useInventories';
 import axiosClient from '@/lib/axiosClient';
 
 interface Product {
-  id: string; // stock _id
+  id: string;
   name: string;
   category: string;
   units: string;
@@ -14,13 +14,21 @@ interface Product {
   priceValue: number;
   total: string;
   totalValue: number;
-  // keep the raw stock so we can send original ids back to API
   raw?: any;
 }
 
 interface InventoryDetailsViewProps {
   onEdit?: () => void;
   onDelete?: () => void;
+}
+
+interface RawStock {
+  _id?: string;
+  product?: any;
+  productId?: any;
+  quantity?: number | string;
+  inventoryId?: string;
+  name?: string;
 }
 
 const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) => {
@@ -33,7 +41,6 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
   const [products, setProducts] = useState<Product[]>([]);
   const [stocksLoading, setStocksLoading] = useState(false);
 
-  // Edit modal state
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editQty, setEditQty] = useState<number>(0);
   const [editPrice, setEditPrice] = useState<number>(0);
@@ -49,17 +56,15 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
     } else {
       setProducts([]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, inventory, inventories, getStocks]);
 
   const loadStocks = async () => {
     if (!id) return;
-
     setStocksLoading(true);
     try {
       const stocksData = await getStocks(id);
 
-      const stocksArray = (() => {
+      const stocksArray: RawStock[] = (() => {
         if (!stocksData) return [];
         if (Array.isArray(stocksData)) return stocksData;
         if (Array.isArray(stocksData.stocks)) return stocksData.stocks;
@@ -70,13 +75,13 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
         return [];
       })();
 
-      const mappedProducts: Product[] = stocksArray.map((stock: any, idx: number) => {
+      const mappedProducts: Product[] = stocksArray.map((stock, idx) => {
         const prod = stock.product ?? stock.productId ?? {};
-        const priceVal = prod && prod.price ? Number(prod.price) : 0;
+        const priceVal = prod?.price ? Number(prod.price) : 0;
         const qty = typeof stock.quantity === 'number' ? stock.quantity : Number(stock.quantity || 0);
 
         return {
-          id: stock._id || stock.id || `prod-${idx}`,
+          id: stock._id || stock._id || `prod-${idx}`,
           name: prod?.name || stock.name || 'Unknown Product',
           category: (prod?.category && typeof prod.category === 'object' ? prod.category.name : prod?.category) || 'N/A',
           units: prod?.sku || 'N/A',
@@ -98,23 +103,25 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
     }
   };
 
-  const inventoryData = useMemo(() => {
-    if (!inventory) return null;
-    
-    const inv = inventory as any;
-    return {
-      id: inv._id || 'N/A',
-      name: inv.name || 'Unnamed Inventory',
-      location: inv.location || 'N/A',
-      capacity: typeof inv.capacity === 'number' ? String(inv.capacity) : inv.capacity || 'N/A',
-      image: `https://picsum.photos/seed/${encodeURIComponent(inv._id || 'default')}/400/300`
-    };
-  }, [inventory]);
+const inventoryData = useMemo(() => {
+  if (!inventory) return null;
+  const inv = inventory as any;
+  const image = inv.image ?? inv.img ?? inv.avatar ?? `https://picsum.photos/seed/${encodeURIComponent(inv._id || 'default')}/400/300`;
+
+  return {
+    id: inv._id || 'N/A',
+    name: inv.name || 'Unnamed Inventory',
+    location: inv.location || 'N/A',
+    capacity: typeof inv.capacity === 'number' ? String(inv.capacity) : inv.capacity || 'N/A',
+    image
+  };
+}, [inventory]);
+
 
   const totalProducts = products.length;
   const startEntry = totalProducts === 0 ? 0 : (currentPage - 1) * entriesPerPage + 1;
   const endEntry = Math.min(currentPage * entriesPerPage, totalProducts);
-  
+
   const paginatedProducts = useMemo(() => {
     return products.slice((currentPage - 1) * entriesPerPage, currentPage * entriesPerPage);
   }, [products, currentPage, entriesPerPage]);
@@ -129,7 +136,6 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
     }
   };
 
-  // Open modal and prefill values
   const openEditModal = (product: Product) => {
     setEditingProduct(product);
     setEditQty(product.unitCount);
@@ -142,7 +148,6 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
     setEditPrice(0);
   };
 
-  // Submit edit: PATCH /stocks/:stockId
   const submitEdit = async () => {
     if (!editingProduct || !editingProduct.raw) return;
     const stockId = editingProduct.raw._id || editingProduct.id;
@@ -151,29 +156,19 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
       return;
     }
 
-    const payload: any = {
-      quantity: Number(editQty),
-    };
-    // send price if available (product price)
-    if (!Number.isNaN(Number(editPrice))) {
-      payload.price = Number(editPrice);
-    }
-    // include productId/inventoryId if present in raw (helps backend)
+    const payload: any = { quantity: Number(editQty) };
+    if (!Number.isNaN(Number(editPrice))) payload.price = Number(editPrice);
     if (editingProduct.raw.productId) {
       payload.productId = typeof editingProduct.raw.productId === 'object'
         ? editingProduct.raw.productId._id ?? editingProduct.raw.productId.id
         : editingProduct.raw.productId;
     }
-    if (editingProduct.raw.inventoryId) {
-      payload.inventoryId = editingProduct.raw.inventoryId;
-    }
+    if (editingProduct.raw.inventoryId) payload.inventoryId = editingProduct.raw.inventoryId;
 
     try {
       setEditLoading(true);
       const resp = await axiosClient.patch(`/stocks/${stockId}`, payload);
-      // optimistic local update: update products array with new values
-      const updatedStock = resp?.data ?? resp; // try find response shape
-      // try to find updated fields in response, else use our payload
+      const updatedStock = resp?.data ?? resp;
       const newQty = Number(updatedStock?.quantity ?? payload.quantity);
       const newPrice = Number(updatedStock?.price ?? payload.price ?? editPrice);
 
@@ -187,7 +182,6 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
                 price: `${newPrice.toFixed(2)} SR`,
                 totalValue: newQty * newPrice,
                 total: `${(newQty * newPrice).toFixed(2)} SR`,
-                // also update raw if response returned updated stock
                 raw: updatedStock?.data ?? updatedStock ?? p.raw,
               }
             : p
@@ -202,7 +196,6 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
     }
   };
 
-  // Delete stock: DELETE /stocks/:stockId
   const handleDeleteProduct = async (productId: string) => {
     const p = products.find(x => x.id === productId);
     if (!p) return;
@@ -210,15 +203,12 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
 
     const stockId = p.raw?._id || p.id;
     if (!stockId) {
-      // fallback to local removal
       setProducts((prev) => prev.filter(x => x.id !== productId));
       return;
     }
 
     try {
-      // call api
       await axiosClient.delete(`/stocks/${stockId}`);
-      // remove locally
       setProducts((prev) => prev.filter(x => x.id !== productId));
     } catch (err) {
       console.error('Error deleting stock:', err);
@@ -284,11 +274,11 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
                   <span className="text-gray-600">Id:</span>
                   <span className="ml-2 font-medium">{inventoryData.id}</span>
                 </div>
-                <div className="w-40 h-24 overflow-hidden rounded-lg bg-gray-100">
+                <div className="w-40 h-27 overflow-hidden rounded-lg bg-gray-100">
                   <img
                     src={inventoryData.image}
                     alt="Warehouse"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain object-center bg-gray-100"
                   />
                 </div>
               </div>
@@ -419,7 +409,6 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
         </div>
       </div>
 
-      {/* Edit Modal (keeps visual look unchanged elsewhere) */}
       {editingProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-6">

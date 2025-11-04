@@ -1,15 +1,28 @@
-import { Search, Bell, Mail, Globe } from "lucide-react";
+import { Search, Bell, Mail, Globe, LogOut } from "lucide-react";
+import Cookies from "js-cookie";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
 
 const Topbar = () => {
+  const navigate = useNavigate();
+
+  // ✅ لما المستخدم يضغط على "Logout"
+  const handleLogout = () => {
+    Cookies.remove("authToken"); // امسح التوكن
+    toast.success("Logged out successfully!");
+    navigate("/user-login"); // رجّعه لشاشة اللوجين
+  };
+
   return (
     <header className="flex items-center justify-between bg-[#334155] h-16 px-6 shadow-md">
-      {/* Left Section - Logo and Brand */}
+      {/* Left Section - Logo */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-white rounded flex items-center justify-center">
-            <div className="w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[12px] border-t-[#334155]"></div>
-          </div>
-          <span className="text-white text-lg font-semibold">Showcase</span>
+          <img
+            src="/images/logo2.png"
+            alt="El Motakamel Logo"
+            className="w-20 h-20 object-contain"
+          />
         </div>
       </div>
 
@@ -17,25 +30,17 @@ const Topbar = () => {
       <div className="flex flex-col items-center gap-1">
         <div className="flex items-center gap-2 text-white text-sm">
           <span>El Motakamel</span>
-          <div className="flex gap-1">
-            <div className="w-6 h-6 rounded-full bg-gray-600 flex items-center justify-center text-xs">
-              ↑
-            </div>
-            <div className="w-6 h-6 rounded-full bg-gray-600 flex items-center justify-center text-xs">
-              ♦
-            </div>
-          </div>
         </div>
-        {/* حط الصورة في public folder واستخدمها كده */}
-        <img 
-          //src="/public/images/Logo.png" 
-          //alt="Logo" 
-          //className="h-8 w-auto"
+        <img
+          src="/images/logo2.png"
+          alt="Logo"
+          className="h-5 w-auto"
         />
       </div>
 
-      {/* Right Section - Search */}
+      {/* Right Section - Search + Icons + Logout */}
       <div className="flex items-center gap-4">
+        {/* Search */}
         <div className="flex items-center bg-white rounded-full px-4 py-2 w-80">
           <Search className="text-gray-400 mr-2" size={18} />
           <input
@@ -55,6 +60,15 @@ const Topbar = () => {
           </button>
           <button className="w-9 h-9 bg-white rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors">
             <Globe className="text-gray-600" size={18} />
+          </button>
+
+          {/* ✅ Logout Button */}
+          <button
+            onClick={handleLogout}
+            className="w-9 h-9 bg-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+            title="Logout"
+          >
+            <LogOut className="text-gray-600" size={18} />
           </button>
         </div>
       </div>

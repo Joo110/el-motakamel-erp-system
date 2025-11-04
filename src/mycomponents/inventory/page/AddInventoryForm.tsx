@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Upload } from 'lucide-react';
 import { useInventories } from '@/mycomponents/inventory/hooks/useInventories';
-import type { InventoryInput } from '@/types/inventory';
 import { toast } from 'react-hot-toast';
 
 interface AddInventoryFormProps {
@@ -23,52 +22,94 @@ const AddInventoryForm: React.FC<AddInventoryFormProps> = ({ onSave, onCancel })
     inventoryName: '',
     location: '',
     capacity: '',
-    image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=400&h=300&fit=crop'
+    image: ''
   });
 
-  // ربطت الهاندلر بالهوك هنا
+  const [imageFile, setImageFile] = useState<File | null>(null);
+
+  const [errors, setErrors] = useState({
+    inventoryName: '',
+    location: '',
+    capacity: ''
+  });
+
   const { create } = useInventories();
 
   const handleInputChange = (field: keyof InventoryFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    setErrors(prev => ({ ...prev, [field]: '' }));
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, image: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+
+    setImageFile(file);
+
+    setFormData(prev => ({ ...prev, image: URL.createObjectURL(file) }));
   };
 
-const handleSave = async () => {
-  const payload: InventoryInput = {
-    name: formData.inventoryName,
-    location: formData.location,
-    capacity: formData.capacity,
-  };
+  const validate = () => {
+    const newErrors = { inventoryName: '', location: '', capacity: '' };
+    let valid = true;
 
-  try {
-    const created = await create(payload);
-    const newId = (created as { _id?: string })._id ?? formData.id;
-
-    if (onSave) {
-      onSave({
-        ...formData,
-        id: newId,
-      });
+    if (!formData.inventoryName.trim()) {
+      newErrors.inventoryName = 'Inventory Name is required';
+      valid = false;
+    }
+    if (!formData.location.trim()) {
+      newErrors.location = 'Location is required';
+      valid = false;
+    }
+    if (!formData.capacity.trim()) {
+      newErrors.capacity = 'Capacity is required';
+      valid = false;
     }
 
-toast.success('Inventory added successfully! ✅');
-  } catch (err) {
-    toast.error('Something went wrong ❌');
-    console.error('Create inventory failed', err);
-  }
-};
+    setErrors(newErrors);
+    return valid;
+  };
 
+  const handleSave = async () => {
+    if (!validate()) return;
+
+    try {
+      const form = new FormData();
+      form.append('name', formData.inventoryName);
+      form.append('location', formData.location);
+      form.append('capacity', String(formData.capacity));
+
+      if (imageFile) {
+        form.append('avatar', imageFile);
+      }
+
+      console.log('📦 FormData Contents:');
+      for (const [key, value] of form.entries()) {
+        console.log(`${key}:`, value);
+      }
+
+      const created = await (create as unknown as (payload: any) => Promise<any>)(form);
+
+      console.log('✅ Create response:', created);
+
+      const newId = (created?.data?.newInventory?._id) ?? formData.id;
+
+      if (onSave) {
+        onSave({
+          ...formData,
+          id: newId,
+        });
+      }
+
+      toast.success('Inventory added successfully!');
+    } catch (error: any) {
+      console.error('❌ Create inventory failed', error);
+      if (error?.response?.data) {
+        console.error('Server response:', error.response.data);
+      }
+      toast.error('Something went wrong');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -103,6 +144,7 @@ toast.success('Inventory added successfully! ✅');
                   onChange={(e) => handleInputChange('inventoryName', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                {errors.inventoryName && <p className="text-red-500 text-sm mt-1">{errors.inventoryName}</p>}
               </div>
 
               <div>
@@ -113,6 +155,7 @@ toast.success('Inventory added successfully! ✅');
                   onChange={(e) => handleInputChange('location', e.target.value)}
                   className="w-48 px-3 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                {errors.location && <p className="text-red-500 text-sm mt-1">{errors.location}</p>}
               </div>
 
               <div>
@@ -123,29 +166,38 @@ toast.success('Inventory added successfully! ✅');
                   onChange={(e) => handleInputChange('capacity', e.target.value)}
                   className="w-32 px-3 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                {errors.capacity && <p className="text-red-500 text-sm mt-1">{errors.capacity}</p>}
               </div>
             </div>
 
             <div className="flex flex-col items-center">
-              <div className="w-full h-32 mb-3 overflow-hidden rounded-lg bg-gray-100">
-                <img
-                  src={formData.image || ''}
-                  alt="Warehouse"
-                  className="w-full h-full object-cover"
-                />
+              <div className="border-2 border-dashed border-gray-300 rounded-lg h-80 w-full flex items-center justify-center bg-gray-50 mb-4 overflow-hidden">
+                {formData.image ? (
+                  <img src={formData.image} alt="Warehouse preview" 
+                  className="w-full h-full object-contain object-center bg-gray-100" />
+                ) : (
+                  <span className="text-gray-400 text-sm">image preview</span>
+                )}
               </div>
-              <label className="cursor-pointer">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
-                <div className="px-6 py-2.5 rounded-full bg-slate-700 hover:bg-slate-800 text-white font-medium shadow-sm transition-all flex items-center gap-2">
-                  <Upload size={16} />
-                  Upload Image
-                </div>
-              </label>
+
+              <div className="flex gap-3 w-full">
+                <label className="flex-1 cursor-pointer">
+                  <div className="flex items-center justify-center gap-2 px-4 py-3 bg-[#1f334d] text-white rounded-xl shadow-sm hover:bg-gray-900 transition-all font-medium">
+                    <Upload size={18} />
+                    <span>{formData.image ? 'Edit image' : 'Upload image'}</span>
+                  </div>
+                  <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                </label>
+
+                {formData.image && (
+                  <button
+                    onClick={() => { setFormData(prev => ({ ...prev, image: '' })); setImageFile(null); }}
+                    className="flex-1 px-4 py-3 bg-red-500 text-white rounded-xl shadow-sm hover:bg-red-600 transition-all font-medium"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 

@@ -1,4 +1,6 @@
 import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,18 +25,36 @@ const countries = [
   { code: "+1", flag: "🇺🇸" },
 ];
 
-type FormData = {
-  fullname: string;
-  email: string;
-  phone: {
-    countryCode: string;
-    phoneNumber: string;
-  };
-  password: string;
-  confirmPassword: string;
-  organizations: string[];
-  role: string;
-};
+// Zod schema (validation rules)
+const registerSchema = z
+  .object({
+    fullname: z.string().min(3, "Full name must be at least 3 characters"),
+    email: z.string().min(1, "Email is required").email("Invalid email address"),
+    phone: z.object({
+      countryCode: z.string().min(1, "Country code is required"),
+      phoneNumber: z
+        .string()
+        .min(6, "Phone number must be at least 6 digits")
+        .max(15, "Phone number must be at most 15 digits")
+        .regex(/^[0-9]+$/, "Enter a valid phone number"),
+    }),
+    role: z.string().min(1, "Role is required"),
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .regex(/[a-z]/, "Password must contain a lowercase letter")
+      .regex(/[A-Z]/, "Password must contain an uppercase letter")
+      .regex(/[0-9]/, "Password must contain a number")
+      .regex(/[^A-Za-z0-9]/, "Password must contain a special character"),
+    confirmPassword: z.string().min(8, "confirm Password must be at least 8 characters"),
+    organizations: z.array(z.string()).optional(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
+type FormData = z.infer<typeof registerSchema>;
 
 const UserRegister = () => {
   const {
@@ -46,8 +66,10 @@ const UserRegister = () => {
     reset,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
+    resolver: zodResolver(registerSchema),
     defaultValues: {
       phone: { countryCode: countries[0].code, phoneNumber: "" },
+      organizations: [],
     },
   });
 
@@ -89,11 +111,10 @@ const UserRegister = () => {
       });
       console.log("Response received:", response);
     } catch (err) {
-      // err ممكن تكون AxiosError أو Error أو unknown — الهوك تعالج الخطأ وطرحت الاستثناء
       if (typeof err === "object" && err !== null && "response" in err) {
-        // محاولة آمنة لاستخراج رسالة من Axios error
-        // @ts-expect-error - هنا مجرد محاولة قراءة حقل response
-        const serverMsg = err.response?.data?.status ?? undefined;
+ // @ts-expect-error: err might not always have a response property (AxiosError handling)
+const serverMsg = err.response?.data?.status ?? undefined;
+
         if (serverMsg) {
           toast.error(serverMsg);
           return;
@@ -133,7 +154,7 @@ const UserRegister = () => {
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
-                {...register("fullname", { required: "Full name is required" })}
+                {...register("fullname")}
                 type="text"
                 placeholder="Enter your full name"
                 className="pl-9 border border-gray-400 rounded w-full"
@@ -151,13 +172,7 @@ const UserRegister = () => {
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
-                {...register("email", {
-                  required: "Email is required",
-                  pattern: {
-                    value: /^\S+@\S+$/i,
-                    message: "Invalid email address",
-                  },
-                })}
+                {...register("email")}
                 type="text"
                 placeholder="Enter your email"
                 className="pl-9 border border-gray-400 rounded w-full"
@@ -177,13 +192,7 @@ const UserRegister = () => {
           <div className="relative">
             {/* Input */}
             <Input
-              {...register("phone.phoneNumber", {
-                required: "Phone number is required",
-                pattern: {
-                  value: /^[0-9]{6,15}$/,
-                  message: "Enter a valid phone number",
-                },
-              })}
+              {...register("phone.phoneNumber")}
               type="text"
               placeholder="Enter your phone number"
               className="pl-9 pr-20 border border-gray-400 rounded w-full"
@@ -234,7 +243,7 @@ const UserRegister = () => {
           <div className="relative">
             <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
-              {...register("role", { required: "Role is required" })}
+              {...register("role")}
               type="text"
               placeholder="Enter your role"
               className="pl-9 border border-gray-400 rounded"
@@ -253,13 +262,7 @@ const UserRegister = () => {
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
-              {...register("password", {
-                required: "Password is required",
-                minLength: {
-                  value: 6,
-                  message: "Password must be at least 6 characters",
-                },
-              })}
+              {...register("password")}
               type={showPassword ? "text" : "password"}
               placeholder="Enter Your Password"
               className="pl-9 border border-gray-400 rounded"
@@ -289,14 +292,7 @@ const UserRegister = () => {
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
-              {...register("confirmPassword", {
-                required: "confirm Password is required",
-                minLength: {
-                  value: 6,
-                  message: "confirm Password must be at least 6 characters",
-                },
-                validate: (value) => value === watch("password") || "Passwords do not match",
-              })}
+              {...register("confirmPassword")}
               type={showConfirmPassword ? "text" : "password"}
               placeholder="Confirm Password"
               className="pl-9 border border-gray-400 rounded"

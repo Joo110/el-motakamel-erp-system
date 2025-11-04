@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Suppliers } from "../hooks/Suppliers";
+import { toast } from "react-hot-toast";
 
 const SupplierEditFilled: React.FC = () => {
   const { id } = useParams();
@@ -13,7 +14,6 @@ const SupplierEditFilled: React.FC = () => {
     phone: "",
   });
 
-  // ✅ جلب بيانات المورد عند تحميل الصفحة
   useEffect(() => {
     if (id) {
       fetchSupplierById(id).then((data) => {
@@ -29,17 +29,53 @@ const SupplierEditFilled: React.FC = () => {
     }
   }, [id, fetchSupplierById]);
 
-  // ✅ تحديث بيانات الفورم عند التغيير
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ✅ حفظ التعديلات
+  // ===== Validation =====
+  const validateForm = () => {
+    if (!form.name.trim()) {
+      toast.error("Please enter supplier name.");
+      return false;
+    }
+    if (!form.address.trim()) {
+      toast.error("Please enter address.");
+      return false;
+    }
+    if (!form.email.trim()) {
+      toast.error("Please enter email.");
+      return false;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email)) {
+      toast.error("Invalid email format.");
+      return false;
+    }
+    if (!form.phone.trim()) {
+      toast.error("Please enter phone number.");
+      return false;
+    }
+    const phoneRegex = /^[0-9]{6,15}$/;
+    if (!phoneRegex.test(form.phone)) {
+      toast.error("Invalid phone number. Only digits allowed (6-15 characters).");
+      return false;
+    }
+    return true;
+  };
+
   const handleSave = async () => {
-    if (id) {
+    if (!id) return;
+    if (!validateForm()) return; // Stop if validation fails
+
+    try {
       await editSupplier(id, form);
-      navigate("/dashboard/supplier");
+      toast.success("Supplier updated successfully!");
+      navigate("/dashboard/precious/suppliers");
+    } catch (err) {
+      console.error("Update failed:", err);
+      toast.error("Failed to update supplier. Check console for details.");
     }
   };
 
@@ -62,57 +98,20 @@ const SupplierEditFilled: React.FC = () => {
 
           <div className="flex gap-8">
             <div className="flex-1 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Supplier Name:
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={form.name}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Address:
-                </label>
-                <input
-                  type="text"
-                  name="address"
-                  value={form.address}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Email:
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Phone:
-                </label>
-                <input
-                  type="text"
-                  name="phone"
-                  value={form.phone}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+              {["name", "address", "email", "phone"].map((field) => (
+                <div key={field}>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 capitalize">
+                    {field === "name" ? "Supplier Name" : field}
+                  </label>
+                  <input
+                    type={field === "email" ? "email" : "text"}
+                    name={field}
+                    value={(form as any)[field]}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              ))}
             </div>
 
             <div className="flex flex-col items-center">

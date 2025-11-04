@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Filter } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; // << اضافه
 
 type PayrollItem = {
   id: string;
@@ -14,6 +15,7 @@ type PayrollItem = {
 };
 
 const PayrollScreen: React.FC = () => {
+  const navigate = useNavigate(); // << اضافه
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('November');
   const [selectedStatus, setSelectedStatus] = useState('All');
@@ -62,6 +64,10 @@ const PayrollScreen: React.FC = () => {
 
   const handlePaySalary = (id: string) => {
     setPayroll(payroll.map(item => item.id === id ? {...item, status: 'Paid'} : item));
+  };
+
+  const handleModify = (id: string) => {
+    navigate(`/payroll/modify/${id}`); // << راح تروح لصفحة التعديل
   };
 
   return (
@@ -184,9 +190,11 @@ const PayrollScreen: React.FC = () => {
                     <td className="px-6 py-4 text-sm text-gray-600">{item.deductions}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">{item.total}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">{item.date}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 flex items-center gap-2">
                       {item.status === 'Paid' ? (
-                        <span className="text-sm text-green-600">{item.status}</span>
+                        <>
+                          <span className="text-sm text-green-600">{item.status}</span>
+                        </>
                       ) : (
                         <button
                           onClick={() => handlePaySalary(item.id)}
@@ -195,6 +203,12 @@ const PayrollScreen: React.FC = () => {
                           Pay
                         </button>
                       )}
+                      <button
+                        onClick={() => handleModify(item.id)}
+                        className="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded-xl hover:bg-gray-300"
+                      >
+                        Modify
+                      </button>
                     </td>
                   </tr>
                 ))}

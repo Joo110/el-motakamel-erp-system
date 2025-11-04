@@ -6,7 +6,6 @@ import type {
   SingleInventoryResponse,
   InventoryResponse,
 } from "@/types/inventory";
-import { buildInventoryPayload } from "@/utils/inventoryPayload";
 
 
 
@@ -24,25 +23,17 @@ export const getInventoryByIdService = async (id: string): Promise<Inventory> =>
 };
 
 // ✅ Create new inventory (fixed)
-export const createInventoryService = async (inventory: InventoryInput): Promise<Inventory> => {
-  const payload = buildInventoryPayload(inventory);
-
+// inventories.ts
+export const createInventoryService = async (payload: FormData) => {
   try {
-    const response = await axiosClient.post("/inventories", payload);
-    console.log("createInventoryService success:", response.data);
-
-    const newInventory = response.data?.data?.newInventory;
-
-    if (!newInventory || !newInventory._id) {
-      console.error("createInventoryService unexpected response:", response.data);
-      throw new Error("Invalid response from server: inventory data missing.");
-    }
-
-    console.log("✅ Created inventory:", newInventory);
-    return newInventory;
-    
+    const response = await axiosClient.post('/inventories', payload, {
+      headers: {
+        'Content-Type': 'multipart/form-data', // ⭐️ ده المهم
+      },
+    });
+    return response.data;
   } catch (error) {
-    console.error("createInventoryService error:", error);
+    console.error('createInventoryService error:', error);
     throw error;
   }
 };
@@ -50,25 +41,35 @@ export const createInventoryService = async (inventory: InventoryInput): Promise
 // ✅ Update inventory
 export const updateInventoryService = async (
   id: string,
-  updatedData: Partial<InventoryInput>
+  updatedData: Partial<InventoryInput>,
+  file?: File
 ): Promise<Inventory> => {
-  const payload: Record<string, string | number> = {};
+  const form = new FormData();
 
-  if (updatedData.name !== undefined) payload.name = updatedData.name;
-  if (updatedData.location !== undefined) payload.location = updatedData.location;
+  if (updatedData.name !== undefined) form.append('name', updatedData.name);
+  if (updatedData.location !== undefined) form.append('location', updatedData.location);
 
   if (updatedData.capacity !== undefined || updatedData.capacityUnit !== undefined) {
-    if (typeof updatedData.capacity === "number") {
-      payload.capacity = updatedData.capacityUnit
-        ? `${updatedData.capacity} ${updatedData.capacityUnit}`
-        : updatedData.capacity;
-    } else if (typeof updatedData.capacity === "string") {
-      payload.capacity = updatedData.capacity;
+    let capacityValue: string | number = updatedData.capacity || '';
+    if (typeof updatedData.capacity === "number" && updatedData.capacityUnit) {
+      capacityValue = `${updatedData.capacity} ${updatedData.capacityUnit}`;
     }
+    form.append('capacity', String(capacityValue));
   }
 
-  const response = await axiosClient.patch<SingleInventoryResponse>(`/inventories/${id}`, payload);
-  return response.data.data.inventory;
+  if (file) {
+    form.append('avatar', file);
+  }
+
+  try {
+    const response = await axiosClient.patch<SingleInventoryResponse>(`/inventories/${id}`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data.data.inventory;
+  } catch (error) {
+    console.error('updateInventoryService error:', error);
+    throw error;
+  }
 };
 
 // ✅ Delete inventory

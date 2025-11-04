@@ -1,6 +1,7 @@
 import './App.css'; 
 import { createHashRouter, RouterProvider } from "react-router-dom";
 import { Toaster } from 'react-hot-toast';
+import ProtectedRoute from "./ProtectedRoute";
 
 // Authentication Pages
 import UserLogin from './mycomponents/user/authentication/UserLogin';
@@ -82,7 +83,11 @@ function App() {
     //  Protected (Dashboard) Routes
     {
       path: "/dashboard",
-      element: <DashboardLayout />,
+  element: (
+    <ProtectedRoute>
+      <DashboardLayout />
+    </ProtectedRoute>
+  ),
       children: [
         { path: "", element: <DashboardHome /> },
         { path: "products", element: <ProductsManagement /> },
