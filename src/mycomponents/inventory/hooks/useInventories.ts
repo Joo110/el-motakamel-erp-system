@@ -58,7 +58,24 @@ export const useInventories = () => {
     setIsMutating(true);
     setError(null);
     try {
-      const newInventory = await createInventoryService(payload);
+let formData: FormData;
+
+// ✅ لو المستخدم بعت كائن عادي نحوله لـ FormData
+if (payload instanceof FormData) {
+  formData = payload;
+} else {
+  formData = new FormData();
+  formData.append("name", payload.name);
+  formData.append("location", payload.location);
+  formData.append("capacity", String(payload.capacity));
+
+  // لو الصورة موجودة ضيفها
+  if ((payload as any).image instanceof File) {
+    formData.append("avatar", (payload as any).image);
+  }
+}
+
+const newInventory = await createInventoryService(formData);
       setInventories((prev) => [newInventory, ...prev]);
       return newInventory;
     } catch (err: unknown) {

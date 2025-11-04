@@ -9,7 +9,9 @@ updatedAt?: string;
 }
 
 
-export type InventoryInput = Omit<Inventory, "_id" | "createdAt" | "updatedAt">;
+export type InventoryInput = Omit<Inventory, "_id" | "createdAt" | "updatedAt"> & {
+  image?: File | string | null;
+};
 
 
 export interface GetInventoriesResponse {
