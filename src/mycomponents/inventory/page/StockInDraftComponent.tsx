@@ -97,7 +97,7 @@ const contentType =
       console.log('Create invoice response:', returnedInvoice);
       toast.success('Invoice created successfully!');
       // navigate to invoice page (optional)
-      navigate(`/dashboard/invoices/${id}`);
+      navigate(`/dashboard/preciousmanagement`);
     } catch (err: any) {
       console.error('Create invoice error:', err?.response?.data ?? err);
       // If server returned HTML message in error.response.data, detect and show friendly message:

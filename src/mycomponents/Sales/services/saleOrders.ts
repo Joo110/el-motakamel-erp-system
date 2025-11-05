@@ -125,6 +125,6 @@ export async function approveSaleOrder(id: string): Promise<PurchaseOrder | null
 }
 
 export async function markSaleOrderDelivered(id: string): Promise<PurchaseOrder | null> {
-  const { data } = await axiosClient.get(`${BASE}/${id}/deliver`);
+const { data } = await axiosClient.get(`${BASE}/${id}/status=delivered`);
   return extractSingleFromResponse(data);
 }

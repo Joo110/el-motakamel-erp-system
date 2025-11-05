@@ -36,6 +36,7 @@ import StockOut from './mycomponents/inventory/page/StockOutComponent';
 import StockOutDraft from './mycomponents/inventory/page/StockOutDraftComponent';
 import Transfer from './mycomponents/inventory/page/TransferComponent';
 import TransferDraft from './mycomponents/inventory/page/TransferDraftComponent';
+import Shipping from './mycomponents/inventory/page/Shipping';
 
 import UpdateTransferComponent from './mycomponents/inventory/page/UpdateTransferComponent';
 import TransferManagement from './mycomponents/inventory/page/TransferManagement';
@@ -49,6 +50,7 @@ import AddEmployeeScreen from './mycomponents/HR/page/AddEmployeeScreen';
 import EditEmployeeScreen from './mycomponents/HR/page/EditEmployeeScreen';
 import EmployeeView from './mycomponents/HR/page/ViewEmployeeScreen';
 import PayrollManagement from './mycomponents/HR/page/PayrollScreen';
+import Attendance from './mycomponents/HR/page/AttendanceScreen';
 
 //  Sales Management Pages (Customer)
 import CustomerSearchList from './mycomponents/Sales/page/CustomerSearchList';
@@ -111,6 +113,7 @@ function App() {
         { path: "stock-out-draft/:id", element: <StockOutDraft /> },
         { path: "transfer", element: <Transfer /> },
         { path: "transfer-draft/:id", element: <TransferDraft /> },
+        { path: "Shipping/:id", element: <Shipping /> },
 
         // Old Management Routes
         { path: "UpdateTransferComponent/:id", element: <UpdateTransferComponent /> },
@@ -138,9 +141,9 @@ function App() {
     { path: "hr/employee/edit/:id", element: <EditEmployeeScreen /> },
     { path: "hr/employee/view/:id", element: <EmployeeView /> },
     { path: "hr/payroll", element: <PayrollManagement /> },
+    { path: "hr/Attendance", element: <Attendance /> },
       ],
     },
-
     //  Catch-all
     {
       path: "*",

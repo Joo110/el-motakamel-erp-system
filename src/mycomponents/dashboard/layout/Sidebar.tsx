@@ -516,6 +516,21 @@ const Sidebar = () => {
             : "opacity-0 group-hover/item:opacity-100"
         }`}></div>
       </Link>
+       <Link
+        to="/dashboard/hr/Attendance"
+        className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+          location.pathname === "/dashboard/hr/Attendance"
+            ? "text-[#334155] font-medium"
+            : "text-gray-600 hover:text-[#334155]"
+        }`}
+      >
+        Attendance
+        <div className={`absolute right-0 top-0 h-full w-1 bg-[#334155] transition-opacity ${
+          location.pathname === "/dashboard/hr/Attendance"
+            ? "opacity-100"
+            : "opacity-0 group-hover/item:opacity-100"
+        }`}></div>
+      </Link>
     </div>
   )}
 </div>

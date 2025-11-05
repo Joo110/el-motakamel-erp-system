@@ -8,6 +8,7 @@ import {
   markStockTransferAsDeliveredService,
   getDeliveredStockTransfersService,
   getDeliveredStockTransferByIdService,
+  updateStockTransferShippingCostService,
   type StockTransferRequest,
 } from "../services/stockTransfer";
 
@@ -32,6 +33,23 @@ export const useStockTransfer = () => {
       setLoading(false);
     }
   };
+
+    // 🔹 تحديث تكلفة الشحن (shippingCost)
+  const updateShippingCost = async (id: string, shippingCost: number) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await updateStockTransferShippingCostService(id, shippingCost);
+      setData(res);
+      return res;
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Failed to update shipping cost");
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   // 🔹 جلب تحويل بالمرجع
   const getStockTransferByRef = async (ref: string) => {
@@ -154,6 +172,7 @@ export const useStockTransfer = () => {
     markAsDelivered,
     getDeliveredTransfers,
     getDeliveredTransferById,
+    updateShippingCost,
     data,
     loading,
     error,

@@ -22,6 +22,17 @@ export interface StockTransferResponse {
   shippingCost: number;
 }
 
+// ✅ تحديث تكلفة الشحن (shippingCost)
+export const updateStockTransferShippingCostService = async (
+  id: string,
+  shippingCost: number
+): Promise<StockTransferResponse> => {
+  const response = await axiosClient.patch<StockTransferResponse>(
+    `/stockTransfer/${id}/shipping`,
+    { shippingCost }
+  );
+  return response.data;
+};
 
 // ✅ إنشاء تحويل مخزون جديد
 export const createStockTransferService = async (
@@ -65,6 +76,7 @@ export const getShippedStockTransfersService = async () => {
   const response = await axiosClient.get("/stockTransfer/status=shipped");
   return response.data;
 };
+
 
 // ✅ تحديث حالة التحويل إلى "Delivered"
 export const markStockTransferAsDeliveredService = async (

@@ -183,13 +183,10 @@ const AddEmployeeScreen: React.FC = () => {
       if (created) {
         toast.success('Employee created successfully');
         navigate('/dashboard/hr/employees');
-      } else {
-        toast.error('Failed to create employee');
-      }
+      } 
     } catch (err: any) {
       console.error('Create employee error', err);
 
-      // ✅ التعامل مع أخطاء التكرار من MongoDB
       const message =
         err?.message ||
         err?.err?.message ||
@@ -274,12 +271,12 @@ const AddEmployeeScreen: React.FC = () => {
 
             <div>
               {/* Image Preview */}
-          <div className="w-full h-36 bg-gray-100 rounded flex items-center justify-center text-gray-400 mb-2 text-xs overflow-hidden border border-gray-300">
+          <div className="w-full h-36 bg-white rounded flex items-center justify-center text-gray-400 mb-2 text-xs overflow-hidden border border-gray-300">
   {image ? (
     <img
       src={image}
       alt="Employee avatar preview"
-      className="w-full h-full object-contain object-center bg-gray-100"
+      className="w-full h-full object-contain object-center bg-white"
     />
   ) : (
     <span className="text-gray-400 text-sm">Image preview</span>

@@ -43,20 +43,43 @@ export function useEmployees(initialParams?: Record<string, any>) {
     await fetch(p);
   }, [fetch, params]);
 
-  const createEmployee = useCallback(async (payload: any) => {
-    try {
-      setLoading(true);
-      const res = await createEmployeeService(payload);
-      const created = res?.data ?? res?.employee ?? res ?? null;
-      if (created) setEmployees(prev => [created, ...prev]);
-      return created;
-    } catch (err: any) {
-      console.error("Create failed", err);
-      setError(err);
-    } finally {
-      setLoading(false);
+
+const createEmployee = useCallback(async (payload: any) => {
+  try {
+    setLoading(true);
+    const res = await createEmployeeService(payload);
+    const created = res?.data ?? res?.employee ?? res ?? null;
+    if (created) {
+      setEmployees((prev) => [created, ...prev]);
     }
-  }, []);
+    return created;
+  } catch (err: any) {
+    console.error("Create failed", err);
+    setError(err);
+
+    const message =
+      err?.response?.data?.message ||
+      err?.message ||
+      "Error creating employee";
+
+    if (message.includes("E11000 duplicate key error")) {
+      if (message.includes("email")) {
+        toast.error("This email is already registered!");
+      } else if (message.includes("phone")) {
+        toast.error("This phone number is already registered!");
+      } else if (message.includes("alternativePhone")) {
+        toast.error("This alternative phone is already registered!");
+      } else {
+        toast.error("Duplicate field value detected.");
+      }
+    } else {
+      toast.error(message || "Error creating employee");
+    }
+  } finally {
+    setLoading(false);
+  }
+}, []);
+
 
   const getEmployee = useCallback(async (id: string) => {
     try {
@@ -72,21 +95,45 @@ export function useEmployees(initialParams?: Record<string, any>) {
   }, []);
 
   const updateEmployee = useCallback(async (id: string, payload: any) => {
-    try {
-      setLoading(true);
-      const res = await updateEmployeeService(id, payload);
-      const updated = res?.data ?? res ?? null;
-      if (updated) {
-        setEmployees(prev => prev.map(e => (e._id === updated._id || e.id === updated.id ? updated : e)));
-      }
-      return updated;
-    } catch (err) {
-      console.error("Update failed", err);
-      setError(err);
-    } finally {
-      setLoading(false);
+  try {
+    setLoading(true);
+    const res = await updateEmployeeService(id, payload);
+    const updated = res?.data ?? res ?? null;
+    if (updated) {
+      setEmployees((prev) =>
+        prev.map((e) =>
+          e._id === updated._id || e.id === updated.id ? updated : e
+        )
+      );
     }
-  }, []);
+    return updated;
+  } catch (err: any) {
+    console.error("Update failed", err);
+    setError(err);
+
+    const message =
+      err?.response?.data?.message ||
+      err?.message ||
+      "Error updating employee";
+
+    if (message.includes("E11000 duplicate key error")) {
+      if (message.includes("email")) {
+        toast.error("❌ This email is already registered!");
+      } else if (message.includes("phone")) {
+        toast.error("❌ This phone number is already registered!");
+      } else if (message.includes("alternativePhone")) {
+        toast.error("❌ This alternative phone is already registered!");
+      } else {
+        toast.error("❌ Duplicate field value detected.");
+      }
+    } else {
+      toast.error(message || "Error updating employee");
+    }
+  } finally {
+    setLoading(false);
+  }
+}, []);
+
 
   const deleteEmployee = useCallback(async (id: string) => {
     try {

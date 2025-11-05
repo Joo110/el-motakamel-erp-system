@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Filter } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; // << اضافه
+import { Search, Filter, X, Edit2 } from 'lucide-react';
 
 type PayrollItem = {
   id: string;
@@ -12,35 +11,57 @@ type PayrollItem = {
   total: string;
   date: string;
   status: 'Paid' | 'Unpaid';
+  jobTitle?: string;
+  overtimeHours?: string;
+  overtimeAmount?: string;
+  bonusAmount?: string;
+  bonusPurpose?: string;
+  deductionAmount?: string;
+  deductionPurpose?: string;
 };
 
 const PayrollScreen: React.FC = () => {
-  const navigate = useNavigate(); // << اضافه
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('November');
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [selectedDepartment, setSelectedDepartment] = useState('All Departments');
   const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [showModifyModal, setShowModifyModal] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<PayrollItem | null>(null);
 
   const [payroll, setPayroll] = useState<PayrollItem[]>([
     {
       id: '193382',
       name: 'Anwar Tarek Mohammed',
-      salary: '22,500 SR',
-      overtime: '22,500 SR',
-      bonus: '22,500 SR',
-      deductions: '22,500 SR',
-      total: '22,500 SR',
+      jobTitle: 'Back-end developer',
+      salary: '42000 SR',
+      overtime: '395 SR',
+      overtimeHours: '2',
+      overtimeAmount: '395',
+      bonus: '0 SR',
+      bonusAmount: '',
+      bonusPurpose: '',
+      deductions: '0 SR',
+      deductionAmount: '',
+      deductionPurpose: '',
+      total: '42000 SR',
       date: '22,500 SR',
       status: 'Paid',
     },
     {
       id: '32216-1',
       name: 'Kareem Tarek Mohammed',
+      jobTitle: 'Front-end developer',
       salary: '22,500 SR',
       overtime: '22,500 SR',
+      overtimeHours: '5',
+      overtimeAmount: '500',
       bonus: '22,500 SR',
+      bonusAmount: '1000',
+      bonusPurpose: 'Performance bonus',
       deductions: '22,500 SR',
+      deductionAmount: '200',
+      deductionPurpose: 'Late arrival',
       total: '22,500 SR',
       date: '22,500 SR',
       status: 'Unpaid',
@@ -48,15 +69,31 @@ const PayrollScreen: React.FC = () => {
     {
       id: '32641-3',
       name: 'Ahmed Sayed Mohamed',
+      jobTitle: 'UI/UX Designer',
       salary: '22,500 SR',
       overtime: '22,500 SR',
+      overtimeHours: '3',
+      overtimeAmount: '300',
       bonus: '22,500 SR',
+      bonusAmount: '',
+      bonusPurpose: '',
       deductions: '22,500 SR',
+      deductionAmount: '',
+      deductionPurpose: '',
       total: '22,500 SR',
       date: '22,500 SR',
       status: 'Unpaid',
     },
   ]);
+
+  const [modifyForm, setModifyForm] = useState({
+    overtimeHours: '',
+    overtimeAmount: '',
+    bonusAmount: '',
+    bonusPurpose: '',
+    deductionAmount: '',
+    deductionPurpose: '',
+  });
 
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const statuses = ['All','Paid','Unpaid'];
@@ -66,8 +103,49 @@ const PayrollScreen: React.FC = () => {
     setPayroll(payroll.map(item => item.id === id ? {...item, status: 'Paid'} : item));
   };
 
-  const handleModify = (id: string) => {
-    navigate(`/payroll/modify/${id}`); // << راح تروح لصفحة التعديل
+  const handleModify = (employee: PayrollItem) => {
+    setSelectedEmployee(employee);
+    setModifyForm({
+      overtimeHours: employee.overtimeHours || '',
+      overtimeAmount: employee.overtimeAmount || '',
+      bonusAmount: employee.bonusAmount || '',
+      bonusPurpose: employee.bonusPurpose || '',
+      deductionAmount: employee.deductionAmount || '',
+      deductionPurpose: employee.deductionPurpose || '',
+    });
+    setShowModifyModal(true);
+  };
+
+  const handleSaveOvertime = () => {
+    // حفظ بيانات الـ Overtime
+    console.log('Saving overtime:', modifyForm.overtimeHours, modifyForm.overtimeAmount);
+  };
+
+  const handleSaveBonus = () => {
+    // حفظ بيانات الـ Bonus
+    console.log('Saving bonus:', modifyForm.bonusAmount, modifyForm.bonusPurpose);
+  };
+
+  const handleSaveDeduction = () => {
+    // حفظ بيانات الـ Deduction
+    console.log('Saving deduction:', modifyForm.deductionAmount, modifyForm.deductionPurpose);
+  };
+
+  const handlePayTotal = () => {
+    // دفع الراتب الكلي
+    if (selectedEmployee) {
+      handlePaySalary(selectedEmployee.id);
+      setShowModifyModal(false);
+    }
+  };
+
+  const calculateTotal = () => {
+    if (!selectedEmployee) return '0';
+    const baseSalary = parseFloat(selectedEmployee.salary.replace(/[^\d.]/g, '')) || 0;
+    const overtime = parseFloat(modifyForm.overtimeAmount) || 0;
+    const bonus = parseFloat(modifyForm.bonusAmount) || 0;
+    const deduction = parseFloat(modifyForm.deductionAmount) || 0;
+    return (baseSalary + overtime + bonus - deduction).toFixed(0);
   };
 
   return (
@@ -204,7 +282,7 @@ const PayrollScreen: React.FC = () => {
                         </button>
                       )}
                       <button
-                        onClick={() => handleModify(item.id)}
+                        onClick={() => handleModify(item)}
                         className="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded-xl hover:bg-gray-300"
                       >
                         Modify
@@ -244,6 +322,162 @@ const PayrollScreen: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Modify Salary Modal */}
+      {showModifyModal && selectedEmployee && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-8 py-5 border-b">
+              <h2 className="text-lg font-semibold text-gray-900">Modify Salary</h2>
+              <button onClick={() => setShowModifyModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-8">
+              {/* Employee Info */}
+              <div className="flex items-center gap-3 mb-6 pb-4 border-b">
+                <div className="w-11 h-11 bg-slate-200 rounded-full flex items-center justify-center text-slate-600 font-medium text-sm">
+                  {selectedEmployee.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-medium text-gray-900 text-sm">{selectedEmployee.name}</h3>
+                  <p className="text-xs text-gray-500">{selectedEmployee.jobTitle}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-500">id: {selectedEmployee.id}</p>
+                </div>
+              </div>
+
+              {/* Grid Sections */}
+              <div className="grid grid-cols-3 gap-5 mb-6">
+                {/* Over time */}
+                <div className="border border-gray-200 rounded-2xl p-5">
+                  <h4 className="font-medium text-gray-900 mb-4 text-sm">Over time</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1.5">Over time</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={modifyForm.overtimeHours}
+                          onChange={(e) => setModifyForm({...modifyForm, overtimeHours: e.target.value})}
+                          placeholder="2 hours"
+                          className="flex-1 px-3 py-2 bg-gray-50 border-0 rounded-lg text-sm focus:ring-2 focus:ring-slate-400 outline-none"
+                        />
+                        <button className="p-1.5 text-gray-400 hover:text-gray-600">
+                          <Edit2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+                        <input
+                          type="text"
+                          value={modifyForm.overtimeAmount}
+                          onChange={(e) => setModifyForm({...modifyForm, overtimeAmount: e.target.value})}
+                          placeholder="395"
+                          className="flex-1 bg-transparent border-0 text-sm focus:outline-none"
+                        />
+                        <span className="text-xs text-gray-500">SR</span>
+                      </div>
+                    </div>
+                    <button onClick={handleSaveOvertime} className="w-full px-4 py-2 bg-slate-700 text-white text-xs rounded-full hover:bg-slate-800 font-medium">
+                      Save
+                    </button>
+                  </div>
+                </div>
+
+                {/* Bonus */}
+                <div className="border border-gray-200 rounded-2xl p-5">
+                  <h4 className="font-medium text-gray-900 mb-4 text-sm">Bonus</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1.5">Amount</label>
+                      <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+                        <input
+                          type="text"
+                          value={modifyForm.bonusAmount}
+                          onChange={(e) => setModifyForm({...modifyForm, bonusAmount: e.target.value})}
+                          placeholder="0"
+                          className="flex-1 bg-transparent border-0 text-sm focus:outline-none"
+                        />
+                        <span className="text-xs text-gray-500">SR</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1.5">Purpose</label>
+                      <textarea
+                        value={modifyForm.bonusPurpose}
+                        onChange={(e) => setModifyForm({...modifyForm, bonusPurpose: e.target.value})}
+                        placeholder=""
+                        rows={2}
+                        className="w-full px-3 py-2 bg-gray-50 border-0 rounded-lg text-sm focus:ring-2 focus:ring-slate-400 outline-none resize-none"
+                      />
+                    </div>
+                    <button onClick={handleSaveBonus} className="w-full px-4 py-2 bg-slate-700 text-white text-xs rounded-full hover:bg-slate-800 font-medium">
+                      Save
+                    </button>
+                  </div>
+                </div>
+
+                {/* Deductions */}
+                <div className="border border-gray-200 rounded-2xl p-5">
+                  <h4 className="font-medium text-gray-900 mb-4 text-sm">Deductions</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1.5">Amount</label>
+                      <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+                        <input
+                          type="text"
+                          value={modifyForm.deductionAmount}
+                          onChange={(e) => setModifyForm({...modifyForm, deductionAmount: e.target.value})}
+                          placeholder="0"
+                          className="flex-1 bg-transparent border-0 text-sm focus:outline-none"
+                        />
+                        <span className="text-xs text-gray-500">SR</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1.5">Purpose</label>
+                      <textarea
+                        value={modifyForm.deductionPurpose}
+                        onChange={(e) => setModifyForm({...modifyForm, deductionPurpose: e.target.value})}
+                        placeholder=""
+                        rows={2}
+                        className="w-full px-3 py-2 bg-gray-50 border-0 rounded-lg text-sm focus:ring-2 focus:ring-slate-400 outline-none resize-none"
+                      />
+                    </div>
+                    <button onClick={handleSaveDeduction} className="w-full px-4 py-2 bg-slate-700 text-white text-xs rounded-full hover:bg-slate-800 font-medium">
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Total Salary Section */}
+              <div className="border border-gray-200 rounded-2xl p-5">
+                <h4 className="font-medium text-gray-900 mb-4 text-sm">Total Salary</h4>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Base Salary</p>
+                    <p className="text-base font-semibold text-gray-900">{selectedEmployee.salary}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Total</p>
+                    <p className="text-base font-semibold text-gray-900">{calculateTotal()} SR</p>
+                  </div>
+                  <button onClick={handlePayTotal} className="px-8 py-2.5 bg-slate-700 text-white text-sm rounded-full hover:bg-slate-800 font-medium">
+                    Pay
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -169,28 +169,28 @@ const InventoryOrders: React.FC = () => {
                     <td className="py-4 text-sm">{row.totalPrice}</td>
                     <td className="py-4 text-sm">{row.createdByName}</td>
                     <td className="py-4 text-sm">{row.orderTime}</td>
-                    <td className="py-4">
-                      <div className="flex gap-2">
-                        <button
-                          className="px-4 py-1.5 text-sm text-white bg-slate-700 rounded-full hover:bg-slate-800 transition-colors"
-                          onClick={() => handleActionClick(item._id)}
-                        >
-                          {row.action}
-                        </button>
-                        <button
-                          className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
-                          onClick={() => {
-                            console.log('👁️ Viewing Order ID:', item._id);
-                            console.log('📦 Status:', activeTab);
-                            navigate(`/dashboard/stock-out-draft/${item._id}`, {
-                              state: { status: activeTab },
-                            });
-                          }}
-                        >
-                          View
-                        </button>
-                      </div>
-                    </td>
+                <td className="py-4">
+  <div className="flex gap-2">
+    <button
+      className="px-4 py-1.5 text-sm text-white bg-slate-700 rounded-full hover:bg-slate-800 transition-colors"
+      onClick={() => handleActionClick(item._id)}
+    >
+      {row.action}
+    </button>
+    <button
+      className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+      onClick={() => {
+        console.log('👁️ Viewing Order ID:', item._id);
+        navigate(`/dashboard/stock-out-draft/${item._id}`, {
+          state: { status: activeTab },
+        });
+      }}
+    >
+      View
+    </button>  
+  </div>
+</td>
+
                   </tr>
                 );
               })}

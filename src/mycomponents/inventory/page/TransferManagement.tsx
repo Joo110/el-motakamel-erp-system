@@ -113,8 +113,7 @@ const TransferManagement = () => {
 
       console.log('📦 API Response:', result);
 
-      // استخلاص المصفوفة بمرونة
-const transfers: any[] = findTransfersArray(result);
+      const transfers: any[] = findTransfersArray(result);
 
       console.log('🔍 raw extracted transfers:', transfers);
 
@@ -124,10 +123,8 @@ const transfers: any[] = findTransfersArray(result);
         status: (t?.status ?? '').toString().toLowerCase()
       }));
 
-      // filter by activeTab — مع احتياط: لو العنصر مفيهوش status و ال tab = 'draft' نخليه يظهر
       const filtered = normalized.filter((t: any) => {
         if (t.status) return t.status === activeTab;
-        // allow missing-status items only in draft tab
         return activeTab === 'draft';
       });
 
@@ -160,15 +157,15 @@ const transfers: any[] = findTransfersArray(result);
   };
 
   const handleDeliver = async (id: string) => {
-  try {
-    await markAsDelivered(id);
-    toast.success('✅ Transfer marked as delivered');
-    fetchData(); // لتحديث الجدول بعد التغيير
-  } catch (err) {
-    console.error("❌ Failed to mark delivered:", err);
-    toast.error('Failed to mark as delivered');
-  }
-};
+    try {
+      await markAsDelivered(id);
+      toast.success('✅ Transfer marked as delivered');
+      fetchData();
+    } catch (err) {
+      console.error("❌ Failed to mark delivered:", err);
+      toast.error('Failed to mark as delivered');
+    }
+  };
 
   const handleView = (id: string, status: string) => {
     navigate(`/dashboard/transfer-draft/${id}`, {
@@ -317,6 +314,22 @@ const transfers: any[] = findTransfersArray(result);
                                 className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
                               >
                                 View
+                              </button>
+                            )}
+
+                            {activeTab === 'shipping' && (
+                              <button
+                                onClick={() => {
+                                  const id = item._id || item.id;
+                                  console.log('🚚 Go to Shipping page for ID:', id);
+                                 navigate(`/dashboard/Shipping/${id}`, {
+  state: { orderId: id },
+});
+
+                                }}
+                                className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+                              >
+                                Add shipping cost
                               </button>
                             )}
                           </div>

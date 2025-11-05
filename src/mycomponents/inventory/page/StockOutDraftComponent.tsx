@@ -67,7 +67,6 @@ const StockOutDraftComponent: React.FC = () => {
 
   const warehouseName = extractOrgName(organizationData) || orderData?.organizationId || '-';
 
-// وضع هذه الدوال داخل نفس الكمبوننت (فوق أو أسفل handleCreateInvoice)
 const findExistingInvoice = (resp: any, saleOrderId: string) => {
   if (!resp) return null;
   const payload = resp?.data ?? resp;
@@ -96,10 +95,8 @@ const handleCreateInvoice = async () => {
   setCreating(true);
 
   try {
-    // 1) استخدم الـ endpoint اللي بعته بالظبط
     const checkResp = await axiosClient.get('/api/v1/saleInvoices', { params: { saleOrder: id } });
 
-    // 2) حاول نوجد فاتورة موجودة لنفس saleOrder
     const existing = findExistingInvoice(checkResp, id);
     if (existing) {
       const invoiceId = existing._id ?? existing.id ?? null;
@@ -109,13 +106,11 @@ const handleCreateInvoice = async () => {
       } else {
         navigate(`/dashboard/sales-invoices/${id}`);
       }
-      return; // ما ننشئش فاتورة جديدة
+      return;
     }
 
-    // 3) لو ما لقيتش -> انشئ الفاتورة
     const created = await createInvoiceForSaleOrder(id);
 
-    // حماية ضد استجابة نصية أو HTML غير متوقعة
     const rawString = typeof created === 'string' ? created : JSON.stringify(created ?? '');
     if (rawString.toLowerCase().includes('welcome to erp')) {
       const msg = 'Unexpected server response — please contact your administrator.';
@@ -124,7 +119,6 @@ const handleCreateInvoice = async () => {
       return;
     }
 
-    // محاولة استخراج كائن الفاتورة من الرد
     const invoiceObj = created?.data?.invoice ?? created?.invoice ?? created;
     const invoiceId = invoiceObj?._id ?? invoiceObj?.id ?? null;
 
@@ -132,9 +126,9 @@ const handleCreateInvoice = async () => {
     toast.success('Invoice created successfully!');
 
     if (invoiceId) {
-      navigate(`/dashboard/sales-invoices/${invoiceId}`);
+      navigate(`/dashboard/inventoryorders`);
     } else {
-      navigate(`/dashboard/sales-invoices/${id}`);
+      navigate(`/dashboard/inventoryorders`);
     }
   } catch (err: any) {
     console.error('Create invoice error:', err?.response?.data ?? err);

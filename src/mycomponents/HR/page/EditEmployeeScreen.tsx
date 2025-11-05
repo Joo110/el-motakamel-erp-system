@@ -62,11 +62,10 @@ const EditEmployeeScreen: React.FC = () => {
         avatar: emp?.avatar || "",
       });
 
-      // show avatar if exists (handle absolute/relative)
       if (emp?.avatar) {
         const avatarVal = String(emp.avatar);
         if (/^https?:\/\//.test(avatarVal)) setImage(avatarVal);
-        else setImage(avatarVal); // إذا الباك يعيد رابط نسبي عّدّل حسب VITE_API_URL إذا لازم
+        else setImage(avatarVal);
       } else {
         setImage(null);
       }
@@ -80,7 +79,6 @@ const EditEmployeeScreen: React.FC = () => {
 
   useEffect(() => {
     if (id) fetchEmployee();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
 
@@ -114,7 +112,6 @@ const EditEmployeeScreen: React.FC = () => {
           headers: { "Content-Type": "multipart/form-data" },
         });
       } else {
-        // لا توجد صورة جديدة -> نرسل JSON (أبسط للباك إن كان يتوقع JSON)
         const payload: Record<string, any> = {
           name: formData.name,
           jobTitle: formData.jobTitle,
@@ -142,14 +139,28 @@ const EditEmployeeScreen: React.FC = () => {
 
       toast.success("Employee updated successfully!");
       navigate(-1);
-    } catch (err) {
-      console.error(err);
-      const message =
-        (err as any)?.response?.data?.message ||
-        (err as any)?.message ||
-        "Failed to update employee";
-      toast.error(String(message));
+    } catch (err: any) {
+  console.error("Update failed", err);
+
+  const message =
+    err?.response?.data?.message ||
+    err?.message ||
+    "Failed to update employee";
+
+  if (message.includes("E11000 duplicate key error")) {
+    if (message.includes("email")) {
+      toast.error("❌ This email is already registered!");
+    } else if (message.includes("phone")) {
+      toast.error("❌ This phone number is already registered!");
+    } else if (message.includes("alternativePhone")) {
+      toast.error("❌ This alternative phone is already registered!");
+    } else {
+      toast.error("❌ Duplicate field value detected.");
     }
+  } else {
+    toast.error(String(message));
+  }
+}
   };
 
   const handleCancel = () => navigate(-1);
@@ -233,12 +244,12 @@ const EditEmployeeScreen: React.FC = () => {
 
             {/* Image Upload Section (ثابت في العمود الأيمن) */}
             <div>
-              <div className="w-full h-36 bg-gray-100 rounded flex items-center justify-center text-gray-400 mb-2 text-xs overflow-hidden border border-gray-300">
+              <div className="w-full h-36 bg-white rounded flex items-center justify-center text-gray-400 mb-2 text-xs overflow-hidden border border-gray-300">
                 {image ? (
                   <img
                     src={image}
                     alt="Employee avatar preview"
-                    className="w-full h-full object-contain object-center bg-gray-100"
+                    className="w-full h-full object-contain object-center bg-white"
                   />
                 ) : (
                   <span className="text-gray-400 text-sm">Image preview</span>

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react'; 
 import { Calendar, ChevronDown, Trash2 } from 'lucide-react';
 import { useSaleOrders } from '../../Sales/hooks/useSaleOrders';
 import { useProducts } from '../../product/hooks/useProducts';
@@ -53,6 +53,8 @@ const StockOutComponent: React.FC = () => {
   const [orderDate, setOrderDate] = useState<string>('');
   const [currency, setCurrency] = useState<string>('SR');
   const [notes, setNotes] = useState<string>('');
+  // new shipping cost state (string to keep input behavior)
+  const [shippingCost, setShippingCost] = useState<string>('');
   
   const [organizationId] = useState<string>('68c2d89e2ee5fae98d57bef1');
   const [createdBy] = useState<string>('68c699af13bdca2885ed4d27');
@@ -107,53 +109,53 @@ const StockOutComponent: React.FC = () => {
   };
 
   const handleAddProduct = () => {
-  // ✅ Validation لكل الحقول المهمة
-  if (!selectedProductId) {
-    toast.error('Please select a product.');
-    return;
-  }
-  if (!selectedInventoryId) {
-    toast.error('Please select an inventory.');
-    return;
-  }
-  if (!formProduct.units || Number(formProduct.units) <= 0) {
-    toast.error('Units must be greater than 0.');
-    return;
-  }
-  if (!formProduct.price || Number(formProduct.price) <= 0) {
-    toast.error('Price must be greater than 0.');
-    return;
-  }
+    // ✅ Validation لكل الحقول المهمة
+    if (!selectedProductId) {
+      toast.error('Please select a product.');
+      return;
+    }
+    if (!selectedInventoryId) {
+      toast.error('Please select an inventory.');
+      return;
+    }
+    if (!formProduct.units || Number(formProduct.units) <= 0) {
+      toast.error('Units must be greater than 0.');
+      return;
+    }
+    if (!formProduct.price || Number(formProduct.price) <= 0) {
+      toast.error('Price must be greater than 0.');
+      return;
+    }
 
-  // ===== Add product logic =====
-  const units = Number(formProduct.units);
-  const price = Number(formProduct.price);
-  const discount = Number(formProduct.discount || 0);
-  const tot = units * price * (1 - discount / 100);
+    // ===== Add product logic =====
+    const units = Number(formProduct.units);
+    const price = Number(formProduct.price);
+    const discount = Number(formProduct.discount || 0);
+    const tot = units * price * (1 - discount / 100);
 
-  const productName =
-    productsFromHook.find((p: any) => p._id === selectedProductId || p.id === selectedProductId)?.name ??
-    formProduct.name;
-  const inventoryName =
-    inventories.find((i: any) => i._id === selectedInventoryId || i.id === selectedInventoryId)?.name ??
-    formProduct.inventory;
+    const productName =
+      productsFromHook.find((p: any) => p._id === selectedProductId || p.id === selectedProductId)?.name ??
+      formProduct.name;
+    const inventoryName =
+      inventories.find((i: any) => i._id === selectedInventoryId || i.id === selectedInventoryId)?.name ??
+      formProduct.inventory;
 
-  const newProduct: ProductRow = {
-    id: Date.now().toString(),
-    productId: selectedProductId,
-    inventoryId: selectedInventoryId,
-    name: productName,
-    inventoryName,
-    code: formProduct.code || '96269',
-    units,
-    price,
-    discount,
-    total: Math.round((tot + Number.EPSILON) * 100) / 100,
+    const newProduct: ProductRow = {
+      id: Date.now().toString(),
+      productId: selectedProductId,
+      inventoryId: selectedInventoryId,
+      name: productName,
+      inventoryName,
+      code: formProduct.code || '96269',
+      units,
+      price,
+      discount,
+      total: Math.round((tot + Number.EPSILON) * 100) / 100,
+    };
+
+    setProducts((prev) => [...prev, newProduct]);
+    handleResetForm();
   };
-
-  setProducts((prev) => [...prev, newProduct]);
-  handleResetForm();
-};
 
 
   const handleCheckboxToggle = (id: string) => {
@@ -200,6 +202,7 @@ const StockOutComponent: React.FC = () => {
       console.log('expectedDeliveryDate:', expectedDeliveryDate);
       console.log('currency:', currency);
       console.log('notes:', notes);
+      console.log('shippingCost (raw):', shippingCost);
 
       if (!customerId) {
         toast.error('Please select a customer before saving.');
@@ -232,6 +235,14 @@ const StockOutComponent: React.FC = () => {
         return;
       }
 
+      // parse shipping cost to number if provided
+      const shippingCostNumber = shippingCost ? Number(shippingCost) : 0;
+      if (shippingCost !== '' && (Number.isNaN(shippingCostNumber) || shippingCostNumber < 0)) {
+        toast.error('Shipping cost must be a valid non-negative number.');
+        console.groupEnd();
+        return;
+      }
+
       const payload: any = {
         customerId,
         organizationId,
@@ -240,8 +251,11 @@ const StockOutComponent: React.FC = () => {
         currency: currency || 'SR',
         notes: notes || undefined,
         createdBy,
+        // include shippingCost only when provided
+        ...(shippingCostNumber !== undefined ? { shippingCost: shippingCostNumber } : {}),
       };
-console.log('payload from React:', JSON.stringify(payload, null, 2));
+
+      console.log('payload from React:', JSON.stringify(payload, null, 2));
 
       console.log('📤 Sending sale order payload to API:', payload);
 
@@ -269,6 +283,7 @@ console.log('payload from React:', JSON.stringify(payload, null, 2));
       setNotes('');
       setCurrency('SR');
       setSelectedProducts([]);
+      setShippingCost('');
 
       console.groupEnd();
     } catch (err) {
@@ -532,6 +547,20 @@ console.log('payload from React:', JSON.stringify(payload, null, 2));
               <span className="text-sm font-semibold text-gray-900">{total.toFixed(2)} {currency}</span>
             </div>
           </div>
+        </div>
+
+        {/* Shipping Cost (NEW) */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Shipping Cost</label>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={shippingCost}
+            onChange={(e) => setShippingCost(e.target.value)}
+            placeholder="0.00"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm"
+          />
         </div>
 
         {/* Notes & Action Buttons */}
