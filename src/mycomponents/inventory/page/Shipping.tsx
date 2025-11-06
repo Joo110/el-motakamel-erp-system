@@ -10,7 +10,7 @@ interface FormData {
 
 const Shipping: React.FC = () => {
   const location = useLocation();
-  const orderId = location.state?.orderId; // 👈 استقبل ID من الصفحة السابقة
+  const orderId = location.state?.orderId;
 
   const [formData, setFormData] = useState<FormData>({
     shippingFees: '',

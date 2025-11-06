@@ -6,11 +6,10 @@ import { toast } from "react-hot-toast";
 const Topbar = () => {
   const navigate = useNavigate();
 
-  // ✅ لما المستخدم يضغط على "Logout"
   const handleLogout = () => {
-    Cookies.remove("authToken"); // امسح التوكن
+    Cookies.remove("authToken");
     toast.success("Logged out successfully!");
-    navigate("/user-login"); // رجّعه لشاشة اللوجين
+    navigate("/user-login");
   };
 
   return (

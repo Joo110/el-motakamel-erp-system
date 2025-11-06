@@ -10,6 +10,7 @@ import {
   getAllStocksService,
   getAllStockTransfersService,
   getInventoryStocksService,
+  addStockToInventoryService,
 } from "@/mycomponents/inventory/services/inventories";
 
 const isAbortError = (err: unknown) => {
@@ -60,7 +61,6 @@ export const useInventories = () => {
     try {
 let formData: FormData;
 
-// ✅ لو المستخدم بعت كائن عادي نحوله لـ FormData
 if (payload instanceof FormData) {
   formData = payload;
 } else {
@@ -69,7 +69,6 @@ if (payload instanceof FormData) {
   formData.append("location", payload.location);
   formData.append("capacity", String(payload.capacity));
 
-  // لو الصورة موجودة ضيفها
   if ((payload as any).image instanceof File) {
     formData.append("avatar", (payload as any).image);
   }
@@ -161,6 +160,25 @@ const newInventory = await createInventoryService(formData);
     []
   );
 
+    const addStockToInventory = useCallback(
+    async (inventoryId: string, productId: string, quantity: number) => {
+      setIsMutating(true);
+      setError(null);
+      try {
+        const payload = { productId, quantity };
+        const result = await addStockToInventoryService(inventoryId, payload);
+        return result;
+      } catch (err: unknown) {
+        setError(err as Error);
+        throw err;
+      } finally {
+        setIsMutating(false);
+      }
+    },
+    []
+  );
+
+
   const remove = useCallback(async (id: string) => {
     setIsMutating(true);
     setError(null);
@@ -196,6 +214,7 @@ const newInventory = await createInventoryService(formData);
     isLoading,
     isMutating,
     error,
+    addStockToInventory,
     refetch,
     create,
     update,

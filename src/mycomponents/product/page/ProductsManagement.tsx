@@ -288,7 +288,7 @@ const ProductsManagement: React.FC = () => {
                               <img
                                 src={productImage}
                                 alt={product.name}
-                                className="w-full h-full object-cover"
+                                className="max-w-full max-h-full object-contain object-center"
                                 onError={(e) => {
                                   e.currentTarget.style.display = "none";
                                 }}

@@ -28,6 +28,7 @@ import AddInventory from './mycomponents/inventory/page/AddInventoryForm';
 import StockSearch from './mycomponents/inventory/page/StockSearchView';
 import InventoryDetails from './mycomponents/inventory/page/InventoryDetailsView';
 import EditInventory from "@/mycomponents/inventory/page/EditInventory";
+import AddStockToInventory  from "@/mycomponents/inventory/page/addstocktoinventory";
 
 // New Inventory Components
 import StockIn from './mycomponents/inventory/page/StockInComponent';
@@ -105,6 +106,7 @@ function App() {
         { path: "stock-search", element: <StockSearch /> },
         { path: "inventory-details/:id", element: <InventoryDetails /> },
         { path: "edit-inventory/:id", element: <EditInventory /> },
+        { path: "addstocktoinventory/:id", element: <AddStockToInventory  /> },
 
         //  Old Inventory Routes
         { path: "stock-in", element: <StockIn /> },

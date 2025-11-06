@@ -3,6 +3,7 @@ import { Edit2, Trash2 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useInventories } from '@/mycomponents/inventory/hooks/useInventories';
 import axiosClient from '@/lib/axiosClient';
+import { toast } from 'react-hot-toast';
 
 interface Product {
   id: string;
@@ -34,7 +35,7 @@ interface RawStock {
 const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { inventories, getStocks, isLoading } = useInventories();
+const { inventories, getStocks, isLoading, remove, isMutating } = useInventories();
   
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
@@ -103,20 +104,19 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
     }
   };
 
-const inventoryData = useMemo(() => {
-  if (!inventory) return null;
-  const inv = inventory as any;
-  const image = inv.image ?? inv.img ?? inv.avatar ?? `https://picsum.photos/seed/${encodeURIComponent(inv._id || 'default')}/400/300`;
+  const inventoryData = useMemo(() => {
+    if (!inventory) return null;
+    const inv = inventory as any;
+    const image = inv.image ?? inv.img ?? inv.avatar ?? `https://picsum.photos/seed/${encodeURIComponent(inv._id || 'default')}/400/300`;
 
-  return {
-    id: inv._id || 'N/A',
-    name: inv.name || 'Unnamed Inventory',
-    location: inv.location || 'N/A',
-    capacity: typeof inv.capacity === 'number' ? String(inv.capacity) : inv.capacity || 'N/A',
-    image
-  };
-}, [inventory]);
-
+    return {
+      id: inv._id || 'N/A',
+      name: inv.name || 'Unnamed Inventory',
+      location: inv.location || 'N/A',
+      capacity: typeof inv.capacity === 'number' ? String(inv.capacity) : inv.capacity || 'N/A',
+      image
+    };
+  }, [inventory]);
 
   const totalProducts = products.length;
   const startEntry = totalProducts === 0 ? 0 : (currentPage - 1) * entriesPerPage + 1;
@@ -135,6 +135,19 @@ const inventoryData = useMemo(() => {
       navigate(`/dashboard/edit-inventory/${id}`);
     }
   };
+
+const handleDeleteInventory = async () => {
+  if (!id) return;
+  if (!confirm('Are you sure you want to delete this inventory? This action cannot be undone.')) return;
+
+  try {
+    await remove(id);
+    navigate('/dashboard/inventories');
+  } catch (err) {
+    console.error('Error deleting inventory:', err);
+    toast.error('Failed to delete inventory');
+  }
+};
 
   const openEditModal = (product: Product) => {
     setEditingProduct(product);
@@ -261,14 +274,23 @@ const inventoryData = useMemo(() => {
             </div>
 
             <div className="flex flex-col items-end gap-4">
-              <div className="flex gap-3">
-                <button
-                  onClick={handleEditClickHeader}
-                  className="px-5 py-2 bg-slate-700 text-white rounded-full hover:bg-blue-800 transition-colors"
-                >
-                  Edit Details
-                </button>
-              </div>
+             <div className="flex gap-3">
+  <button
+    onClick={handleEditClickHeader}
+    className="px-5 py-2 bg-slate-700 text-white rounded-full hover:bg-blue-800 transition-colors"
+  >
+    Edit Details
+  </button>
+
+  <button
+    onClick={handleDeleteInventory}
+    disabled={isMutating}
+    className="px-5 py-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+  >
+    Delete
+  </button>
+</div>
+
               <div className="flex items-center gap-4">
                 <div className="text-sm">
                   <span className="text-gray-600">Id:</span>
@@ -289,9 +311,21 @@ const inventoryData = useMemo(() => {
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold">Inventory Products</h2>
-            <span className="text-sm text-gray-500">
-              Showing {startEntry}-{endEntry} of {totalProducts} products
-            </span>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-500">
+                Showing {startEntry}-{endEntry} of {totalProducts} products
+              </span>
+              {/* === NEW BUTTON (doesn't change other layout) === */}
+              <button
+                onClick={() => {
+                  // navigate to a page to manage/view stocks for this inventory
+                  navigate(`/dashboard/addstocktoinventory/${id}`, { state: { inventoryId: id } });
+                }}
+                className="px-5 py-2 bg-slate-700 text-white rounded-full hover:bg-blue-800 transition-colors"
+              >
+                Manage Stocks
+              </button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">

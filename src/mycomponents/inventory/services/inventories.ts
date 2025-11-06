@@ -110,6 +110,17 @@ interface StockTransferPayload {
   quantity: number;
 }
 
+// ✅ Add stock to specific inventory
+export const addStockToInventoryService = async (
+  inventoryId: string,
+  payload: { productId: string; quantity: number }
+) => {
+  const response = await axiosClient.post(`/inventories/${inventoryId}/stock`, payload);
+  console.log("addStockToInventoryService response:", response.data);
+  return response.data;
+};
+
+
 export const transferStockService = async (payload: StockTransferPayload) => {
   const response = await axiosClient.post("/stockTransfer", payload);
   console.log("transferStockService response:", response.data);

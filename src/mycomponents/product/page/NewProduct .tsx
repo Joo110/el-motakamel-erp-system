@@ -39,12 +39,10 @@ const NewProduct = () => {
     });
   };
 
-  // ✅ تعديل هنا فقط — فحص الحجم والأبعاد
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     if (!file) return;
 
-    // ✅ دلوقتي ما فيش فحص للأبعاد أو الحجم، بنقبل أي صورة
     const reader = new FileReader();
     reader.onloadend = () => {
       setImageFile(file);
@@ -53,7 +51,6 @@ const NewProduct = () => {
     reader.readAsDataURL(file);
   };
 
-  // ======== التعديل: إرسال FormData بدل JSON (باقي الكود بدون تغيير) ========
   const handleSubmit = async () => {
     try {
       setSaving(true);
@@ -65,7 +62,6 @@ const NewProduct = () => {
         return;
       }
 
-      // ✅ هنا فقط يتم فحص حجم الصورة قبل الإرسال (لو الصورة ضخمة جدًا)
       if (imageFile && imageFile.size > 3 * 1024 * 1024) {
         toast.error("❌ Image file is too large! Please upload an image under 3MB.");
         setSaving(false);
@@ -148,7 +144,6 @@ const result = await addProduct(form as unknown as any);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      {/* نفس الشكل بالضبط بدون أي تعديل */}
       {/* Header */}
       <div className="mb-3 flex items-center gap-4 flex-wrap">
         <h1 className="text-3xl font-bold text-gray-800">Products Management</h1>
