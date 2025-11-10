@@ -25,8 +25,7 @@ const truncate = (s: string | undefined, n = 30) => {
 };
 
 const StockInComponent: React.FC = () => {
-const [products, setProducts] = useState<ProductRow[]>([]);
-
+  const [products, setProducts] = useState<ProductRow[]>([]);
 
   const total = useMemo(() => products.reduce((sum, product) => sum + product.total, 0), [products]);
 
@@ -47,7 +46,7 @@ const [products, setProducts] = useState<ProductRow[]>([]);
   const [orderDate, setOrderDate] = useState<string>('');
   const [currency, setCurrency] = useState<string>('SR');
   const [notes, setNotes] = useState<string>('');
-  
+
   const [organizationId] = useState<string>('68c2d89e2ee5fae98d57bef1');
   const [createdBy] = useState<string>('68c699af13bdca2885ed4d27');
 
@@ -100,55 +99,54 @@ const [products, setProducts] = useState<ProductRow[]>([]);
     setFormProduct((f) => ({ ...f, inventory: inv?.name ?? '' }));
   };
 
-const handleAddProduct = () => {
-  // ✅ Validation
-  if (!selectedProductId) {
-    toast.error('Please select a product.');
-    return;
-  }
-  if (!selectedInventoryId) {
-    toast.error('Please select an inventory.');
-    return;
-  }
-  if (!formProduct.units || Number(formProduct.units) <= 0) {
-    toast.error('Units must be greater than 0.');
-    return;
-  }
-  if (!formProduct.price || Number(formProduct.price) <= 0) {
-    toast.error('Price must be greater than 0.');
-    return;
-  }
+  const handleAddProduct = () => {
+    // ✅ Validation
+    if (!selectedProductId) {
+      toast.error('Please select a product.');
+      return;
+    }
+    if (!selectedInventoryId) {
+      toast.error('Please select an inventory.');
+      return;
+    }
+    if (!formProduct.units || Number(formProduct.units) <= 0) {
+      toast.error('Units must be greater than 0.');
+      return;
+    }
+    if (!formProduct.price || Number(formProduct.price) <= 0) {
+      toast.error('Price must be greater than 0.');
+      return;
+    }
 
-  // ===== Add product logic =====
-  const units = Number(formProduct.units);
-  const price = Number(formProduct.price);
-  const discount = Number(formProduct.discount || 0);
-  const tot = units * price * (1 - discount / 100);
+    // ===== Add product logic =====
+    const units = Number(formProduct.units);
+    const price = Number(formProduct.price);
+    const discount = Number(formProduct.discount || 0);
+    const tot = units * price * (1 - discount / 100);
 
-  const productName =
-    productsFromHook.find((p: any) => p._id === selectedProductId || p.id === selectedProductId)?.name ??
-    formProduct.name;
-  const inventoryName =
-    inventories.find((i: any) => i._id === selectedInventoryId || i.id === selectedInventoryId)?.name ??
-    formProduct.inventory;
+    const productName =
+      productsFromHook.find((p: any) => p._id === selectedProductId || p.id === selectedProductId)?.name ??
+      formProduct.name;
+    const inventoryName =
+      inventories.find((i: any) => i._id === selectedInventoryId || i.id === selectedInventoryId)?.name ??
+      formProduct.inventory;
 
-  const newProduct: ProductRow = {
-    id: Date.now().toString(),
-    productId: selectedProductId,
-    inventoryId: selectedInventoryId,
-    name: productName,
-    inventoryName,
-    code: formProduct.code || '96060',
-    units,
-    price,
-    discount,
-    total: Math.round((tot + Number.EPSILON) * 100) / 100,
+    const newProduct: ProductRow = {
+      id: Date.now().toString(),
+      productId: selectedProductId,
+      inventoryId: selectedInventoryId,
+      name: productName,
+      inventoryName,
+      code: formProduct.code || '96060',
+      units,
+      price,
+      discount,
+      total: Math.round((tot + Number.EPSILON) * 100) / 100,
+    };
+
+    setProducts((prev) => [...prev, newProduct]);
+    handleResetForm();
   };
-
-  setProducts((prev) => [...prev, newProduct]);
-  handleResetForm();
-};
-
 
   const handleCheckboxToggle = (id: string) => {
     setSelectedProducts((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -176,7 +174,7 @@ const handleAddProduct = () => {
         toast.error('Please select a supplier before saving.');
         return;
       }
-      
+
       if (products.length === 0) {
         toast.error('Please add at least one product.');
         return;
@@ -195,7 +193,7 @@ const handleAddProduct = () => {
       console.log('📤 Sending payload to API:', payload);
       await create(payload);
       toast.success('✅ Order saved successfully');
-      
+
       setProducts([]);
       setSupplierId('');
       setExpectedDeliveryDate('');
@@ -220,7 +218,8 @@ const handleAddProduct = () => {
       {/* Main Form */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         {/* Top Section */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
+        {/* responsive: 1 col on xs, 2 on sm, 4 on lg */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Supplier</label>
             <div className="relative">
@@ -287,7 +286,14 @@ const handleAddProduct = () => {
         {/* Add Products Section */}
         <div className="mb-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Add Products</h2>
-          <div className="grid grid-cols-7 gap-3 items-end">
+
+          {/* responsive grid:
+              - xs: 1 col (stack)
+              - sm: 2 cols
+              - md: 3 cols
+              - lg: 7 cols (matches original wide layout)
+           */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 items-end">
             {/* Product dropdown */}
             <div className="relative">
               <label className="block text-xs text-gray-600 mb-1">Product</label>
@@ -303,7 +309,8 @@ const handleAddProduct = () => {
                   </option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-2 top-8 w-4 h-4 text-gray-400" />
+              {/* on small screens the top offset must be smaller; keep consistent */}
+              <ChevronDown className="absolute right-2 top-8 sm:top-8 w-4 h-4 text-gray-400" />
             </div>
 
             {/* Inventory dropdown */}
@@ -321,7 +328,7 @@ const handleAddProduct = () => {
                   </option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-2 top-8 w-4 h-4 text-gray-400" />
+              <ChevronDown className="absolute right-2 top-8 sm:top-8 w-4 h-4 text-gray-400" />
             </div>
 
             {/* Code */}
@@ -345,7 +352,7 @@ const handleAddProduct = () => {
                 onChange={(e) => handleFormChange('units', e.target.value)}
                 min={0}
               />
-              <ChevronDown className="absolute right-2 top-8 w-4 h-4 text-gray-400" />
+              <ChevronDown className="absolute right-2 top-8 sm:top-8 w-4 h-4 text-gray-400" />
             </div>
 
             {/* Price */}
@@ -386,7 +393,8 @@ const handleAddProduct = () => {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 mt-4">
+          {/* buttons: on small screens stack, on larger show inline to the right */}
+          <div className="flex flex-col sm:flex-row sm:justify-end gap-2 mt-4">
             <button
               onClick={handleResetForm}
               className="px-4 py-2 bg-gray-200 text-gray-700 rounded-full text-sm hover:bg-gray-300"
@@ -406,7 +414,7 @@ const handleAddProduct = () => {
         <div className="mb-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Received Products</h2>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[600px] sm:min-w-full">
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left text-xs font-medium text-gray-600 pb-3 w-8"></th>
@@ -477,7 +485,7 @@ const handleAddProduct = () => {
           ></textarea>
         </div>
 
-        <div className="flex justify-end gap-3">
+        <div className="flex flex-col sm:flex-row sm:justify-end gap-3">
           <button className="px-6 py-2 border border-gray-300 text-gray-700 rounded-full text-sm hover:bg-gray-50">
             Cancel
           </button>

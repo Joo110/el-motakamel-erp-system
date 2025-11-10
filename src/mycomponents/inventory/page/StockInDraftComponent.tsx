@@ -325,17 +325,19 @@ const contentType =
               Back
             </button>
 
-            <button
-              className="px-6 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-slate-800 flex items-center gap-2"
-              onClick={() => {
-                if (!id) return;
-                navigate(`/dashboard/EditPurchaseOrderComponent/${id}`, {
-                  state: { orderData },
-                });
-              }}
-            >
-              Edit
-            </button>
+            {activeStatus !== 'Invoice' && (
+              <button
+                className="px-6 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-slate-800 flex items-center gap-2"
+                onClick={() => {
+                  if (!id) return;
+                  navigate(`/dashboard/EditPurchaseOrderComponent/${id}`, {
+                    state: { orderData },
+                  });
+                }}
+              >
+                Edit
+              </button>
+            )}
 
             {/* Create Invoice button - only show when status is Invoice */}
             {activeStatus === 'Invoice' && (

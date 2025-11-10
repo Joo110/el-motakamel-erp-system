@@ -127,12 +127,7 @@ const CustomerAdd: React.FC = () => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-            </div>
-
-            <div className="flex flex-col items-center">
-              <img src="https://via.placeholder.com/150x100/e5e7eb/6b7280?text=Customer" alt="Location" className="rounded-lg mb-3" />
-              <button className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-full text-sm">Change Image</button>
-            </div>
+            </div>         
           </div>
 
           <div className="flex justify-end gap-3 mt-8">

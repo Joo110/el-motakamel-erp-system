@@ -114,12 +114,6 @@ const SupplierEditFilled: React.FC = () => {
               ))}
             </div>
 
-            <div className="flex flex-col items-center">
-              <div className="text-red-500 text-4xl font-bold mb-3">⚡ {form.name || "Supplier"}</div>
-              <button className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-full text-sm">
-                Change Image
-              </button>
-            </div>
           </div>
 
           <div className="flex justify-end gap-3 mt-8">

@@ -25,7 +25,6 @@ const countries = [
   { code: "+1", flag: "🇺🇸" },
 ];
 
-// Zod schema (validation rules)
 const registerSchema = z
   .object({
     fullname: z.string().min(3, "Full name must be at least 3 characters"),

@@ -3,14 +3,17 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Search, Edit2, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Suppliers } from '../hooks/Suppliers';
+import { toast } from 'react-hot-toast';
 
 const SupplierSearchList: React.FC = () => {
   const { suppliers, loading, error, fetchSuppliers, removeSupplier } = Suppliers(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
     if (!suppliers || suppliers.length === 0) {
-      fetchSuppliers?.(); // ✅ مناداة بدون void ولا شرط truthiness
+      fetchSuppliers?.();
     }
   }, [suppliers, fetchSuppliers]);
 
@@ -20,7 +23,7 @@ const SupplierSearchList: React.FC = () => {
 
     try {
       console.log('🗑️ Trying to delete supplier:', id);
-      const res: any = await removeSupplier(id); // ✅ خلي res من نوع any عشان نتعامل مع success و status
+      const res: any = await removeSupplier(id);
       console.log('🧩 Delete response:', res);
 
       const isDeleted =
@@ -35,11 +38,11 @@ const SupplierSearchList: React.FC = () => {
         await fetchSuppliers?.();
       } else {
         console.warn('⚠️ Unexpected delete response:', res);
-        alert('Supplier may not have been deleted. Check console for details.');
+        toast.error('Supplier may not have been deleted. Check console for details.');
       }
     } catch (err) {
       console.error('❌ Delete failed:', err);
-      alert('Delete failed. Check console.');
+      toast.error('Delete failed. Check console.');
     }
   };
 
@@ -54,6 +57,17 @@ const SupplierSearchList: React.FC = () => {
         (s.address ?? '').toLowerCase().includes(term)
     );
   }, [suppliers, searchTerm]);
+
+  const totalPages = Math.ceil((filtered.length || 0) / rowsPerPage);
+
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    return filtered.slice(start, end);
+  }, [filtered, currentPage, rowsPerPage]);
+
+  const handlePrev = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
+  const handleNext = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages));
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -85,7 +99,10 @@ const SupplierSearchList: React.FC = () => {
                 type="text"
                 placeholder="Search suppliers by name, phone, or email..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -105,7 +122,7 @@ const SupplierSearchList: React.FC = () => {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Suppliers</h2>
               <p className="text-sm text-gray-500">
-                Showing {filtered.length > 0 ? `1-${Math.min(filtered.length, 10)}` : 0} of {filtered.length} Supplier
+                Showing {paginatedData.length > 0 ? `${(currentPage - 1) * rowsPerPage + 1}-${Math.min(currentPage * rowsPerPage, filtered.length)}` : 0} of {filtered.length} Supplier
               </p>
             </div>
             <div className="overflow-x-auto">
@@ -120,14 +137,13 @@ const SupplierSearchList: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((supplier, idx) => (
+                  {paginatedData.map((supplier, idx) => (
                     <tr key={supplier._id ?? idx} className="border-b hover:bg-gray-50">
                       <td className="py-4 px-4">
                         <Link
                           to={`/dashboard/precious/supplier/${supplier._id}`}
                           className="flex items-center gap-3"
                         >
-                          <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
                           <span className="font-medium text-gray-900">{supplier.name}</span>
                         </Link>
                       </td>
@@ -152,7 +168,7 @@ const SupplierSearchList: React.FC = () => {
                       </td>
                     </tr>
                   ))}
-                  {filtered.length === 0 && (
+                  {paginatedData.length === 0 && (
                     <tr>
                       <td colSpan={5} className="text-center py-6 text-gray-500">
                         {loading ? 'Loading suppliers...' : error ?? 'No suppliers found.'}
@@ -162,10 +178,19 @@ const SupplierSearchList: React.FC = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination */}
             <div className="flex justify-between items-center mt-4">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600">Show</span>
-                <select className="border border-gray-300 rounded-full px-2 py-1 text-sm">
+                <select
+                  className="border border-gray-300 rounded-full px-2 py-1 text-sm"
+                  value={rowsPerPage}
+                  onChange={(e) => {
+                    setRowsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                >
                   <option>10</option>
                   <option>25</option>
                   <option>50</option>
@@ -173,17 +198,36 @@ const SupplierSearchList: React.FC = () => {
                 <span className="text-sm text-gray-600">entries</span>
               </div>
               <div className="flex gap-2">
-                <button className="px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-600 hover:bg-gray-50">
+                <button
+                  onClick={handlePrev}
+                  className="px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-600 hover:bg-gray-50"
+                  disabled={currentPage === 1}
+                >
                   Previous
                 </button>
-                <button className="px-3 py-1 bg-gray-800 text-white rounded-full text-sm">1</button>
-                <button className="px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-600 hover:bg-gray-50">2</button>
-                <button className="px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-600 hover:bg-gray-50">3</button>
-                <button className="px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-600 hover:bg-gray-50">
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <button
+                    key={i + 1}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={`px-3 py-1 rounded-full text-sm ${
+                      currentPage === i + 1
+                        ? 'bg-gray-800 text-white'
+                        : 'border border-gray-300 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+                <button
+                  onClick={handleNext}
+                  className="px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-600 hover:bg-gray-50"
+                  disabled={currentPage === totalPages}
+                >
                   Next
                 </button>
               </div>
             </div>
+
           </div>
         </div>
       </div>
