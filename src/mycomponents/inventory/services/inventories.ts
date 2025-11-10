@@ -8,7 +8,6 @@ import type {
 } from "@/types/inventory";
 
 
-
 // ✅ Get all inventories
 export const getInventoriesService = async (): Promise<GetInventoriesResponse> => {
   const response = await axiosClient.get<GetInventoriesResponse>("/inventories");
@@ -44,33 +43,38 @@ export const updateInventoryService = async (
   updatedData: Partial<InventoryInput>,
   file?: File
 ): Promise<Inventory> => {
-  const form = new FormData();
-
-  if (updatedData.name !== undefined) form.append('name', updatedData.name);
-  if (updatedData.location !== undefined) form.append('location', updatedData.location);
-
-  if (updatedData.capacity !== undefined || updatedData.capacityUnit !== undefined) {
-    let capacityValue: string | number = updatedData.capacity || '';
-    if (typeof updatedData.capacity === "number" && updatedData.capacityUnit) {
-      capacityValue = `${updatedData.capacity} ${updatedData.capacityUnit}`;
-    }
-    form.append('capacity', String(capacityValue));
-  }
+  let dataToSend: any;
+const headers: Record<string, string> = {};
 
   if (file) {
-    form.append('avatar', file);
+    const form = new FormData();
+
+    if (updatedData.name !== undefined) form.append("name", updatedData.name);
+    if (updatedData.location !== undefined) form.append("location", updatedData.location);
+    if (updatedData.capacity !== undefined)
+      form.append("capacity", String(updatedData.capacity));
+
+    form.append("avatar", file);
+      form.forEach((v, k) => console.log(k, v));
+
+    dataToSend = form;
+    headers["Content-Type"] = "multipart/form-data";
+  } else {
+    // 🟢 لو مفيش صورة → نستخدم JSON عادي
+    dataToSend = updatedData;
+    headers["Content-Type"] = "application/json";
   }
 
   try {
-    const response = await axiosClient.patch<SingleInventoryResponse>(`/inventories/${id}`, form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return response.data.data.inventory;
+    const response = await axiosClient.patch(`/inventories/${id}`, dataToSend, { headers });
+    console.log("✅ updateInventoryService response:", response.data);
+    return response.data.data.updatedInventory;
   } catch (error) {
-    console.error('updateInventoryService error:', error);
+    console.error("❌ updateInventoryService error:", error);
     throw error;
   }
 };
+
 
 // ✅ Delete inventory
 export const deleteInventoryService = async (id: string): Promise<string> => {

@@ -90,13 +90,6 @@ await Promise.all([fetchOrders(), refetchInventories(), refetchUsers()]);
                 </div>
               </div>
             </div>
-            <div className="ml-8">
-              <img
-                src="https://via.placeholder.com/150x100/e5e7eb/6b7280?text=Customer"
-                alt="Customer"
-                className="rounded-lg"
-              />
-            </div>
           </div>
         </div>
 

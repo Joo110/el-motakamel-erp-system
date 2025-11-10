@@ -103,11 +103,6 @@ const StockSearchView: React.FC = () => {
       const rawStocks = stockPayload?.stocks ?? stockPayload?.data?.stocks ?? [];
       const rawTransfers = transferPayload?.stockTransfers ?? transferPayload?.data?.stockTransfers ?? [];
 
-      console.log("📦 rawStocks length:", Array.isArray(rawStocks) ? rawStocks.length : 'not-array');
-      console.log("📦 rawStocks sample:", rawStocks);
-      console.log("🚚 rawTransfers length:", Array.isArray(rawTransfers) ? rawTransfers.length : 'not-array');
-      console.log("🚚 rawTransfers sample:", rawTransfers);
-
       const mappedStocks: StockItem[] = (Array.isArray(rawStocks) ? rawStocks : []).map((s: any) => {
         const productObj =
           s.productId ??
@@ -201,8 +196,6 @@ const StockSearchView: React.FC = () => {
           if (key) inventoryMap[key] = inv.name ?? inv.title ?? key;
         });
 
-        console.log("📍 Inventory Map built:", inventoryMap);
-
         const mappedTransactions: Transaction[] = transfersArr.map((t: any) => {
           const firstProduct = t.products?.[0] ?? null;
 
@@ -236,12 +229,11 @@ const StockSearchView: React.FC = () => {
           } else {
             prodName = t.productName ?? "N/A";
           }
-
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
           const resolveInventoryName = (invField: any, fieldName: string) => {
             if (!invField) return "N/A";
             if (typeof invField === 'string') {
               const resolved = inventoryMap[invField] ?? invField;
-              console.log(`🔍 Resolving ${fieldName}:`, invField, "→", resolved);
               return resolved;
             }
             if (typeof invField === 'object') {
@@ -323,24 +315,24 @@ const StockSearchView: React.FC = () => {
 
   const stockTotalPages = Math.ceil(filteredStockItems.length / stockPageSize);
   const transTotalPages = Math.ceil(filteredTransactions.length / transPageSize);
-// Helper to generate pagination buttons dynamically
-const getPaginationPages = (current: number, total: number, maxVisible = 5) => {
-  const pages: number[] = [];
-  const half = Math.floor(maxVisible / 2);
-  let start = Math.max(1, current - half);
-  let end = Math.min(total, current + half);
 
-  if (end - start + 1 < maxVisible) {
-    if (start === 1) {
-      end = Math.min(total, start + maxVisible - 1);
-    } else if (end === total) {
-      start = Math.max(1, end - maxVisible + 1);
+  const getPaginationPages = (current: number, total: number, maxVisible = 5) => {
+    const pages: number[] = [];
+    const half = Math.floor(maxVisible / 2);
+    let start = Math.max(1, current - half);
+    let end = Math.min(total, current + half);
+
+    if (end - start + 1 < maxVisible) {
+      if (start === 1) {
+        end = Math.min(total, start + maxVisible - 1);
+      } else if (end === total) {
+        start = Math.max(1, end - maxVisible + 1);
+      }
     }
-  }
 
-  for (let i = start; i <= end; i++) pages.push(i);
-  return pages;
-};
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
+  };
 
   const handleSearch = () => {
     setStockCurrentPage(1);
@@ -394,20 +386,24 @@ const getPaginationPages = (current: number, total: number, maxVisible = 5) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-          </div>
-          <h1 className="text-2xl font-bold">Inventory Management</h1>
-          <span>Dashboard</span>
-            <span> › </span>
+            <span>Dashboard</span>
+            <span>›</span>
             <span className="text-gray-700">Stock Search</span>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <h1 className="text-2xl font-bold">Inventory Management</h1>
+            {/* breadcrumb/title alignment preserved; stacked on small screens */}
+          </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <h2 className="text-lg font-semibold mb-4">Stock Search</h2>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               <input
@@ -418,11 +414,12 @@ const getPaginationPages = (current: number, total: number, maxVisible = 5) => {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:outline-none"
               />
             </div>
-            <div className="relative">
+
+            <div className="relative flex-shrink-0">
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="appearance-none px-4 py-2 pr-10 border border-gray-300 rounded-full bg-white focus:outline-none"
+                className="appearance-none px-4 py-2 pr-10 border border-gray-300 rounded-full bg-white focus:outline-none min-w-[160px]"
               >
                 {categories.map(cat => (
                   <option key={cat.id} value={cat.id}>
@@ -432,25 +429,28 @@ const getPaginationPages = (current: number, total: number, maxVisible = 5) => {
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
             </div>
-            <button
-              onClick={handleSearch}
-              className="px-6 py-2 bg-slate-700 text-white rounded-full hover:bg-blue-800 transition-colors flex items-center gap-2"
-            >
-              <Search size={18} />
-              Search
-            </button>
-            <button
-              onClick={handleReset}
-              className="px-6 py-2 bg-gray-400 text-gray-800 rounded-full hover:bg-gray-500 transition-colors flex items-center gap-2"
-            >
-              <RotateCcw size={18} />
-              Reset
-            </button>
+
+            <div className="flex gap-3 flex-col sm:flex-row items-stretch sm:items-center">
+              <button
+                onClick={handleSearch}
+                className="px-6 py-2 bg-slate-700 text-white rounded-full hover:bg-blue-800 transition-colors flex items-center gap-2 whitespace-nowrap flex-shrink-0 w-full sm:w-auto"
+              >
+                <Search size={18} />
+                Search
+              </button>
+              <button
+                onClick={handleReset}
+                className="px-6 py-2 bg-gray-400 text-gray-800 rounded-full hover:bg-gray-500 transition-colors flex items-center gap-2 whitespace-nowrap flex-shrink-0 w-full sm:w-auto"
+              >
+                <RotateCcw size={18} />
+                Reset
+              </button>
+            </div>
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
             <h2 className="text-lg font-semibold">Stock</h2>
             <span className="text-sm text-gray-500">
               Showing {filteredStockItems.length > 0 ? (stockCurrentPage - 1) * stockPageSize + 1 : 0}-{Math.min(stockCurrentPage * stockPageSize, filteredStockItems.length)} of {filteredStockItems.length} products
@@ -458,7 +458,7 @@ const getPaginationPages = (current: number, total: number, maxVisible = 5) => {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-max">
               <thead className="border-b">
                 <tr className="text-left text-sm text-gray-600">
                   <th className="pb-3 font-medium">Product</th>
@@ -471,21 +471,21 @@ const getPaginationPages = (current: number, total: number, maxVisible = 5) => {
                 {paginatedStockItems.length > 0 ? (
                   paginatedStockItems.map((item) => {
                     const categoryName = resolveCategoryNameById(item.product?.category);
-                    
+
                     return (
                       <tr key={item._id} className="border-b last:border-b-0">
-                        <td className="py-4 flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                        <td className="py-4 flex items-center gap-3 whitespace-nowrap">
+                          <div className="w-10 h-10 bg-gray-200 rounded-full flex-shrink-0"></div>
                           <div>
                             <div className="font-medium">{item.product?.name || 'N/A'}</div>
                             <div className="text-sm text-gray-500">{categoryName}</div>
                           </div>
                         </td>
-                        <td className="py-4 text-blue-600 underline cursor-pointer">
+                        <td className="py-4 text-blue-600 underline cursor-pointer whitespace-nowrap">
                           {item.inventory?.name || '-'}
                         </td>
-                        <td className="py-4">{item.quantity || 0}</td>
-                        <td className="py-4 text-sm text-gray-600">
+                        <td className="py-4 whitespace-nowrap">{item.quantity || 0}</td>
+                        <td className="py-4 text-sm text-gray-600 whitespace-nowrap">
                           {formatDate(item.lastUpdate)}
                         </td>
                       </tr>
@@ -502,8 +502,8 @@ const getPaginationPages = (current: number, total: number, maxVisible = 5) => {
             </table>
           </div>
 
-          <div className="flex items-center justify-between mt-4">
-            <div className="flex items-center gap-2 text-sm">
+          <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-3">
+            <div className="flex items-center gap-2 text-sm whitespace-nowrap">
               <span>Show</span>
               <select
                 value={stockPageSize}
@@ -520,41 +520,43 @@ const getPaginationPages = (current: number, total: number, maxVisible = 5) => {
               </select>
               <span>entries</span>
             </div>
-            <div className="flex gap-2">
-  <button
-    onClick={() => setStockCurrentPage(prev => Math.max(1, prev - 1))}
-    disabled={stockCurrentPage === 1}
-    className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-  >
-    Previous
-  </button>
 
-  {getPaginationPages(stockCurrentPage, stockTotalPages).map(page => (
-    <button
-      key={page}
-      onClick={() => setStockCurrentPage(page)}
-      className={`px-3 py-1 rounded-full ${
-        stockCurrentPage === page ? 'bg-slate-700 text-white' : 'border hover:bg-gray-50'
-      }`}
-    >
-      {page}
-    </button>
-  ))}
+            <div className="flex items-center gap-2 overflow-x-auto py-1">
+              <button
+                onClick={() => setStockCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={stockCurrentPage === 1}
+                className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 whitespace-nowrap"
+              >
+                Previous
+              </button>
 
-  <button
-    onClick={() => setStockCurrentPage(prev => Math.min(stockTotalPages, prev + 1))}
-    disabled={stockCurrentPage === stockTotalPages}
-    className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-  >
-    Next
-  </button>
-</div>
+              <div className="flex gap-2 px-1">
+                {getPaginationPages(stockCurrentPage, stockTotalPages).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => setStockCurrentPage(page)}
+                    className={`px-3 py-1 rounded-full flex-shrink-0 whitespace-nowrap ${
+                      stockCurrentPage === page ? 'bg-slate-700 text-white' : 'border hover:bg-gray-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
 
+              <button
+                onClick={() => setStockCurrentPage(prev => Math.min(stockTotalPages, prev + 1))}
+                disabled={stockCurrentPage === stockTotalPages}
+                className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 whitespace-nowrap"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
             <h2 className="text-lg font-semibold">Transactions</h2>
             <span className="text-sm text-gray-500">
               Showing {filteredTransactions.length > 0 ? (transCurrentPage - 1) * transPageSize + 1 : 0}-{Math.min(transCurrentPage * transPageSize, filteredTransactions.length)} of {filteredTransactions.length} transactions
@@ -562,7 +564,7 @@ const getPaginationPages = (current: number, total: number, maxVisible = 5) => {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-max">
               <thead className="border-b">
                 <tr className="text-left text-sm text-gray-600">
                   <th className="pb-3 font-medium">Product</th>
@@ -578,18 +580,18 @@ const getPaginationPages = (current: number, total: number, maxVisible = 5) => {
                 {paginatedTransactions.length > 0 ? (
                   paginatedTransactions.map((trans) => {
                     const categoryName = resolveCategoryNameById(trans.product?.category);
-                    
+
                     return (
                       <tr key={trans._id} className="border-b last:border-b-0">
-                        <td className="py-4 flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                        <td className="py-4 flex items-center gap-3 whitespace-nowrap">
+                          <div className="w-10 h-10 bg-gray-200 rounded-full flex-shrink-0"></div>
                           <div>
                             <div className="font-medium">{trans.product?.name || 'N/A'}</div>
                             <div className="text-sm text-gray-500">{categoryName}</div>
                           </div>
                         </td>
-                        <td className="py-4">{trans.transactionNumber || '-'}</td>
-                        <td className="py-4">{trans.quantity || 0}</td>
+                        <td className="py-4 whitespace-nowrap">{trans.transactionNumber || '-'}</td>
+                        <td className="py-4 whitespace-nowrap">{trans.quantity || 0}</td>
                         <td className="py-4">
                           <span className={`px-2 py-1 rounded-full text-xs ${
                             trans.type === 'In' ? 'bg-green-100 text-green-700' :
@@ -599,9 +601,9 @@ const getPaginationPages = (current: number, total: number, maxVisible = 5) => {
                             {trans.type}
                           </span>
                         </td>
-                        <td className="py-4">{trans.fromInventory?.name || '-'}</td>
-                        <td className="py-4">{trans.toInventory?.name || '-'}</td>
-                        <td className="py-4 text-sm text-gray-600">
+                        <td className="py-4 whitespace-nowrap">{trans.fromInventory?.name || '-'}</td>
+                        <td className="py-4 whitespace-nowrap">{trans.toInventory?.name || '-'}</td>
+                        <td className="py-4 text-sm text-gray-600 whitespace-nowrap">
                           {formatDate(trans.createdAt)}
                         </td>
                       </tr>
@@ -618,8 +620,8 @@ const getPaginationPages = (current: number, total: number, maxVisible = 5) => {
             </table>
           </div>
 
-          <div className="flex items-center justify-between mt-4">
-            <div className="flex items-center gap-2 text-sm">
+          <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-3">
+            <div className="flex items-center gap-2 text-sm whitespace-nowrap">
               <span>Show</span>
               <select
                 value={transPageSize}
@@ -636,36 +638,41 @@ const getPaginationPages = (current: number, total: number, maxVisible = 5) => {
               </select>
               <span>entries</span>
             </div>
-            <div className="flex gap-2">
+
+            <div className="flex items-center gap-2 overflow-x-auto py-1">
               <button
                 onClick={() => setTransCurrentPage(prev => Math.max(1, prev - 1))}
                 disabled={transCurrentPage === 1}
-                className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 whitespace-nowrap"
               >
                 Previous
               </button>
-              {getPaginationPages(transCurrentPage, transTotalPages).map(page => (
-  <button
-    key={page}
-    onClick={() => setTransCurrentPage(page)}
-    className={`px-3 py-1 rounded-full ${
-      transCurrentPage === page ? 'bg-slate-700 text-white' : 'border hover:bg-gray-50'
-    }`}
-  >
-    {page}
-  </button>
-))}
+
+              <div className="flex gap-2 px-1">
+                {getPaginationPages(transCurrentPage, transTotalPages).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => setTransCurrentPage(page)}
+                    className={`px-3 py-1 rounded-full flex-shrink-0 whitespace-nowrap ${
+                      transCurrentPage === page ? 'bg-slate-700 text-white' : 'border hover:bg-gray-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
 
               <button
                 onClick={() => setTransCurrentPage(prev => Math.min(transTotalPages, prev + 1))}
                 disabled={transCurrentPage === transTotalPages}
-                className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 whitespace-nowrap"
               >
                 Next
               </button>
             </div>
           </div>
         </div>
+
       </div>
     </div>
   );

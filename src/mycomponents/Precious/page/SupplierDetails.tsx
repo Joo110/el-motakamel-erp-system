@@ -118,9 +118,7 @@ const SupplierDetails = () => {
               </div>
             </div>
             <div className="ml-8 flex items-center justify-center">
-              <div className="text-red-500 text-4xl font-bold">
-                ⚡ {supplier.name?.split(" ")[0]?.toUpperCase() || "SUPPLIER"}
-              </div>
+        
             </div>
           </div>
         </div>

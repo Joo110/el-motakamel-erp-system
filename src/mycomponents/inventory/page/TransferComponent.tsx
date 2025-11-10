@@ -271,7 +271,7 @@ const TransferComponent: React.FC = () => {
         <h2 className="text-xl font-semibold text-gray-900 mb-6">Transfer</h2>
 
         {/* Step 1: From Inventory */}
-        <div className="grid grid-cols-3 gap-4 items-end mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Transfer from</label>
             <div className="relative">
@@ -280,7 +280,7 @@ const TransferComponent: React.FC = () => {
                 value={selectedFrom}
                 onChange={(e) => setSelectedFrom(e.target.value)}
               >
-                <option value="">{inventories.length === 0 ? 'Loading inventories...' : 'Select inventory'}</option>
+                <option value="">{(inventories?.length ?? 0) === 0 ? 'Loading inventories...' : 'Select inventory'}</option>
                 {inventoryOptions.map((inv: any) => (
                   <option key={inv._id ?? inv.id} value={inv._id ?? inv.id}>
                     {inv.name}
@@ -296,7 +296,7 @@ const TransferComponent: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">Product</label>
             <div className="relative">
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 appearance-none"
+                className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 appearance-none text-sm"
                 value={selectedProductStockId}
                 onChange={(e) => setSelectedProductStockId(e.target.value)}
                 disabled={!selectedFrom || loadingProducts || availableProducts.length === 0}
@@ -305,7 +305,7 @@ const TransferComponent: React.FC = () => {
                   {!selectedFrom ? 'Select "From" inventory first' : loadingProducts ? 'Loading products...' : 'Select product'}
                 </option>
                 {availableProducts.map((p) => (
-                  <option key={p.stockId} value={p.stockId}>
+                  <option key={p.stockId} value={p.stockId} title={`${p.name} ${p.code ? `(${p.code})` : ''} — ${p.availableUnits ?? 0} available`}>
                     {p.name} {p.code ? `(${p.code})` : ''} — {p.availableUnits ?? 0} available
                   </option>
                 ))}
@@ -325,7 +325,7 @@ const TransferComponent: React.FC = () => {
                   value={selectedTo}
                   onChange={(e) => setSelectedTo(e.target.value)}
                 >
-                  <option value="">{inventories.length === 0 ? 'Loading inventories...' : 'Select inventory'}</option>
+                  <option value="">{(inventories?.length ?? 0) === 0 ? 'Loading inventories...' : 'Select inventory'}</option>
                   {inventoryOptions.map((inv: any) => (
                     <option key={inv._id ?? inv.id} value={inv._id ?? inv.id}>
                       {inv.name}
@@ -339,7 +339,7 @@ const TransferComponent: React.FC = () => {
         </div>
 
         {/* Reference & Shipping */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Reference</label>
             <input
@@ -347,7 +347,7 @@ const TransferComponent: React.FC = () => {
               value={reference}
               onChange={(e) => setReference(e.target.value)}
               placeholder="Enter reference number"
-              className="w-full px-3 py-2 border border-gray-300 rounded-full"
+              className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
             />
           </div>
           <div>
@@ -357,13 +357,13 @@ const TransferComponent: React.FC = () => {
               value={shippingCost}
               onChange={(e) => setShippingCost(e.target.value)}
               placeholder="0.00"
-              className="w-full px-3 py-2 border border-gray-300 rounded-full"
+              className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
             />
           </div>
         </div>
 
         {/* Units & Price */}
-        <div className="grid grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Units</label>
             <input
@@ -371,7 +371,7 @@ const TransferComponent: React.FC = () => {
               min={1}
               value={selectedUnits}
               onChange={(e) => setSelectedUnits(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-full"
+              className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
             />
           </div>
           <div>
@@ -382,11 +382,11 @@ const TransferComponent: React.FC = () => {
               step="0.01"
               value={selectedPrice}
               onChange={(e) => setSelectedPrice(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-full"
+              className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
             />
           </div>
           <div className="flex items-end justify-end">
-            <div className="flex justify-end gap-2 mt-2">
+            <div className="w-full sm:w-auto flex flex-col sm:flex-row justify-end gap-2 mt-2">
               <button
                 onClick={() => {
                   setSelectedProductStockId('');
@@ -397,14 +397,14 @@ const TransferComponent: React.FC = () => {
                   setReference('');
                   setShippingCost('');
                 }}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-full text-sm hover:bg-gray-300"
+                className="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-700 rounded-full text-sm hover:bg-gray-300"
               >
                 Reset
               </button>
               <button
                 onClick={handleTransfer}
                 disabled={transferring}
-                className="px-4 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-blue-800"
+                className="w-full sm:w-auto px-4 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-blue-800"
               >
                 {transferring ? 'Transferring...' : 'Transfer'}
               </button>
@@ -416,7 +416,7 @@ const TransferComponent: React.FC = () => {
         <div className="mb-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Transferred Products</h2>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[700px]">
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left text-xs font-medium text-gray-600 pb-3 w-8"></th>
@@ -434,7 +434,7 @@ const TransferComponent: React.FC = () => {
                     <td className="py-3">
                       <input type="checkbox" className="w-4 h-4 rounded-full border-gray-300" />
                     </td>
-                    <td className="py-3 text-sm text-gray-900">{product.name}</td>
+                    <td className="py-3 text-sm text-gray-900 max-w-[220px] truncate">{product.name}</td>
                     <td className="py-3 text-sm text-gray-600">{product.code}</td>
                     <td className="py-3 text-sm text-gray-600">
                       <div className="flex items-center gap-1">
@@ -443,10 +443,17 @@ const TransferComponent: React.FC = () => {
                       </div>
                     </td>
                     <td className="py-3 text-sm text-gray-600">${product.price.toFixed(2)}</td>
-                    <td className="py-3 text-sm text-gray-600">{product.from}</td>
-                    <td className="py-3 text-sm text-gray-600">{product.to}</td>
+                    <td className="py-3 text-sm text-gray-600 max-w-[140px] truncate">{product.from}</td>
+                    <td className="py-3 text-sm text-gray-600 max-w-[140px] truncate">{product.to}</td>
                   </tr>
                 ))}
+                {productsTable.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-gray-500">
+                      No transferred products yet
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -459,12 +466,12 @@ const TransferComponent: React.FC = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-end gap-3">
-          <button className="px-6 py-2 border border-gray-300 text-gray-700 rounded-full text-sm hover:bg-gray-50">
+        <div className="flex flex-col sm:flex-row justify-end gap-3">
+          <button className="w-full sm:w-auto px-6 py-2 border border-gray-300 text-gray-700 rounded-full text-sm hover:bg-gray-50">
             Cancel
           </button>
           <button
-            className="px-6 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-blue-800"
+            className="w-full sm:w-auto px-6 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-blue-800"
             onClick={handleSaveTransfer}
             disabled={creatingTransfer}
           >

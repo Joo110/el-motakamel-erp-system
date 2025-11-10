@@ -58,7 +58,7 @@ const SupplierAdd = () => {
         createdBy: "68c034e28feb5edb98b6ee36",
       });
       toast.success("Supplier added successfully!");
-      navigate("/dashboard/supplier");
+      navigate("/dashboard/precious/suppliers");
     } catch (err) {
       console.error(err);
       toast.error("Failed to add supplier.");

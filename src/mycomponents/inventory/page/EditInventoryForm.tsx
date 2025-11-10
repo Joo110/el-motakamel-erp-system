@@ -36,6 +36,7 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [original, setOriginal] = useState<RawInventory | null>(null);
+const [imageFile, setImageFile] = useState<File | undefined>(undefined);
 
   const [formData, setFormData] = useState<InventoryEditData>({
     id: inventoryId ?? "#1346HC",
@@ -99,16 +100,17 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
     setErrors(prev => ({ ...prev, [field]: "" }));
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({ ...prev, image: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (file) {
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormData((prev) => ({ ...prev, image: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
+  }
+};
 
   const getChangedFields = (): Partial<InventoryInput> => {
     if (!original) return {};
@@ -151,44 +153,46 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
   };
 
   const handleSaveDetails = async () => {
-    if (!validate()) return;
+  if (!validate()) return;
 
-    const changes = getChangedFields();
-    if (Object.keys(changes).length === 0) {
-      toast.success("No changes detected.");
-      return;
+  const changes = getChangedFields();
+  if (Object.keys(changes).length === 0) {
+    toast.success("No changes detected.");
+    return;
+  }
+
+  setIsSaving(true);
+  setError(null);
+
+  try {
+    const updated = await updateInventoryService(
+      formData.id.replace(/^#/, ""),
+      changes,
+      imageFile // ✅ استخدم الملف من الـ state هنا
+    );
+
+    toast.success("✅ Inventory updated successfully!");
+    setOriginal(updated as RawInventory);
+
+    if (onSave) {
+      onSave({
+        id: updated._id ?? formData.id,
+        inventoryName: updated.name ?? formData.inventoryName,
+        location: updated.location ?? formData.location,
+        capacity:
+          typeof updated.capacity === "number"
+            ? String(updated.capacity)
+            : formData.capacity,
+        image: (updated as any).image ?? formData.image,
+      });
     }
-
-    setIsSaving(true);
-    setError(null);
-
-    try {
-      const updated = await updateInventoryService(
-        formData.id.replace(/^#/, ""),
-        changes
-      );
-
-      toast.success("✅Inventory updated successfully!");
-      setOriginal(updated as RawInventory);
-      if (onSave) {
-        onSave({
-          id: updated._id ?? formData.id,
-          inventoryName: updated.name ?? formData.inventoryName,
-          location: updated.location ?? formData.location,
-          capacity:
-            typeof updated.capacity === "number"
-              ? String(updated.capacity)
-              : formData.capacity,
-          image: (updated as any).image ?? formData.image,
-        });
-      }
-    } catch (err) {
-      console.error("Update error:", err);
-      toast.error("Failed to update inventory.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  } catch (err) {
+    console.error("Update error:", err);
+    toast.error("Failed to update inventory.");
+  } finally {
+    setIsSaving(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">

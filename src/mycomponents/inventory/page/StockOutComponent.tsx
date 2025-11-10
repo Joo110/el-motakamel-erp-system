@@ -25,12 +25,8 @@ const truncate = (s: string | undefined, n = 30) => {
 };
 
 const StockOutComponent: React.FC = () => {
-  const [products, setProducts] = useState<ProductRow[]>([
-    { id: '1', productId: '1', inventoryId: 'a', name: 'Product 1', inventoryName: 'Abu Dhabi', code: '99282', units: 10, price: 1140.95, discount: 13, total: 9990.0 },
-    { id: '2', productId: '2', inventoryId: 'a', name: 'Product 2', inventoryName: 'Abu Dhabi', code: '323-14', units: 10, price: 1710.55, discount: 13, total: 9400.0 },
-    { id: '3', productId: '3', inventoryId: 'b', name: 'Wireless Bluetooth Earbuds', inventoryName: 'New capital', code: '326x1', units: 10, price: 1102.55, discount: 11, total: 9400.0 },
-    { id: '4', productId: '4', inventoryId: 'a', name: 'Product 2', inventoryName: 'Abu Dhabi', code: '322-14', units: 10, price: 1710.55, discount: 23, total: 9400.0 },
-  ]);
+  // removed fake data — start with empty list
+  const [products, setProducts] = useState<ProductRow[]>([]);
 
   const total = useMemo(() => products.reduce((sum, product) => sum + product.total, 0), [products]);
 
@@ -303,8 +299,8 @@ const StockOutComponent: React.FC = () => {
 
       {/* Main Form */}
       <div className="bg-white rounded-lg shadow-sm p-6">
-        {/* Top Section */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
+        {/* Top Section - responsive */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Customer</label>
             <div className="relative">
@@ -371,7 +367,7 @@ const StockOutComponent: React.FC = () => {
         {/* Add Products Section */}
         <div className="mb-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Add Products</h2>
-          <div className="grid grid-cols-7 gap-3 items-end">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 items-end">
             {/* Product dropdown */}
             <div className="relative">
               <label className="block text-xs text-gray-600 mb-1">Product</label>
@@ -470,7 +466,8 @@ const StockOutComponent: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 mt-4">
+          {/* responsive buttons */}
+          <div className="flex flex-col sm:flex-row sm:justify-end gap-2 mt-4">
             <button
               onClick={handleResetForm}
               className="px-4 py-2 bg-gray-200 text-gray-700 rounded-full text-sm hover:bg-gray-300"
@@ -490,7 +487,7 @@ const StockOutComponent: React.FC = () => {
         <div className="mb-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Received Products</h2>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[600px] sm:min-w-full">
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left text-xs font-medium text-gray-600 pb-3 w-8"></th>
@@ -537,6 +534,13 @@ const StockOutComponent: React.FC = () => {
                     </td>
                   </tr>
                 ))}
+                {products.length === 0 && (
+                  <tr>
+                    <td colSpan={9} className="py-8 text-center text-gray-500">
+                      No products added yet.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -575,7 +579,7 @@ const StockOutComponent: React.FC = () => {
           ></textarea>
         </div>
 
-        <div className="flex justify-end gap-3">
+        <div className="flex flex-col sm:flex-row sm:justify-end gap-3">
           <button className="px-6 py-2 border border-gray-300 text-gray-700 rounded-full text-sm hover:bg-gray-50">
             Cancel
           </button>

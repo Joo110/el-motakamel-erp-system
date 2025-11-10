@@ -113,7 +113,7 @@ const InventoryOrders: React.FC = () => {
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-2">Inventory Management</h1>
-        <div className="text-sm text-gray-500">Dashboard {'>'} Inventory {'>'} Precious</div>
+        <div className="text-sm text-gray-500">Dashboard {'>'} Inventory {'>'} Sales Order</div>
       </div>
 
       {/* Tabs */}
