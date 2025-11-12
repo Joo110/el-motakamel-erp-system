@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChevronDown, Users, Package, Warehouse, CreditCard, ClipboardList } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import useSidebarStore from "../../store/sidebarStore";
+
 type MenuKeys =
   | "products"
   | "inventory"
@@ -17,44 +18,41 @@ type OpenMenusState = {
   [key in MenuKeys]?: boolean;
 };
 
-
 const Sidebar = () => {
-const { isOpen, close } = useSidebarStore((state) => ({
-  isOpen: state.isOpen,
-  close: state.close
-})); const [openMenus, setOpenMenus] = useState<OpenMenusState>({
-  products: true,
-  inventory: false,
-  purchases: false,
-  sales: false,
-  customer: false,
-  suppliers: false,
-  hr: false,
-});
+  // استخدام selector صريح لتجنب unknown
+  const isOpen = useSidebarStore(state => state.isOpen);
+  const close = useSidebarStore(state => state.close);
+
+  const [openMenus, setOpenMenus] = useState<OpenMenusState>({
+    products: true,
+    inventory: false,
+    purchases: false,
+    sales: false,
+    customer: false,
+    suppliers: false,
+    hr: false,
+  });
 
   const location = useLocation();
 
-const toggleMenu = (key: MenuKeys) => {
-  setOpenMenus((prev) => ({ ...prev, [key]: !prev[key] }));
-};
-
+  const toggleMenu = (key: MenuKeys) => {
+    setOpenMenus((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   return (
-<>
-    {/* Overlay للشاشات الصغيرة */}
-    {isOpen && (
-      <div
-        className="fixed inset-0 bg-black bg-opacity-30 z-40 md:hidden"
-        onClick={close} // أي ضغط على الـ overlay يقفل الـ Sidebar
-      ></div>
-    )}
+    <>
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-30 z-40 md:hidden"
+          onClick={close}
+        ></div>
+      )}
 
-    <aside
-      className={`fixed top-0 left-0 h-full w-72 bg-[#243047] flex flex-col border-r border-[#1a252f] transform transition-transform duration-300
-        ${isOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 md:static md:h-auto z-50`}
-    >
-      
-      <nav className="flex-1 overflow-y-auto pt-4">
+      <aside
+        className={`fixed top-0 left-0 h-full w-72 bg-[#243047] flex flex-col border-r border-[#1a252f] transform transition-transform duration-300
+          ${isOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 md:static md:h-auto z-50`}
+      >
+        <nav className="flex-1 overflow-y-auto pt-4">
         {/* User Management Items - Multiple */}
         {[...Array(2)].map((_, i) => (
           <div key={`user-${i}`} className="mb-1 relative">
