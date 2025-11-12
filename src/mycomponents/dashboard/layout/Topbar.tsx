@@ -6,7 +6,7 @@ import useSidebarStore from "../../store/sidebarStore";
 
 const Topbar = () => {
   const navigate = useNavigate();
-  const { toggle } = useSidebarStore(); // Zustand toggle
+const toggle = useSidebarStore((state) => state.toggle);
 
   const handleLogout = () => {
     Cookies.remove("authToken");

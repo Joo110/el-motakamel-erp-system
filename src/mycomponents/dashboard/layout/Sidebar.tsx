@@ -19,8 +19,10 @@ type OpenMenusState = {
 
 
 const Sidebar = () => {
-  const { isOpen, close } = useSidebarStore(); // Zustand state
- const [openMenus, setOpenMenus] = useState<OpenMenusState>({
+const { isOpen, close } = useSidebarStore((state) => ({
+  isOpen: state.isOpen,
+  close: state.close
+})); const [openMenus, setOpenMenus] = useState<OpenMenusState>({
   products: true,
   inventory: false,
   purchases: false,
