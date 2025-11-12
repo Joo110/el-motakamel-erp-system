@@ -5,19 +5,18 @@ interface RetryableRequest extends AxiosRequestConfig {
   _retry?: boolean;
 }
 
-// Base URL يعتمد على متغير البيئة VITE_API_URL
-const baseURL = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
+const baseURL =
+  import.meta.env.VITE_API_URL || "/api";
 
 const axiosClient = axios.create({
   baseURL,
   headers: { "Content-Type": "application/json" },
 });
 
-// Interceptor للطلبات: يضيف توكن المصادقة
 axiosClient.interceptors.request.use(
   (config) => {
     const token = Cookies.get("authToken") || localStorage.getItem("token");
-    if (token && config?.headers) {
+    if (token && config && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -25,7 +24,6 @@ axiosClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Interceptor للردود: يتعامل مع 401 ويجدد التوكن لو موجود refresh token
 axiosClient.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -34,7 +32,6 @@ axiosClient.interceptors.response.use(
     const originalRequest = error.config as RetryableRequest | undefined;
     if (!originalRequest) return Promise.reject(error);
 
-    // لو 401 وجربناش التجديد قبل كده
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
@@ -42,7 +39,6 @@ axiosClient.interceptors.response.use(
         const refreshToken = Cookies.get("refreshToken");
         if (!refreshToken) throw new Error("No refresh token found");
 
-        // جدد التوكن
         const res = await axios.post(
           `${baseURL.replace(/\/$/, "")}/auth/refresh`,
           { token: refreshToken }
