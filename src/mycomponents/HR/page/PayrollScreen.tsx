@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+// src/mycomponents/payrolls/components/PayrollScreen.tsx
+import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Filter, X, Edit2 } from 'lucide-react';
+import usePayrolls from '../hooks/usePayrolls';
 
 type PayrollItem = {
   id: string;
@@ -21,6 +23,7 @@ type PayrollItem = {
 };
 
 const PayrollScreen: React.FC = () => {
+  const { payrolls, fetch, updatePayroll } = usePayrolls();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('November');
   const [selectedStatus, setSelectedStatus] = useState('All');
@@ -28,63 +31,6 @@ const PayrollScreen: React.FC = () => {
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [showModifyModal, setShowModifyModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<PayrollItem | null>(null);
-
-  const [payroll, setPayroll] = useState<PayrollItem[]>([
-    {
-      id: '193382',
-      name: 'Anwar Tarek Mohammed',
-      jobTitle: 'Back-end developer',
-      salary: '42000 SR',
-      overtime: '395 SR',
-      overtimeHours: '2',
-      overtimeAmount: '395',
-      bonus: '0 SR',
-      bonusAmount: '',
-      bonusPurpose: '',
-      deductions: '0 SR',
-      deductionAmount: '',
-      deductionPurpose: '',
-      total: '42000 SR',
-      date: '22,500 SR',
-      status: 'Paid',
-    },
-    {
-      id: '32216-1',
-      name: 'Kareem Tarek Mohammed',
-      jobTitle: 'Front-end developer',
-      salary: '22,500 SR',
-      overtime: '22,500 SR',
-      overtimeHours: '5',
-      overtimeAmount: '500',
-      bonus: '22,500 SR',
-      bonusAmount: '1000',
-      bonusPurpose: 'Performance bonus',
-      deductions: '22,500 SR',
-      deductionAmount: '200',
-      deductionPurpose: 'Late arrival',
-      total: '22,500 SR',
-      date: '22,500 SR',
-      status: 'Unpaid',
-    },
-    {
-      id: '32641-3',
-      name: 'Ahmed Sayed Mohamed',
-      jobTitle: 'UI/UX Designer',
-      salary: '22,500 SR',
-      overtime: '22,500 SR',
-      overtimeHours: '3',
-      overtimeAmount: '300',
-      bonus: '22,500 SR',
-      bonusAmount: '',
-      bonusPurpose: '',
-      deductions: '22,500 SR',
-      deductionAmount: '',
-      deductionPurpose: '',
-      total: '22,500 SR',
-      date: '22,500 SR',
-      status: 'Unpaid',
-    },
-  ]);
 
   const [modifyForm, setModifyForm] = useState({
     overtimeHours: '',
@@ -99,8 +45,144 @@ const PayrollScreen: React.FC = () => {
   const statuses = ['All','Paid','Unpaid'];
   const departments = ['All Departments','Sales','Technical Support','HR','Software'];
 
-  const handlePaySalary = (id: string) => {
-    setPayroll(payroll.map(item => item.id === id ? {...item, status: 'Paid'} : item));
+  useEffect(() => {
+    void fetch();
+  }, [fetch]);
+
+  // --- map backend payroll -> UI shape
+  const mappedPayrolls: PayrollItem[] = useMemo(() => {
+    if (!Array.isArray(payrolls)) return [];
+
+    return payrolls.map((p: any) => {
+      const id = p._id ?? String(p.id ?? (p.employee && (p.employee._id ?? p.employee.id)) ?? Math.random());
+      const name = (p.employee && (p.employee.name ?? p.employee)) ?? p.name ?? 'Unknown';
+
+      const salaryVal = (() => {
+        if (typeof p.salary === 'number') return `${p.salary} SR`;
+        if (typeof p.salary === 'string' && p.salary.trim() !== '') return p.salary;
+        if (p.total && typeof p.total === 'number') return `${p.total} SR`;
+        return '0 SR';
+      })();
+
+      const overtimeVal = (() => {
+        if (p.overtime !== undefined && p.overtime !== null) {
+          return (typeof p.overtime === 'number' ? `${p.overtime} SR` : String(p.overtime));
+        }
+        if (p.overtimeAmount) return `${p.overtimeAmount} SR`;
+        return '0 SR';
+      })();
+
+      const bonusVal = (() => {
+        if (p.bonus && typeof p.bonus === 'object') {
+          const amt = p.bonus.amount ?? p.bonusAmount ?? 0;
+          return `${amt} SR`;
+        }
+        if (p.bonusAmount) return `${p.bonusAmount} SR`;
+        return '0 SR';
+      })();
+
+      const deductionVal = (() => {
+        if (p.deduction && typeof p.deduction === 'object') {
+          const amt = p.deduction.amount ?? p.deductionAmount ?? 0;
+          return `${amt} SR`;
+        }
+        if (p.deductionAmount) return `${p.deductionAmount} SR`;
+        return '0 SR';
+      })();
+
+      const totalVal = (() => {
+        if (p.total !== undefined && p.total !== null) {
+          return (typeof p.total === 'number' ? `${p.total} SR` : String(p.total));
+        }
+        const base = Number(p.salary ?? 0) || 0;
+        const bonus = Number(p.bonus?.amount ?? p.bonusAmount ?? 0) || 0;
+        const ded = Number(p.deduction?.amount ?? p.deductionAmount ?? 0) || 0;
+        const ot = Number(p.overtime ?? p.overtimeAmount ?? 0) || 0;
+        const calc = base + ot + bonus - ded;
+        return `${Math.round(calc)} SR`;
+      })();
+
+      const dateVal = (() => {
+        const d = p.date ?? p.createdAt ?? p.updatedAt;
+        try {
+          return d ? new Date(d).toLocaleDateString() : '—';
+        } catch {
+          return String(d ?? '—');
+        }
+      })();
+
+      const statusVal = (typeof p.status === 'string' && p.status.toLowerCase() === 'paid') ? 'Paid' : 'Unpaid';
+
+      return {
+        id,
+        name,
+        salary: salaryVal,
+        overtime: overtimeVal,
+        bonus: bonusVal,
+        deductions: deductionVal,
+        total: totalVal,
+        date: dateVal,
+        status: statusVal as 'Paid' | 'Unpaid',
+        jobTitle: p.employee?.jobTitle ?? p.jobTitle ?? '',
+        overtimeHours: p.overtimeHours ? String(p.overtimeHours) : undefined,
+        overtimeAmount: p.overtimeAmount ? String(p.overtimeAmount) : undefined,
+        bonusAmount: p.bonus?.amount ? String(p.bonus.amount) : (p.bonusAmount ? String(p.bonusAmount) : undefined),
+        bonusPurpose: p.bonus?.purpose ?? p.bonusPurpose ?? '',
+        deductionAmount: p.deduction?.amount ? String(p.deduction.amount) : (p.deductionAmount ? String(p.deductionAmount) : undefined),
+        deductionPurpose: p.deduction?.purpose ?? p.deductionPurpose ?? '',
+      };
+    });
+  }, [payrolls]);
+
+  // Debug logs: تأكّد أن البيانات موجودة بعد المابّينج
+  useEffect(() => {
+    console.log("PayrollScreen: raw payrolls from hook:", payrolls);
+    console.log("PayrollScreen: mappedPayrolls:", mappedPayrolls);
+  }, [payrolls, mappedPayrolls]);
+
+  const filteredPayroll = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+
+    return mappedPayrolls.filter((item) => {
+      if (selectedStatus !== 'All' && item.status !== selectedStatus) return false;
+
+      if (selectedMonth && selectedMonth !== '') {
+        try {
+          const d = new Date(item.date);
+          if (!isNaN(d.getTime())) {
+            const monthName = d.toLocaleString(undefined, { month: 'long' });
+            if (monthName !== selectedMonth) return false;
+          } else {
+            if (!String(item.date).toLowerCase().includes(selectedMonth.toLowerCase())) return false;
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      if (selectedDepartment !== 'All Departments') {
+        // UI unchanged (no dept field)
+      }
+
+      if (!q) return true;
+      return (
+        (item.name ?? '').toLowerCase().includes(q) ||
+        (item.id ?? '').toLowerCase().includes(q)
+      );
+    });
+  }, [mappedPayrolls, searchTerm, selectedMonth, selectedStatus, selectedDepartment]);
+
+  const displayed = useMemo(() => {
+    return filteredPayroll.slice(0, entriesPerPage);
+  }, [filteredPayroll, entriesPerPage]);
+
+  // Handlers using hook.updatePayroll
+  const handlePaySalary = async (id: string) => {
+    try {
+      await updatePayroll(id, { status: 'paid' });
+    } catch (err) {
+      console.error('Pay failed', err);
+    }
   };
 
   const handleModify = (employee: PayrollItem) => {
@@ -116,26 +198,61 @@ const PayrollScreen: React.FC = () => {
     setShowModifyModal(true);
   };
 
-  const handleSaveOvertime = () => {
-    // حفظ بيانات الـ Overtime
-    console.log('Saving overtime:', modifyForm.overtimeHours, modifyForm.overtimeAmount);
-  };
-
-  const handleSaveBonus = () => {
-    // حفظ بيانات الـ Bonus
-    console.log('Saving bonus:', modifyForm.bonusAmount, modifyForm.bonusPurpose);
-  };
-
-  const handleSaveDeduction = () => {
-    // حفظ بيانات الـ Deduction
-    console.log('Saving deduction:', modifyForm.deductionAmount, modifyForm.deductionPurpose);
-  };
-
-  const handlePayTotal = () => {
-    // دفع الراتب الكلي
-    if (selectedEmployee) {
-      handlePaySalary(selectedEmployee.id);
+  const handleSaveOvertime = async () => {
+    if (!selectedEmployee) return;
+    const payload: any = {};
+    const ot = modifyForm.overtimeAmount ? Number(modifyForm.overtimeAmount) : undefined;
+    if (ot !== undefined && !isNaN(ot)) payload.overtime = ot;
+    if (modifyForm.overtimeHours) payload.overtimeHours = modifyForm.overtimeHours;
+    try {
+      await updatePayroll(selectedEmployee.id, payload);
       setShowModifyModal(false);
+    } catch (err) {
+      console.error('Save overtime failed', err);
+    }
+  };
+
+  const handleSaveBonus = async () => {
+    if (!selectedEmployee) return;
+    const amt = modifyForm.bonusAmount ? Number(modifyForm.bonusAmount) : 0;
+    const payload: any = {
+      bonus: {
+        amount: isNaN(amt) ? 0 : amt,
+        purpose: modifyForm.bonusPurpose ?? '',
+      }
+    };
+    try {
+      await updatePayroll(selectedEmployee.id, payload);
+      setShowModifyModal(false);
+    } catch (err) {
+      console.error('Save bonus failed', err);
+    }
+  };
+
+  const handleSaveDeduction = async () => {
+    if (!selectedEmployee) return;
+    const amt = modifyForm.deductionAmount ? Number(modifyForm.deductionAmount) : 0;
+    const payload: any = {
+      deduction: {
+        amount: isNaN(amt) ? 0 : amt,
+        purpose: modifyForm.deductionPurpose ?? '',
+      }
+    };
+    try {
+      await updatePayroll(selectedEmployee.id, payload);
+      setShowModifyModal(false);
+    } catch (err) {
+      console.error('Save deduction failed', err);
+    }
+  };
+
+  const handlePayTotal = async () => {
+    if (!selectedEmployee) return;
+    try {
+      await updatePayroll(selectedEmployee.id, { status: 'paid' });
+      setShowModifyModal(false);
+    } catch (err) {
+      console.error('Pay total failed', err);
     }
   };
 
@@ -235,7 +352,9 @@ const PayrollScreen: React.FC = () => {
           <div className="p-6 overflow-x-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold text-gray-900">November Payroll</h3>
-              <span className="text-sm text-gray-500">Showing 1-10 of 247 employees</span>
+              <span className="text-sm text-gray-500">
+                Showing {Math.min(1, displayed.length)}-{displayed.length} of {filteredPayroll.length} employees
+              </span>
             </div>
 
             <table className="w-full">
@@ -253,7 +372,7 @@ const PayrollScreen: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {payroll.map((item) => (
+                {displayed.map((item) => (
                   <tr key={item.id} className="border-b hover:bg-gray-50">
                     <td className="px-6 py-4 flex items-center gap-3">
                       <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-500 font-medium text-sm">
@@ -351,7 +470,7 @@ const PayrollScreen: React.FC = () => {
                 </div>
               </div>
 
-              {/* Grid Sections */}
+              {/* Grid Sections (Overtime / Bonus / Deduction) */}
               <div className="grid grid-cols-3 gap-5 mb-6">
                 {/* Over time */}
                 <div className="border border-gray-200 rounded-2xl p-5">

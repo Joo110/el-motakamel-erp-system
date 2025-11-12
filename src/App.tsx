@@ -46,12 +46,14 @@ import PreciousManagement from './mycomponents/Precious/page/PreciousManagement'
 import EditPurchaseOrderComponent from './mycomponents/Precious/page/EditPurchaseOrderComponent';
 import EditSaleOrderComponent from './mycomponents/Sales/page/EditSaleOrderComponent';
 
+//  HR Management Pages
 import EmployeeList from './mycomponents/HR/page/EmployeeListScreen';
 import AddEmployeeScreen from './mycomponents/HR/page/AddEmployeeScreen';
 import EditEmployeeScreen from './mycomponents/HR/page/EditEmployeeScreen';
 import EmployeeView from './mycomponents/HR/page/ViewEmployeeScreen';
 import PayrollManagement from './mycomponents/HR/page/PayrollScreen';
 import Attendance from './mycomponents/HR/page/AttendanceScreen';
+import AttendanceDayScreen from './mycomponents/HR/page/AttendanceDayScreen';
 
 //  Sales Management Pages (Customer)
 import CustomerSearchList from './mycomponents/Sales/page/CustomerSearchList';
@@ -144,6 +146,7 @@ function App() {
     { path: "hr/employee/view/:id", element: <EmployeeView /> },
     { path: "hr/payroll", element: <PayrollManagement /> },
     { path: "hr/Attendance", element: <Attendance /> },
+    { path: "hr/AttendanceDay", element: <AttendanceDayScreen /> },
       ],
     },
     //  Catch-all

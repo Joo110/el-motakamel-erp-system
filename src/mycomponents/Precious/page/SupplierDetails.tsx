@@ -18,7 +18,7 @@ const SupplierDetails = () => {
   const handleDelete = async () => {
     if (id && window.confirm("Are you sure you want to delete this supplier?")) {
       await removeSupplier(id);
-      navigate("/precious/suppliers");
+      navigate("/dashboard/precious/suppliers");
     }
   };
 
@@ -154,9 +154,6 @@ const SupplierDetails = () => {
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
                       Status
                     </th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
-                      View
-                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -171,9 +168,6 @@ const SupplierDetails = () => {
                       <td className="py-4 px-4 text-gray-600">{order.time}</td>
                       <td className="py-4 px-4 text-gray-600">{order.status}</td>
                       <td className="py-4 px-4">
-                        <button className="text-blue-600 hover:text-blue-800 underline text-sm rounded-full">
-                          view
-                        </button>
                       </td>
                     </tr>
                   ))}
