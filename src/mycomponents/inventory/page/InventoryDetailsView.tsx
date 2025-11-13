@@ -35,8 +35,8 @@ interface RawStock {
 const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-const { inventories, getStocks, isLoading, remove, isMutating } = useInventories();
-  
+  const { inventories, getStocks, isLoading, remove, isMutating } = useInventories();
+
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [products, setProducts] = useState<Product[]>([]);
@@ -82,7 +82,7 @@ const { inventories, getStocks, isLoading, remove, isMutating } = useInventories
         const qty = typeof stock.quantity === 'number' ? stock.quantity : Number(stock.quantity || 0);
 
         return {
-          id: stock._id || stock._id || `prod-${idx}`,
+          id: stock._id || `prod-${idx}`,
           name: prod?.name || stock.name || 'Unknown Product',
           category: (prod?.category && typeof prod.category === 'object' ? prod.category.name : prod?.category) || 'N/A',
           units: prod?.sku || 'N/A',
@@ -107,14 +107,18 @@ const { inventories, getStocks, isLoading, remove, isMutating } = useInventories
   const inventoryData = useMemo(() => {
     if (!inventory) return null;
     const inv = inventory as any;
-    const image = inv.image ?? inv.img ?? inv.avatar ?? `https://picsum.photos/seed/${encodeURIComponent(inv._id || 'default')}/400/300`;
+    const image =
+      inv.image ??
+      inv.img ??
+      inv.avatar ??
+      `https://picsum.photos/seed/${encodeURIComponent(inv._id || 'default')}/400/300`;
 
     return {
       id: inv._id || 'N/A',
       name: inv.name || 'Unnamed Inventory',
       location: inv.location || 'N/A',
       capacity: typeof inv.capacity === 'number' ? String(inv.capacity) : inv.capacity || 'N/A',
-      image
+      image,
     };
   }, [inventory]);
 
@@ -129,25 +133,21 @@ const { inventories, getStocks, isLoading, remove, isMutating } = useInventories
   const maxPages = Math.max(1, Math.ceil(totalProducts / entriesPerPage));
 
   const handleEditClickHeader = () => {
-    if (onEdit) {
-      onEdit();
-    } else if (id) {
-      navigate(`/dashboard/edit-inventory/${id}`);
-    }
+    if (onEdit) onEdit();
+    else if (id) navigate(`/dashboard/edit-inventory/${id}`);
   };
 
-const handleDeleteInventory = async () => {
-  if (!id) return;
-  if (!confirm('Are you sure you want to delete this inventory? This action cannot be undone.')) return;
-
-  try {
-    await remove(id);
-    navigate('/dashboard/inventories');
-  } catch (err) {
-    console.error('Error deleting inventory:', err);
-    toast.error('Failed to delete inventory');
-  }
-};
+  const handleDeleteInventory = async () => {
+    if (!id) return;
+    if (!confirm('Are you sure you want to delete this inventory?')) return;
+    try {
+      await remove(id);
+      navigate('/dashboard/inventories');
+    } catch (err) {
+      console.error('Error deleting inventory:', err);
+      toast.error('Failed to delete inventory');
+    }
+  };
 
   const openEditModal = (product: Product) => {
     setEditingProduct(product);
@@ -164,17 +164,15 @@ const handleDeleteInventory = async () => {
   const submitEdit = async () => {
     if (!editingProduct || !editingProduct.raw) return;
     const stockId = editingProduct.raw._id || editingProduct.id;
-    if (!stockId) {
-      alert('Cannot determine stock id for update.');
-      return;
-    }
+    if (!stockId) return alert('Cannot determine stock id for update.');
 
     const payload: any = { quantity: Number(editQty) };
     if (!Number.isNaN(Number(editPrice))) payload.price = Number(editPrice);
     if (editingProduct.raw.productId) {
-      payload.productId = typeof editingProduct.raw.productId === 'object'
-        ? editingProduct.raw.productId._id ?? editingProduct.raw.productId.id
-        : editingProduct.raw.productId;
+      payload.productId =
+        typeof editingProduct.raw.productId === 'object'
+          ? editingProduct.raw.productId._id ?? editingProduct.raw.productId.id
+          : editingProduct.raw.productId;
     }
     if (editingProduct.raw.inventoryId) payload.inventoryId = editingProduct.raw.inventoryId;
 
@@ -203,36 +201,29 @@ const handleDeleteInventory = async () => {
       closeEditModal();
     } catch (err) {
       console.error('Error updating stock:', err);
-      alert('Failed to update stock. Check console for details.');
+      alert('Failed to update stock.');
     } finally {
       setEditLoading(false);
     }
   };
 
   const handleDeleteProduct = async (productId: string) => {
-    const p = products.find(x => x.id === productId);
+    const p = products.find((x) => x.id === productId);
     if (!p) return;
-    if (!confirm('Are you sure you want to delete this product from the inventory?')) return;
-
+    if (!confirm('Delete this product from the inventory?')) return;
     const stockId = p.raw?._id || p.id;
-    if (!stockId) {
-      setProducts((prev) => prev.filter(x => x.id !== productId));
-      return;
-    }
-
     try {
       await axiosClient.delete(`/stocks/${stockId}`);
-      setProducts((prev) => prev.filter(x => x.id !== productId));
+      setProducts((prev) => prev.filter((x) => x.id !== productId));
     } catch (err) {
       console.error('Error deleting stock:', err);
-      alert('Failed to delete stock. Check console for details.');
+      alert('Failed to delete stock.');
     }
   };
 
   const handleEditProduct = (productId: string) => {
-    const p = products.find(x => x.id === productId);
-    if (!p) return;
-    openEditModal(p);
+    const p = products.find((x) => x.id === productId);
+    if (p) openEditModal(p);
   };
 
   if (isLoading || !inventoryData) {
@@ -244,10 +235,11 @@ const handleDeleteInventory = async () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
+        {/* Header */}
         <div className="mb-6">
-          <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 mb-4">
             <span>Dashboard</span>
             <span>›</span>
             <span>Inventories</span>
@@ -257,50 +249,49 @@ const handleDeleteInventory = async () => {
           <h1 className="text-2xl font-bold">Inventory Management</h1>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex justify-between items-start mb-6">
+        {/* Info Card */}
+        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6">
             <div>
-              <h2 className="text-lg font-semibold mb-4">{inventoryData.name}</h2>
-              <div className="space-y-2 text-sm">
+              <h2 className="text-lg font-semibold mb-2">{inventoryData.name}</h2>
+              <div className="space-y-1 text-sm">
                 <div>
                   <span className="text-gray-600">Location:</span>
-                  <span className="ml-3">{inventoryData.location}</span>
+                  <span className="ml-2">{inventoryData.location}</span>
                 </div>
                 <div>
                   <span className="text-gray-600">Capacity:</span>
-                  <span className="ml-3">{inventoryData.capacity}</span>
+                  <span className="ml-2">{inventoryData.capacity}</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-col items-end gap-4">
-             <div className="flex gap-3">
-  <button
-    onClick={handleEditClickHeader}
-    className="px-5 py-2 bg-slate-700 text-white rounded-full hover:bg-blue-800 transition-colors"
-  >
-    Edit Details
-  </button>
-
-  <button
-    onClick={handleDeleteInventory}
-    disabled={isMutating}
-    className="px-5 py-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
-  >
-    Delete
-  </button>
-</div>
-
-              <div className="flex items-center gap-4">
-                <div className="text-sm">
+            <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 sm:gap-6">
+              <div className="flex gap-2 sm:gap-3 flex-wrap justify-end">
+                <button
+                  onClick={handleEditClickHeader}
+                  className="px-4 py-2 bg-slate-700 text-white rounded-full hover:bg-blue-800 text-sm"
+                >
+                  Edit Details
+                </button>
+                <button
+                  onClick={handleDeleteInventory}
+                  disabled={isMutating}
+                  className="px-4 py-2 bg-red-600 text-white rounded-full hover:bg-red-700 text-sm disabled:opacity-50"
+                >
+                  Delete
+                </button>
+              </div>
+              <div className="flex items-center gap-2 sm:gap-4">
+                <div className="text-xs sm:text-sm">
                   <span className="text-gray-600">Id:</span>
-                  <span className="ml-2 font-medium">{inventoryData.id}</span>
+                  <span className="ml-1 sm:ml-2 font-medium">{inventoryData.id}</span>
                 </div>
-                <div className="w-40 h-27 overflow-hidden rounded-lg bg-gray-100">
+                <div className="w-24 sm:w-40 h-20 sm:h-28 overflow-hidden rounded-lg bg-gray-100">
                   <img
                     src={inventoryData.image}
                     alt="Warehouse"
-                    className="w-full h-full object-contain object-center bg-gray-100"
+                    className="w-full h-full object-contain bg-gray-100"
                   />
                 </div>
               </div>
@@ -308,36 +299,34 @@ const handleDeleteInventory = async () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex justify-between items-center mb-4">
+        {/* Products Table */}
+        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
+          <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
             <h2 className="text-lg font-semibold">Inventory Products</h2>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-500">
-                Showing {startEntry}-{endEntry} of {totalProducts} products
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm">
+              <span className="text-gray-500">
+                Showing {startEntry}-{endEntry} of {totalProducts}
               </span>
-              {/* === NEW BUTTON (doesn't change other layout) === */}
               <button
-                onClick={() => {
-                  // navigate to a page to manage/view stocks for this inventory
-                  navigate(`/dashboard/addstocktoinventory/${id}`, { state: { inventoryId: id } });
-                }}
-                className="px-5 py-2 bg-slate-700 text-white rounded-full hover:bg-blue-800 transition-colors"
+                onClick={() => navigate(`/dashboard/addstocktoinventory/${id}`, { state: { inventoryId: id } })}
+                className="px-4 py-2 bg-slate-700 text-white rounded-full hover:bg-blue-800"
               >
                 Manage Stocks
               </button>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b">
-                <tr className="text-left text-sm text-gray-600">
-                  <th className="pb-3 font-medium">Product</th>
-                  <th className="pb-3 font-medium">Category</th>
-                  <th className="pb-3 font-medium">Units</th>
-                  <th className="pb-3 font-medium">Price</th>
-                  <th className="pb-3 font-medium">Total</th>
-                  <th className="pb-3 font-medium"></th>
+          {/* scrollable table */}
+          <div className="w-full overflow-x-auto">
+            <table className="min-w-max w-full text-xs sm:text-sm">
+              <thead className="border-b bg-gray-50">
+                <tr className="text-left text-gray-600">
+                  <th className="pb-3 font-medium px-2">Product</th>
+                  <th className="pb-3 font-medium px-2">Category</th>
+                  <th className="pb-3 font-medium px-2">Units</th>
+                  <th className="pb-3 font-medium px-2">Price</th>
+                  <th className="pb-3 font-medium px-2">Total</th>
+                  <th className="pb-3 font-medium px-2"></th>
                 </tr>
               </thead>
               <tbody>
@@ -350,41 +339,35 @@ const handleDeleteInventory = async () => {
                 ) : paginatedProducts.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-gray-500">
-                      No products found in this inventory
+                      No products found
                     </td>
                   </tr>
                 ) : (
                   paginatedProducts.map((product) => (
-                    <tr key={product.id} className="border-b last:border-b-0">
-                      <td className="py-4 flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
-                        <span>{product.name}</span>
+                    <tr key={product.id} className="border-b last:border-b-0 hover:bg-gray-50">
+                      <td className="py-3 px-2 flex items-center gap-2 sm:gap-3">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-200 rounded-full" />
+                        <span className="truncate max-w-[120px] sm:max-w-none">{product.name}</span>
                       </td>
-                      <td className="py-4">{product.category}</td>
-                      <td className="py-4">
-                        <span className="ml-2">{product.unitCount}</span>
-                      </td>
-                      <td className="py-4">
-                        <span className="ml-2">{product.total}</span>
-                      </td>
-                      <td className="py-4">
-                        <span className="text-gray-600">{product.totalValue.toFixed(2)} SR</span>
-                      </td>
-                      <td className="py-4">
-                        <div className="flex gap-2">
+                      <td className="py-3 px-2">{product.category}</td>
+                      <td className="py-3 px-2">{product.unitCount}</td>
+                      <td className="py-3 px-2">{product.price}</td>
+                      <td className="py-3 px-2">{product.total}</td>
+                      <td className="py-3 px-2">
+                        <div className="flex gap-1 sm:gap-2">
                           <button
                             onClick={() => handleEditProduct(product.id)}
                             className="p-1 text-blue-600 hover:bg-blue-50 rounded-full"
-                            title="Edit product"
+                            title="Edit"
                           >
-                            <Edit2 size={18} />
+                            <Edit2 size={16} />
                           </button>
                           <button
                             onClick={() => handleDeleteProduct(product.id)}
                             className="p-1 text-red-600 hover:bg-red-50 rounded-full"
-                            title="Delete product"
+                            title="Delete"
                           >
-                            <Trash2 size={18} />
+                            <Trash2 size={16} />
                           </button>
                         </div>
                       </td>
@@ -395,8 +378,9 @@ const handleDeleteInventory = async () => {
             </table>
           </div>
 
-          <div className="flex items-center justify-between mt-4">
-            <div className="flex items-center gap-2 text-sm">
+          {/* pagination */}
+          <div className="flex flex-wrap items-center justify-between mt-4 gap-2 text-xs sm:text-sm">
+            <div className="flex items-center gap-1 sm:gap-2">
               <span>Show</span>
               <select
                 value={entriesPerPage}
@@ -412,11 +396,11 @@ const handleDeleteInventory = async () => {
               </select>
               <span>entries</span>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-1 sm:gap-2">
               <button
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-2 sm:px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50"
               >
                 Previous
               </button>
@@ -424,7 +408,7 @@ const handleDeleteInventory = async () => {
                 <button
                   key={pageNum}
                   onClick={() => setCurrentPage(pageNum)}
-                  className={`px-3 py-1 rounded-full ${
+                  className={`px-2 sm:px-3 py-1 rounded-full ${
                     currentPage === pageNum ? 'bg-slate-700 text-white' : 'border hover:bg-gray-50'
                   }`}
                 >
@@ -434,7 +418,7 @@ const handleDeleteInventory = async () => {
               <button
                 onClick={() => setCurrentPage(Math.min(maxPages, currentPage + 1))}
                 disabled={currentPage >= maxPages}
-                className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-2 sm:px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50"
               >
                 Next
               </button>
@@ -443,56 +427,46 @@ const handleDeleteInventory = async () => {
         </div>
       </div>
 
+      {/* edit modal */}
       {editingProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-6">
             <h3 className="text-lg font-medium mb-4">Edit Product</h3>
-
             <div className="space-y-3">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Product</label>
                 <div className="text-sm text-gray-900">{editingProduct.name}</div>
               </div>
-
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Quantity</label>
                 <input
                   type="number"
                   value={editQty}
                   onChange={(e) => setEditQty(Number(e.target.value))}
-                  className="w-full px-3 py-2 border rounded-md text-sm"
-                  min={0}
+                  className="w-full border border-gray-300 rounded-lg p-2 text-sm"
                 />
               </div>
-
               <div>
-                <label className="block text-sm text-gray-600 mb-1">Price per unit (SR)</label>
+                <label className="block text-sm text-gray-600 mb-1">Price (SR)</label>
                 <input
                   type="number"
                   value={editPrice}
                   onChange={(e) => setEditPrice(Number(e.target.value))}
-                  className="w-full px-3 py-2 border rounded-md text-sm"
-                  min={0}
-                  step="0.01"
+                  className="w-full border border-gray-300 rounded-lg p-2 text-sm"
                 />
               </div>
-
-              <div className="flex justify-end gap-3 mt-4">
-                <button
-                  onClick={closeEditModal}
-                  className="px-4 py-2 border rounded-full text-sm hover:bg-gray-50"
-                  disabled={editLoading}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={submitEdit}
-                  className="px-4 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-slate-800 disabled:opacity-50"
-                  disabled={editLoading}
-                >
-                  {editLoading ? 'Saving...' : 'Save'}
-                </button>
-              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button onClick={closeEditModal} className="px-4 py-2 bg-gray-200 rounded-full text-sm">
+                Cancel
+              </button>
+              <button
+                onClick={submitEdit}
+                disabled={editLoading}
+                className="px-4 py-2 bg-slate-700 text-white rounded-full text-sm disabled:opacity-50"
+              >
+                {editLoading ? 'Saving...' : 'Save'}
+              </button>
             </div>
           </div>
         </div>

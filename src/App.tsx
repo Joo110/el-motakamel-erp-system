@@ -68,6 +68,10 @@ import SupplierEditFilled from './mycomponents/Precious/page/SupplierEditFilled'
 import SupplierAdd from './mycomponents/Precious/page/SupplierAdd';
 
 
+//  Accounts Management Pages
+import AccountingDashboard from './mycomponents/accounts/pages/AccountingDashboard';
+
+
 function App() {
   const routes = createHashRouter([
     //  Public (Auth) Routes
@@ -147,6 +151,10 @@ function App() {
     { path: "hr/payroll", element: <PayrollManagement /> },
     { path: "hr/Attendance", element: <Attendance /> },
     { path: "hr/AttendanceDay", element: <AttendanceDayScreen /> },
+
+    //  Accounts Management Pages
+    { path: "accounts/AccountingDashboard", element: <AccountingDashboard /> },
+
       ],
     },
     //  Catch-all

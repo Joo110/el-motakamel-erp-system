@@ -11,6 +11,7 @@ type MenuKeys =
   | "customer"
   | "suppliers"
   | "hr"
+  | "accounts"
   | `user-${number}`
   | `user-extra-${number}`;
 
@@ -31,6 +32,7 @@ const Sidebar = () => {
     customer: false,
     suppliers: false,
     hr: false,
+    accounts: false,
   });
 
   const location = useLocation();
@@ -569,6 +571,52 @@ const Sidebar = () => {
           )}
         </div>
 
+        {/* Accounts Management */}
+        <div className="mb-1 relative group">
+          <button
+            onClick={() => toggleMenu("accounts")}
+            className={`flex justify-between items-center w-full px-6 py-3 transition-colors ${
+              openMenus["accounts"]
+                ? "text-white bg-[#34495e]"
+                : "text-gray-300 hover:bg-[#34495e] hover:text-white"
+            }`}
+          >
+            <span className="flex items-center gap-3 text-sm font-medium">
+              <CreditCard size={18} strokeWidth={2} />
+              <span>Accounts Management</span>
+            </span>
+            <ChevronDown
+              size={16}
+              className={`transition-all ${
+                openMenus["accounts"] ? "rotate-180 text-white" : "text-gray-400 group-hover:text-white"
+              }`}
+            />
+          </button>
+          <div className={`absolute right-0 top-0 h-full w-1 bg-[#3498db] transition-opacity ${
+            openMenus["accounts"] ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          }`}></div>
+
+          {openMenus["accounts"] && (
+            <div className="bg-[#34495e] py-2">
+              <Link
+                to="/dashboard/accounts/AccountingDashboard"
+                className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+                  location.pathname === "/dashboard/accounts/AccountingDashboard"
+                    ? "text-white font-medium"
+                    : "text-gray-300 hover:text-white hover:bg-[#3d5466]"
+                }`}
+              >
+                Accounts
+                <div className={`absolute right-0 top-0 h-full w-1 bg-[#3498db] transition-opacity ${
+                  location.pathname === "/dashboard/accounts/AccountingDashboard"
+                    ? "opacity-100"
+                    : "opacity-0 group-hover/item:opacity-100"
+                }`}></div>
+              </Link>
+            </div>
+          )}
+        </div>
+
         {/* More User Management Items */}
         {[...Array(7)].map((_, i) => (
           <div key={`user-extra-${i}`} className="mb-1 relative group">
@@ -590,6 +638,7 @@ const Sidebar = () => {
             <div className="absolute right-0 top-0 h-full w-1 bg-[#3498db] opacity-0 group-hover:opacity-100 transition-opacity"></div>
           </div>
         ))}
+
         {/* Footer Section */}
 <div className="mt-auto bg-[#243047] text-gray-300 text-center py-4 border-t border-[#1a252f]">
   <div className="space-y-1">
@@ -603,13 +652,17 @@ const Sidebar = () => {
   </div>
 
   <div className="mt-3 text-[11px] text-gray-400">
-    Powered by <span className="text-white font-semibold">Akhdar Platform</span><br />
-    2025
+    {/* replaced text logo with image placeholder — replace /assets/logo-light.png with your logo */}
+    <div className="flex items-center justify-center gap-2">
+      <img src="/assets/logo-light.png" alt="Logo" className="h-5 object-contain" />
+      <span className="text-white font-semibold">Akhdar Platform</span>
+    </div>
+    <div className="mt-1">2025</div>
   </div>
 </div>
 
-      </nav>
-    </aside>
+        </nav>
+      </aside>
     </>
   );
 };
