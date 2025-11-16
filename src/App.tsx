@@ -55,6 +55,12 @@ import PayrollManagement from './mycomponents/HR/page/PayrollScreen';
 import Attendance from './mycomponents/HR/page/AttendanceScreen';
 import AttendanceDayScreen from './mycomponents/HR/page/AttendanceDayScreen';
 
+//journal management pages
+import NewJournal from './mycomponents/journal/page/NewJournal';
+import NewJournalEntry from './mycomponents/journal/page/NewJournalEntry';
+import Journals from './mycomponents/journal/page/Journals';
+import JournalEntriesViewer from './mycomponents/journal/page/JournalEntriesViewer';
+
 //  Sales Management Pages (Customer)
 import CustomerSearchList from './mycomponents/Sales/page/CustomerSearchList';
 import CustomerDetails from './mycomponents/Sales/page/CustomerDetails';
@@ -151,6 +157,13 @@ function App() {
     { path: "hr/payroll", element: <PayrollManagement /> },
     { path: "hr/Attendance", element: <Attendance /> },
     { path: "hr/AttendanceDay", element: <AttendanceDayScreen /> },
+
+    //jounral management
+    { path: "journal/NewJournal", element: <NewJournal /> },
+    { path: "journal/NewJournalEntry", element: <NewJournalEntry /> },
+    { path: "journal/Journals", element: <Journals /> },
+    { path: "journal/JournalEntriesViewer", element: <JournalEntriesViewer /> },
+
 
     //  Accounts Management Pages
     { path: "accounts/AccountingDashboard", element: <AccountingDashboard /> },

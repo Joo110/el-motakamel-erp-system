@@ -613,10 +613,69 @@ const Sidebar = () => {
                     : "opacity-0 group-hover/item:opacity-100"
                 }`}></div>
               </Link>
+               <Link
+                to="/dashboard/journal/Journals"
+                className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+                  location.pathname === "/dashboard/journal/Journals"
+                    ? "text-white font-medium"
+                    : "text-gray-300 hover:text-white hover:bg-[#3d5466]"
+                }`}
+              >
+                Journals
+                <div className={`absolute right-0 top-0 h-full w-1 bg-[#3498db] transition-opacity ${
+                  location.pathname === "/dashboard/journal/Journals"
+                    ? "opacity-100"
+                    : "opacity-0 group-hover/item:opacity-100"
+                }`}></div>
+              </Link>
+              <Link
+                to="/dashboard/journal/NewJournal"
+                className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+                  location.pathname === "/dashboard/journal/NewJournal"
+                    ? "text-white font-medium"
+                    : "text-gray-300 hover:text-white hover:bg-[#3d5466]"
+                }`}
+              >
+                NewJournal
+                <div className={`absolute right-0 top-0 h-full w-1 bg-[#3498db] transition-opacity ${
+                  location.pathname === "/dashboard/journal/NewJournal"
+                    ? "opacity-100"
+                    : "opacity-0 group-hover/item:opacity-100"
+                }`}></div>
+              </Link>
+              <Link
+                to="/dashboard/journal/NewJournalEntry"
+                className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+                  location.pathname === "/dashboard/journal/NewJournalEntry"
+                    ? "text-white font-medium"
+                    : "text-gray-300 hover:text-white hover:bg-[#3d5466]"
+                }`}
+              >
+                NewJournalEntry
+                <div className={`absolute right-0 top-0 h-full w-1 bg-[#3498db] transition-opacity ${
+                  location.pathname === "/dashboard/journal/NewJournalEntry"
+                    ? "opacity-100"
+                    : "opacity-0 group-hover/item:opacity-100"
+                }`}></div>
+              </Link>
+                 <Link
+                to="/dashboard/journal/JournalEntriesViewer"
+                className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+                  location.pathname === "/dashboard/journal/JournalEntriesViewer"
+                    ? "text-white font-medium"
+                    : "text-gray-300 hover:text-white hover:bg-[#3d5466]"
+                }`}
+              >
+                JournalEntriesViewer
+                <div className={`absolute right-0 top-0 h-full w-1 bg-[#3498db] transition-opacity ${
+                  location.pathname === "/dashboard/journal/JournalEntriesViewer"
+                    ? "opacity-100"
+                    : "opacity-0 group-hover/item:opacity-100"
+                }`}></div>
+              </Link>
             </div>
           )}
         </div>
-
         {/* More User Management Items */}
         {[...Array(7)].map((_, i) => (
           <div key={`user-extra-${i}`} className="mb-1 relative group">
@@ -654,7 +713,7 @@ const Sidebar = () => {
   <div className="mt-3 text-[11px] text-gray-400">
     {/* replaced text logo with image placeholder — replace /assets/logo-light.png with your logo */}
     <div className="flex items-center justify-center gap-2">
-      <img src="/assets/logo-light.png" alt="Logo" className="h-5 object-contain" />
+      <img src="/images/logo2.png" alt="Logo" className="h-5 object-contain" />
       <span className="text-white font-semibold">Akhdar Platform</span>
     </div>
     <div className="mt-1">2025</div>
