@@ -15,13 +15,13 @@ interface Journal {
 const JournalEntriesViewer: React.FC = () => {
   const { entries: hookJournals, loading: hookLoadingJournals } = useJournal();
   
-  const { 
+const { 
     entries, 
     loading: entriesLoading, 
-    fetch: fetchEntries,
     setJournalId,
     removeEntry
-  } = useJournal();
+} = useJournal();
+
 
   const { accounts } = useAccounts();
 
@@ -57,7 +57,6 @@ const JournalEntriesViewer: React.FC = () => {
     if (!journalId) return;
 
     setJournalId(journalId);
-    await fetchEntries();
   };
 
   const handleDelete = async (entryId: string) => {
@@ -78,7 +77,6 @@ const JournalEntriesViewer: React.FC = () => {
   const handleRefresh = async () => {
     if (!selectedJournalId) return;
     try {
-      await fetchEntries();
       toast.success('✅ Entries refreshed');
     } catch (err) {
       console.error('Error refreshing entries:', err);
