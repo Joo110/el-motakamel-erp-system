@@ -614,6 +614,21 @@ const Sidebar = () => {
                 }`}></div>
               </Link>
                <Link
+                to="/dashboard/accounts/AccountingTree"
+                className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
+                  location.pathname === "/dashboard/accounts/AccountingTree"
+                    ? "text-white font-medium"
+                    : "text-gray-300 hover:text-white hover:bg-[#3d5466]"
+                }`}
+              >
+                Accounting Tree
+                <div className={`absolute right-0 top-0 h-full w-1 bg-[#3498db] transition-opacity ${
+                  location.pathname === "/dashboard/accounts/AccountingTree"
+                    ? "opacity-100"
+                    : "opacity-0 group-hover/item:opacity-100"
+                }`}></div>
+              </Link>
+               <Link
                 to="/dashboard/journal/Journals"
                 className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
                   location.pathname === "/dashboard/journal/Journals"

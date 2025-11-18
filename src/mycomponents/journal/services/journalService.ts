@@ -54,3 +54,10 @@ export const deleteJournalService = async (id: string) => {
   const res = await axiosClient.delete(`${BASE}/${id}`);
   return res.data;
 };
+
+// Get journal entries by journal ID
+export const getJournalEntriesByJournalIdService = async (journalId: string): Promise<JournalEntry[]> => {
+  const res = await axiosClient.get(`${BASE}/${journalId}/jornalEntries`);
+  const entries = res.data?.data?.jornalEntries;
+  return Array.isArray(entries) ? entries : [];
+};

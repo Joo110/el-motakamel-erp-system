@@ -7,6 +7,7 @@ import {
   createJournalService,
   updateJournalService,
   deleteJournalService,
+  getJournalEntriesByJournalIdService,
 } from "../services/journalService";
 
 export function useJournal(initialParams?: Record<string, any>) {
@@ -14,12 +15,22 @@ export function useJournal(initialParams?: Record<string, any>) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<any>(null);
   const [params, setParams] = useState(initialParams);
-
-  const fetch = useCallback(async (p?: Record<string, any>) => {
+  const [journalId, setJournalId] = useState<string | null>(null);
+  
+const fetch = useCallback(async (p?: Record<string, any>) => {
     try {
       setLoading(true);
-      const data = await getJournalService(p ?? params);
-      setEntries(data);
+      let entries: JournalEntry[] = [];
+
+      if (journalId) {
+        const response = await getJournalEntriesByJournalIdService(journalId);
+        entries = response || [];
+      } else {
+        const response = await getJournalService(p ?? params);
+        entries = response || [];
+      }
+
+      setEntries(entries);
     } catch (err) {
       console.error(err);
       toast.error("Error loading journal entries");
@@ -27,7 +38,7 @@ export function useJournal(initialParams?: Record<string, any>) {
     } finally {
       setLoading(false);
     }
-  }, [params]);
+  }, [params, journalId]);
 
   useEffect(() => {
     fetch();
@@ -106,6 +117,8 @@ export function useJournal(initialParams?: Record<string, any>) {
     entries,
     loading,
     error,
+    journalId,
+    setJournalId,
     refresh,
     createEntry,
     getEntry,

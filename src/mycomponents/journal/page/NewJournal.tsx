@@ -1,22 +1,19 @@
 import React, { useState } from "react";
 import { BookOpen, Save, X } from "lucide-react";
 import { toast } from 'react-hot-toast';
+import useJournal from "../hooks/useJournal";
 
 const NewJournal = () => {
+  const { entries, createEntry, refresh } = useJournal();
+
   const [formData, setFormData] = useState({
     name: "",
-    jornalType: "purchases",
+    jornalType: "",
     code: "",
   });
-  const [saving, setSaving] = useState(false);
 
-  const journalTypes = [
-    { value: "purchases", label: "Purchases - المشتريات" },
-    { value: "sales", label: "Sales - المبيعات" },
-    { value: "general", label: "General - عام" },
-    { value: "payment", label: "Payment - المدفوعات" },
-    { value: "receipt", label: "Receipt - المقبوضات" },
-  ];
+  const [saving, setSaving] = useState(false);
+  const [customTypeMode, setCustomTypeMode] = useState(false);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -27,11 +24,21 @@ const NewJournal = () => {
     });
   };
 
+  const handleTypeSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    if (e.target.value === "__add_new__") {
+      setCustomTypeMode(true);
+      setFormData({ ...formData, jornalType: "" });
+      return;
+    }
+
+    setCustomTypeMode(false);
+    handleInputChange(e);
+  };
+
   const handleSubmit = async () => {
     try {
       setSaving(true);
 
-      // Validation
       if (!formData.name.trim()) {
         toast.error("❌ Please enter journal name!");
         setSaving(false);
@@ -44,34 +51,34 @@ const NewJournal = () => {
         return;
       }
 
-      // API Call - replace with your actual endpoint
-      const response = await fetch("/api/journals", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
+      if (!formData.jornalType.trim()) {
+        toast.error("❌ Please enter or select journal type!");
+        setSaving(false);
+        return;
+      }
 
-      const result = await response.json();
+      const payload = {
+        ...formData,
+        date: new Date().toISOString(),
+        description: "",
+      };
 
-      // Handle duplicate code error
-      if (result?.err?.code === 11000 || result?.code === 11000) {
+      const result = await createEntry(payload);
+
+      if (result?.err?.code === 11000) {
         toast.error("❌ This journal code is already in use!");
         setSaving(false);
         return;
       }
 
-      if (!response.ok) {
-        throw new Error("Failed to create journal");
-      }
+      await refresh();
 
       toast.success("✅ Journal created successfully!");
       handleCancel();
     } catch (error: any) {
       console.error("❌ Error creating journal:", error);
-      
-      if (error?.response?.data?.err?.code === 11000 || error?.err?.code === 11000) {
+
+      if (error?.err?.code === 11000) {
         toast.error("❌ This journal code is already in use!");
       } else {
         toast.error("❌ Error creating journal. Please try again.");
@@ -84,14 +91,14 @@ const NewJournal = () => {
   const handleCancel = () => {
     setFormData({
       name: "",
-      jornalType: "purchases",
+      jornalType: "",
       code: "",
     });
+    setCustomTypeMode(false);
   };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      {/* Header */}
       <div className="mb-6 flex items-center gap-4 flex-wrap">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-[#1f334d] rounded-lg">
@@ -111,7 +118,6 @@ const NewJournal = () => {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="max-w-3xl mx-auto">
         <div className="bg-white rounded-lg shadow-sm p-8">
           <div className="flex items-center justify-between mb-8">
@@ -120,7 +126,6 @@ const NewJournal = () => {
           </div>
 
           <div className="space-y-6">
-            {/* Journal Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Journal Name
@@ -132,38 +137,52 @@ const NewJournal = () => {
                 value={formData.name}
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
-                placeholder="Enter journal name (e.g., Daily Purchases)"
+                placeholder="Enter journal name"
               />
             </div>
 
-            {/* Journal Type */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Journal Type
                 <span className="text-red-500 ml-1">*</span>
               </label>
-              <select
-                name="jornalType"
-                value={formData.jornalType}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none bg-white"
-                style={{
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`,
-                  backgroundPosition: "right 0.5rem center",
-                  backgroundRepeat: "no-repeat",
-                  backgroundSize: "1.5em 1.5em",
-                  paddingRight: "2.5rem",
-                }}
-              >
-                {journalTypes.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
+
+              {!customTypeMode ? (
+                <select
+                  name="jornalType"
+                  value={formData.jornalType}
+                  onChange={handleTypeSelect}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none bg-white"
+                  style={{
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`,
+                    backgroundPosition: "right 0.5rem center",
+                    backgroundRepeat: "no-repeat",
+                    backgroundSize: "1.5em 1.5em",
+                    paddingRight: "2.5rem",
+                  }}
+                >
+                  <option value="">-- Select Journal Type --</option>
+                  {entries.map((j) => (
+                    <option key={j._id} value={j.jornalType}>
+                      {j.jornalType} — {j.name}
+                    </option>
+                  ))}
+                  <option value="__add_new__" className="font-bold text-blue-600">
+                    ➕ Add new type...
                   </option>
-                ))}
-              </select>
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  name="jornalType"
+                  value={formData.jornalType}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
+                  placeholder="Write new journal type..."
+                />
+              )}
             </div>
 
-            {/* Journal Code */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Journal Code
@@ -175,14 +194,10 @@ const NewJournal = () => {
                 value={formData.code}
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
-                placeholder="Enter unique journal code (e.g., PUR-001)"
+                placeholder="Enter unique journal code"
               />
-              <p className="mt-2 text-sm text-gray-500">
-                💡 This code must be unique for each journal
-              </p>
             </div>
 
-            {/* Info Box */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 mt-0.5">
@@ -193,14 +208,13 @@ const NewJournal = () => {
                 <div>
                   <h4 className="text-sm font-medium text-blue-900 mb-1">About Journals</h4>
                   <p className="text-sm text-blue-800">
-                    Journals are used to record financial transactions. Each journal has a unique code and type that helps organize your accounting records.
+                    Journals are used to record financial transactions.
                   </p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex justify-end gap-4 mt-8 pt-6 border-t">
             <button
               onClick={handleCancel}

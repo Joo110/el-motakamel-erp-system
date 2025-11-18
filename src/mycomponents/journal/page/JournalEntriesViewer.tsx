@@ -1,23 +1,9 @@
-import React, { useState } from 'react';
-import { FileText, Calendar, DollarSign, ChevronDown, RefreshCw, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
-
-interface JournalLine {
-  _id: string;
-  accountId: string;
-  accountName?: string;
-  accountCode?: string;
-  description: string;
-  debit: number;
-  credit: number;
-}
-
-interface JournalEntry {
-  _id: string;
-  jornalId: string;
-  lines: JournalLine[];
-  createdAt: string;
-  updatedAt: string;
-}
+import React, { useState, useEffect } from 'react';
+import { FileText, Calendar, DollarSign, ChevronDown, RefreshCw, TrendingUp, TrendingDown, AlertCircle, Trash2 } from 'lucide-react';
+import { useJournal } from '../hooks/useJournal';
+import { useAccounts } from '../../accounts/hooks/useAccounts';
+import type { JournalEntry as ServiceJournalEntry } from '../services/journalService';
+import { toast } from 'react-hot-toast';
 
 interface Journal {
   _id: string;
@@ -26,86 +12,95 @@ interface Journal {
   jornalType: string;
 }
 
-// بيانات وهمية
-const MOCK_JOURNALS: Journal[] = [
-  { _id: 'j1', name: 'Daily Purchases Journal', code: 'PUR-001', jornalType: 'purchases' },
-  { _id: 'j2', name: 'Sales Journal', code: 'SAL-001', jornalType: 'sales' },
-  { _id: 'j3', name: 'General Journal', code: 'GEN-001', jornalType: 'general' },
-];
-
-const MOCK_ENTRIES: Record<string, JournalEntry[]> = {
-  j1: [
-    {
-      _id: 'e1',
-      jornalId: 'j1',
-      createdAt: '2025-10-05T17:20:35.717Z',
-      updatedAt: '2025-10-05T17:20:35.717Z',
-      lines: [
-        { _id: 'l1', accountId: 'a1', accountName: 'Office Equipment', accountCode: '1500', description: 'شراء اجهزه لاب توب', debit: 2000, credit: 0 },
-        { _id: 'l2', accountId: 'a2', accountName: 'Cash', accountCode: '1010', description: 'شراء اجهزه لاب توب', debit: 0, credit: 2000 },
-      ],
-    },
-    {
-      _id: 'e2',
-      jornalId: 'j1',
-      createdAt: '2025-10-06T10:15:20.500Z',
-      updatedAt: '2025-10-06T10:15:20.500Z',
-      lines: [
-        { _id: 'l3', accountId: 'a3', accountName: 'Office Supplies', accountCode: '1520', description: 'شراء مستلزمات مكتبية', debit: 1500, credit: 0 },
-        { _id: 'l4', accountId: 'a4', accountName: 'Accounts Payable', accountCode: '2010', description: 'شراء مستلزمات مكتبية', debit: 0, credit: 1500 },
-      ],
-    },
-  ],
-  j2: [
-    {
-      _id: 'e3',
-      jornalId: 'j2',
-      createdAt: '2025-11-01T09:00:00.000Z',
-      updatedAt: '2025-11-01T09:00:00.000Z',
-      lines: [
-        { _id: 'l5', accountId: 'a5', accountName: 'Cash', accountCode: '1010', description: 'بيع منتجات', debit: 5000, credit: 0 },
-        { _id: 'l6', accountId: 'a6', accountName: 'Sales Revenue', accountCode: '4010', description: 'بيع منتجات', debit: 0, credit: 5000 },
-      ],
-    },
-  ],
-};
-
 const JournalEntriesViewer: React.FC = () => {
-  const [journals] = useState<Journal[]>(MOCK_JOURNALS);
+  const { entries: hookJournals, loading: hookLoadingJournals } = useJournal();
+  
+  const { 
+    entries, 
+    loading: entriesLoading, 
+    fetch: fetchEntries,
+    setJournalId,
+    removeEntry
+  } = useJournal();
+
+  const { accounts } = useAccounts();
+
+  const [journals, setJournals] = useState<Journal[]>([]);
   const [selectedJournalId, setSelectedJournalId] = useState<string>('');
-  const [entries, setEntries] = useState<JournalEntry[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadingJournals] = useState(false);
+  const [selectedJournal, setSelectedJournal] = useState<Journal | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // عند اختيار الجورنال، نجيب البيانات من MOCK
-  React.useEffect(() => {
-    if (selectedJournalId) {
-      setLoading(true);
-      setError(null);
-      setTimeout(() => {
-        const mockEntries = MOCK_ENTRIES[selectedJournalId] || [];
-        setEntries(mockEntries);
-        setLoading(false);
-      }, 300); // Simulate loading
-    } else {
-      setEntries([]);
+  useEffect(() => {
+    if (Array.isArray(hookJournals) && hookJournals.length > 0) {
+      setJournals(hookJournals as unknown as Journal[]);
     }
-  }, [selectedJournalId]);
+  }, [hookJournals]);
 
-  const calculateEntryTotals = (entry: JournalEntry) => {
-    const totalDebit = entry.lines.reduce((sum, line) => sum + (line.debit || 0), 0);
-    const totalCredit = entry.lines.reduce((sum, line) => sum + (line.credit || 0), 0);
+  const getAccountName = (accountId: string): string => {
+    const account = accounts.find(acc => acc._id === accountId || acc.id === accountId);
+    return account?.name || 'Unknown Account';
+  };
+
+  const getAccountCode = (accountId: string): string | undefined => {
+    const account = accounts.find(acc => acc._id === accountId || acc.id === accountId);
+    return account?.code;
+  };
+
+  const handleJournalChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const journalId = e.target.value;
+    setSelectedJournalId(journalId);
+    const journal = journals.find(j => j._id === journalId) || null;
+    setSelectedJournal(journal);
+    setError(null);
+
+    if (!journalId) return;
+
+    setJournalId(journalId);
+    await fetchEntries();
+  };
+
+  const handleDelete = async (entryId: string) => {
+    if (!confirm('Are you sure you want to delete this entry?')) return;
+
+    try {
+      setDeletingId(entryId);
+      await removeEntry(entryId);
+      toast.success('✅ Entry deleted successfully');
+    } catch (err) {
+      console.error('Error deleting entry:', err);
+      toast.error('❌ Error deleting entry');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleRefresh = async () => {
+    if (!selectedJournalId) return;
+    try {
+      await fetchEntries();
+      toast.success('✅ Entries refreshed');
+    } catch (err) {
+      console.error('Error refreshing entries:', err);
+      toast.error('❌ Error refreshing entries');
+    }
+  };
+
+  const calculateEntryTotals = (entry: ServiceJournalEntry) => {
+    const lines = (entry as any).lines || [];
+    const totalDebit = lines.reduce((sum: number, line: any) => sum + (line.debit || 0), 0);
+    const totalCredit = lines.reduce((sum: number, line: any) => sum + (line.credit || 0), 0);
     return { totalDebit, totalCredit, isBalanced: totalDebit === totalCredit };
   };
 
   const calculateGrandTotals = () => {
     let grandDebit = 0;
     let grandCredit = 0;
-    entries.forEach(entry => {
-      entry.lines.forEach(line => {
-        grandDebit += line.debit;
-        grandCredit += line.credit;
+    entries.forEach((entry: ServiceJournalEntry) => {
+      const lines = (entry as any).lines || [];
+      lines.forEach((line: any) => {
+        grandDebit += line.debit || 0;
+        grandCredit += line.credit || 0;
       });
     });
     return { grandDebit, grandCredit };
@@ -114,17 +109,8 @@ const JournalEntriesViewer: React.FC = () => {
   const formatCurrency = (amount: number) => amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const formatDate = (dateStr: string) => new Date(dateStr).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-  const getJournalTypeBadge = (type: string) => {
-    const badges: Record<string, { bg: string; text: string }> = {
-      purchases: { bg: 'bg-purple-100', text: 'text-purple-800' },
-      sales: { bg: 'bg-green-100', text: 'text-green-800' },
-      general: { bg: 'bg-blue-100', text: 'text-blue-800' },
-    };
-    return badges[type] || { bg: 'bg-gray-100', text: 'text-gray-800' };
-  };
-
-  const selectedJournal = journals.find(j => j._id === selectedJournalId);
   const { grandDebit, grandCredit } = calculateGrandTotals();
+  const loading = entriesLoading || hookLoadingJournals;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -144,10 +130,11 @@ const JournalEntriesViewer: React.FC = () => {
             </h2>
             {selectedJournalId && (
               <button
-                onClick={() => setSelectedJournalId(selectedJournalId)}
-                className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors"
+                onClick={handleRefresh}
+                disabled={loading}
+                className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors disabled:opacity-50"
               >
-                <RefreshCw className="w-4 h-4" />
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                 <span className="text-sm font-medium">Refresh</span>
               </button>
             )}
@@ -161,8 +148,8 @@ const JournalEntriesViewer: React.FC = () => {
               <div className="relative">
                 <select
                   value={selectedJournalId}
-                  onChange={(e) => setSelectedJournalId(e.target.value)}
-                  disabled={loadingJournals}
+                  onChange={handleJournalChange}
+                  disabled={hookLoadingJournals}
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none bg-white text-gray-900 font-medium"
                   style={{
                     backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`,
@@ -175,7 +162,7 @@ const JournalEntriesViewer: React.FC = () => {
                   <option value="">-- Select a Journal --</option>
                   {journals.map((journal) => (
                     <option key={journal._id} value={journal._id}>
-                      {journal.name} ({journal.code})
+                      {journal.name}
                     </option>
                   ))}
                 </select>
@@ -185,15 +172,10 @@ const JournalEntriesViewer: React.FC = () => {
 
             {selectedJournal && (
               <div className="md:col-span-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Journal Type
-                </label>
-                <div className="h-12 flex items-center">
-                  <span
-                    className={`px-4 py-2 rounded-xl text-sm font-semibold ${getJournalTypeBadge(selectedJournal.jornalType).bg} ${getJournalTypeBadge(selectedJournal.jornalType).text}`}
-                  >
-                    {selectedJournal.jornalType.toUpperCase()}
-                  </span>
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                  <p className="text-xs text-blue-600 font-medium mb-1">Selected Journal</p>
+                  <p className="text-sm font-bold text-blue-900">{selectedJournal.name}</p>
+                  <p className="text-xs text-blue-700 mt-1">Code: {selectedJournal.code}</p>
                 </div>
               </div>
             )}
@@ -206,7 +188,7 @@ const JournalEntriesViewer: React.FC = () => {
             <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-green-100 text-sm font-medium">Total Debit</p>
-                <TrendingUp className="w-6 h-6 text-green-100" />
+                <TrendingUp className="w-6 h-6 text-green-100" /> 
               </div>
               <p className="text-3xl font-bold">{formatCurrency(grandDebit)}</p>
               <p className="text-green-100 text-sm mt-1">SR</p>
@@ -265,9 +247,11 @@ const JournalEntriesViewer: React.FC = () => {
           <div className="space-y-6">
             {entries.map((entry, entryIndex) => {
               const { totalDebit, totalCredit, isBalanced } = calculateEntryTotals(entry);
+              const entryData = entry as any;
+              const lines = entryData.lines || [];
 
               return (
-                <div key={entry._id} className="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div key={entryData._id} className="bg-white rounded-xl shadow-sm overflow-hidden">
                   {/* Entry Header */}
                   <div className="bg-gradient-to-r from-[#1f334d] to-gray-800 px-6 py-4 text-white">
                     <div className="flex justify-between items-center flex-wrap gap-3">
@@ -275,7 +259,7 @@ const JournalEntriesViewer: React.FC = () => {
                         <span className="text-2xl font-bold">#{entryIndex + 1}</span>
                         <div>
                           <p className="text-sm text-gray-300">Entry ID</p>
-                          <p className="font-mono text-sm">{entry._id.slice(-8).toUpperCase()}</p>
+                          <p className="font-mono text-sm">{entryData._id.slice(-8).toUpperCase()}</p>
                         </div>
                       </div>
 
@@ -284,7 +268,7 @@ const JournalEntriesViewer: React.FC = () => {
                           <p className="text-sm text-gray-300">Created At</p>
                           <div className="flex items-center gap-2">
                             <Calendar className="w-4 h-4" />
-                            <p className="text-sm font-medium">{formatDate(entry.createdAt)}</p>
+                            <p className="text-sm font-medium">{formatDate(entryData.createdAt)}</p>
                           </div>
                         </div>
 
@@ -297,6 +281,16 @@ const JournalEntriesViewer: React.FC = () => {
                         >
                           {isBalanced ? '✓ Balanced' : '✗ Unbalanced'}
                         </div>
+
+                        {/* Delete Button */}
+                        <button
+                          onClick={() => handleDelete(entryData._id)}
+                          disabled={deletingId === entryData._id}
+                          className="p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Delete Entry"
+                        >
+                          <Trash2 className={`w-4 h-4 text-red-200 ${deletingId === entryData._id ? 'animate-pulse' : ''}`} />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -307,15 +301,9 @@ const JournalEntriesViewer: React.FC = () => {
                       <table className="w-full">
                         <thead>
                           <tr className="border-b-2 border-gray-200">
-                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 bg-gray-50">
-                              #
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 bg-gray-50">
-                              Account
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 bg-gray-50">
-                              Description
-                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 bg-gray-50">#</th>
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 bg-gray-50">Account</th>
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 bg-gray-50">Description</th>
                             <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 bg-gray-50">
                               <div className="flex items-center justify-end gap-1">
                                 <TrendingUp className="w-4 h-4 text-green-600" />
@@ -331,57 +319,36 @@ const JournalEntriesViewer: React.FC = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {entry.lines.map((line, lineIndex) => (
-                            <tr
-                              key={line._id}
-                              className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                            >
+                          {lines.map((line: any, lineIndex: number) => (
+                            <tr key={line._id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                               <td className="py-4 px-4 text-gray-600 text-sm">{lineIndex + 1}</td>
                               <td className="py-4 px-4">
                                 <div>
                                   <p className="font-semibold text-gray-900">
-                                    {line.accountName || 'N/A'}
+                                    {line.accountId ? getAccountName(line.accountId) : (line.accountName || 'N/A')}
                                   </p>
-                                  {line.accountCode && (
+                                  {(line.accountId ? getAccountCode(line.accountId) : line.accountCode) && (
                                     <p className="text-xs text-gray-500 font-mono mt-0.5">
-                                      {line.accountCode}
+                                      {line.accountId ? getAccountCode(line.accountId) : line.accountCode}
                                     </p>
                                   )}
                                 </div>
                               </td>
                               <td className="py-4 px-4 text-gray-700">{line.description}</td>
                               <td className="py-4 px-4 text-right font-mono">
-                                {line.debit > 0 ? (
-                                  <span className="text-green-600 font-bold">
-                                    {formatCurrency(line.debit)}
-                                  </span>
-                                ) : (
-                                  <span className="text-gray-300">-</span>
-                                )}
+                                {line.debit > 0 ? <span className="text-green-600 font-bold">{formatCurrency(line.debit)}</span> : <span className="text-gray-300">-</span>}
                               </td>
                               <td className="py-4 px-4 text-right font-mono">
-                                {line.credit > 0 ? (
-                                  <span className="text-red-600 font-bold">
-                                    {formatCurrency(line.credit)}
-                                  </span>
-                                ) : (
-                                  <span className="text-gray-300">-</span>
-                                )}
+                                {line.credit > 0 ? <span className="text-red-600 font-bold">{formatCurrency(line.credit)}</span> : <span className="text-gray-300">-</span>}
                               </td>
                             </tr>
                           ))}
 
                           {/* Entry Total */}
                           <tr className="bg-gray-100 font-bold border-t-2 border-gray-300">
-                            <td colSpan={3} className="py-4 px-4 text-right text-gray-900">
-                              Entry Total:
-                            </td>
-                            <td className="py-4 px-4 text-right font-mono text-green-700 text-lg">
-                              {formatCurrency(totalDebit)}
-                            </td>
-                            <td className="py-4 px-4 text-right font-mono text-red-700 text-lg">
-                              {formatCurrency(totalCredit)}
-                            </td>
+                            <td colSpan={3} className="py-4 px-4 text-right text-gray-900">Entry Total:</td>
+                            <td className="py-4 px-4 text-right font-mono text-green-700 text-lg">{formatCurrency(totalDebit)}</td>
+                            <td className="py-4 px-4 text-right font-mono text-red-700 text-lg">{formatCurrency(totalCredit)}</td>
                           </tr>
                         </tbody>
                       </table>
@@ -396,26 +363,16 @@ const JournalEntriesViewer: React.FC = () => {
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   <DollarSign className="w-8 h-8" />
-                  <h3 className="text-xl font-bold">Grand Total</h3>
+                  <h3 className="text-xl font-semibold">Grand Total</h3>
                 </div>
-                <div className="flex gap-8 text-right">
+                <div className="flex items-center gap-6 text-right">
                   <div>
-                    <p className="text-gray-300 text-sm mb-1">Total Debit</p>
-                    <p className="text-2xl font-bold text-green-400">{formatCurrency(grandDebit)} SR</p>
+                    <p className="text-sm text-gray-300">Debit</p>
+                    <p className="text-lg font-bold">{formatCurrency(grandDebit)}</p>
                   </div>
                   <div>
-                    <p className="text-gray-300 text-sm mb-1">Total Credit</p>
-                    <p className="text-2xl font-bold text-red-400">{formatCurrency(grandCredit)} SR</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-300 text-sm mb-1">Balance</p>
-                    <p
-                      className={`text-2xl font-bold ${
-                        grandDebit === grandCredit ? 'text-green-400' : 'text-yellow-400'
-                      }`}
-                    >
-                      {grandDebit === grandCredit ? '✓ OK' : `${formatCurrency(Math.abs(grandDebit - grandCredit))} SR`}
-                    </p>
+                    <p className="text-sm text-gray-300">Credit</p>
+                    <p className="text-lg font-bold">{formatCurrency(grandCredit)}</p>
                   </div>
                 </div>
               </div>

@@ -76,6 +76,7 @@ import SupplierAdd from './mycomponents/Precious/page/SupplierAdd';
 
 //  Accounts Management Pages
 import AccountingDashboard from './mycomponents/accounts/pages/AccountingDashboard';
+import AccountingTree from './mycomponents/accounts/pages/AccountingTree';
 
 
 function App() {
@@ -167,6 +168,7 @@ function App() {
 
     //  Accounts Management Pages
     { path: "accounts/AccountingDashboard", element: <AccountingDashboard /> },
+    { path: "accounts/AccountingTree", element: <AccountingTree /> },
 
       ],
     },
