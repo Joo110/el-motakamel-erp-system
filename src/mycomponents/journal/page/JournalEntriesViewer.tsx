@@ -202,15 +202,21 @@ const {
             </div>
 
             <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-blue-100 text-sm font-medium">Total Entries</p>
-                <FileText className="w-6 h-6 text-blue-100" />
-              </div>
-              <p className="text-3xl font-bold">{entries.length}</p>
-              <p className="text-blue-100 text-sm mt-1">
-                {grandDebit === grandCredit ? '✓ Balanced' : '✗ Unbalanced'}
-              </p>
-            </div>
+  <div className="flex items-center justify-between mb-2">
+    <p className="text-blue-100 text-sm font-medium">Total</p>
+    <FileText className="w-6 h-6 text-blue-100" />
+  </div>
+
+  {/* Total = grandDebit - grandCredit */}
+  <p className="text-3xl font-bold">
+    {formatCurrency(grandDebit - grandCredit)}
+  </p>
+
+  <p className="text-blue-100 text-sm mt-1">
+    {grandDebit === grandCredit ? '✓ Balanced' : '✗ Unbalanced'}
+  </p>
+</div>
+
           </div>
         )}
 

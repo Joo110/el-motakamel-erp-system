@@ -72,7 +72,8 @@ import SupplierSearchList from './mycomponents/Precious/page/SupplierSearchList'
 import SupplierDetails from './mycomponents/Precious/page/SupplierDetails';
 import SupplierEditFilled from './mycomponents/Precious/page/SupplierEditFilled';
 import SupplierAdd from './mycomponents/Precious/page/SupplierAdd';
-
+import PurchaseInvoice from "./mycomponents/Precious/page/Allinvoice";
+import InvoiceScreen from "./mycomponents/Precious/page/InvoiceScreen";
 
 //  Accounts Management Pages
 import AccountingDashboard from './mycomponents/accounts/pages/AccountingDashboard';
@@ -149,6 +150,8 @@ function App() {
         { path: "precious/supplier/:id", element: <SupplierDetails /> },
         { path: "precious/supplier/edit/:id", element: <SupplierEditFilled /> },
         { path: "precious/supplier/new", element: <SupplierAdd /> },
+        { path: "precious/supplier/purchaseinvoice", element: <PurchaseInvoice /> },
+        { path: "precious/supplier/InvoiceScreen/:id", element: <InvoiceScreen /> },
 
         // 🆕 HR Management Routes
     { path: "hr/employees", element: <EmployeeList /> },
