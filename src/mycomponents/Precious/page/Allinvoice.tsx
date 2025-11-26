@@ -1,9 +1,9 @@
-// Allinvoice.tsx
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import usePurchaseInvoices from '../hooks/useAllinvoices';
 import { usePayInvoice } from '../hooks/usePayInvoice';
 import { toast } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 interface Invoice {
   orderNumber: string;
@@ -35,13 +35,14 @@ const PaymentModal: React.FC<{
   onSubmit: (amount: string) => void;
   loading: boolean;
 }> = ({ isOpen, onClose, invoice, onSubmit, loading }) => {
+  const { t } = useTranslation();
   const [paymentAmount, setPaymentAmount] = useState('');
 
   if (!isOpen || !invoice) return null;
 
   const handleSubmit = () => {
     if (!paymentAmount) {
-      toast.error('Please enter payment amount');
+      toast.error(t('please_enter_payment_amount'));
       return;
     }
     onSubmit(paymentAmount);
@@ -58,7 +59,7 @@ const PaymentModal: React.FC<{
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <span className="text-red-500 font-bold text-lg">⚠️</span>
-            <h3 className="text-lg font-semibold">Supplier Payment</h3>
+            <h3 className="text-lg font-semibold">{t('supplier_payment')}</h3>
           </div>
           <button 
             onClick={handleClose} 
@@ -70,14 +71,14 @@ const PaymentModal: React.FC<{
         </div>
 
         <div className="mb-4">
-          <p className="text-sm text-gray-600 mb-1">Invoice number</p>
+          <p className="text-sm text-gray-600 mb-1">{t('invoice_number')}</p>
           <p className="font-semibold">{invoice.orderNumber}</p>
-          <p className="text-xs text-gray-400 mt-1">ID: {invoice._id ?? invoice.id}</p>
+          <p className="text-xs text-gray-400 mt-1">{t('id')}: {invoice._id ?? invoice.id}</p>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Payment Amount</label>
+            <label className="block text-sm text-gray-600 mb-1">{t('payment_amount')}</label>
             <input
               type="number"
               value={paymentAmount}
@@ -97,21 +98,21 @@ const PaymentModal: React.FC<{
               {loading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Processing...
+                  {t('processing')}
                 </>
               ) : (
-                'New Payment'
+                t('new_payment')
               )}
             </button>
           </div>
 
           <div className="border-t pt-3 mt-3">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Total:</span>
+              <span className="text-gray-600">{t('total')}:</span>
               <span className="font-semibold">{invoice.totalDue}</span>
             </div>
             <div className="flex justify-between text-sm mt-1">
-              <span className="text-gray-600">Remaining:</span>
+              <span className="text-gray-600">{t('remaining')}:</span>
               <span className="font-semibold text-red-600">{invoice.remaining}</span>
             </div>
           </div>
@@ -122,6 +123,7 @@ const PaymentModal: React.FC<{
 };
 
 const Allinvoice: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'unpaid' | 'partial' | 'paid'>('unpaid');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -131,12 +133,11 @@ const Allinvoice: React.FC = () => {
   const [perPage, setPerPage] = useState(10);
 
   const { invoices, refresh } = usePurchaseInvoices();
-const { payInvoice, loading: paymentLoading } = usePayInvoice();
+  const { payInvoice, loading: paymentLoading } = usePayInvoice();
 
-const pay = async (invoiceId: string) => {
-  return await payInvoice(invoiceId);
-};
-
+  const pay = async (invoiceId: string) => {
+    return await payInvoice(invoiceId);
+  };
 
   const mappedInvoices: Invoice[] = useMemo(() => {
     if (!Array.isArray(invoices)) return [];
@@ -215,30 +216,29 @@ const pay = async (invoiceId: string) => {
     setIsModalOpen(true);
   };
 
-
-const handlePaymentSubmit = async (amount: string) => {
-  if (!selectedInvoice?._id && !selectedInvoice?.id) {
-    toast.error('Invoice ID not found');
-    return;
-  }
-
-  const invoiceId = selectedInvoice._id ?? selectedInvoice.id ?? '';
-  try {
-const response = await pay(invoiceId);
-
-    if (response) {
-      toast.success(`Payment of ${amount} SR processed successfully!`);
-      setIsModalOpen(false);
-      setSelectedInvoice(null);
-      await refresh();
-    } else {
-      toast.error('Payment failed. Please try again.');
+  const handlePaymentSubmit = async (amount: string) => {
+    if (!selectedInvoice?._id && !selectedInvoice?.id) {
+      toast.error(t('invoice_id_not_found'));
+      return;
     }
-  } catch (error: any) {
-    console.error('Payment error:', error);
-    toast.error(error?.message || 'Failed to process payment');
-  }
-};
+
+    const invoiceId = selectedInvoice._id ?? selectedInvoice.id ?? '';
+    try {
+      const response = await pay(invoiceId);
+
+      if (response) {
+        toast.success(t('payment_processed_successfully').replace('{amount}', amount));
+        setIsModalOpen(false);
+        setSelectedInvoice(null);
+        await refresh();
+      } else {
+        toast.error(t('payment_failed'));
+      }
+    } catch (error: any) {
+      console.error('Payment error:', error);
+      toast.error(error?.message || t('failed_to_process_payment'));
+    }
+  };
 
   const getCurrentInvoicesFull = () => {
     switch (activeTab) {
@@ -268,19 +268,17 @@ const response = await pay(invoiceId);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-          <span>Dashboard</span>
+          <span>{t('dashboard')}</span>
           <span>›</span>
-          <span>Precious</span>
+          <span>{t('precious')}</span>
           <span>›</span>
-          <span>Invoices</span>
+          <span>{t('invoices')}</span>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900">Precious Management</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('precious_management')}</h1>
       </div>
 
-      {/* Tabs */}
       <div className="bg-white rounded-lg shadow mb-6">
         <div className="flex border-b">
           <button
@@ -291,7 +289,7 @@ const response = await pay(invoiceId);
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            Unpaid
+            {t('unpaid')}
           </button>
           <button
             onClick={() => { setActiveTab('partial'); setPage(1); }}
@@ -301,7 +299,7 @@ const response = await pay(invoiceId);
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            Partial
+            {t('partial')}
           </button>
           <button
             onClick={() => { setActiveTab('paid'); setPage(1); }}
@@ -311,14 +309,13 @@ const response = await pay(invoiceId);
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            Paid
+            {t('paid')}
           </button>
         </div>
 
-        {/* Table */}
         <div className="p-6">
           <div className="mb-4 text-sm text-gray-600">
-            Showing {showingFrom}-{showingTo} of {totalItems} invoices
+            {t('showing_invoices')} {showingFrom}-{showingTo} {t('of_invoices')} {totalItems} {t('invoices_text')}
           </div>
 
           <div className="overflow-x-auto">
@@ -326,22 +323,22 @@ const response = await pay(invoiceId);
               <thead>
                 <tr className="border-b">
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">
-                    Order number
+                    {t('order_number')}
                   </th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">
-                    Supplier
+                    {t('supplier')}
                   </th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">
-                    Total Due
+                    {t('total_due')}
                   </th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">
-                    Remaining
+                    {t('remaining')}
                   </th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">
-                    Last Payment
+                    {t('last_payment')}
                   </th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">
-                    Action
+                    {t('action')}
                   </th>
                 </tr>
               </thead>
@@ -359,14 +356,14 @@ const response = await pay(invoiceId);
                           onClick={() => navigate(`/dashboard/precious/supplier/InvoiceScreen/${invoice._id ?? invoice.id}`)}
                           className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                         >
-                          view
+                          {t('view')}
                         </button>
                         {activeTab !== 'paid' && (
                           <button
                             onClick={() => handlePay(invoice)}
                             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded text-sm font-medium transition-colors"
                           >
-                            Pay
+                            {t('pay')}
                           </button>
                         )}
                       </div>
@@ -375,17 +372,16 @@ const response = await pay(invoiceId);
                 ))}
                 {pagedInvoices.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="py-6 text-center text-gray-500">No invoices found.</td>
+                    <td colSpan={6} className="py-6 text-center text-gray-500">{t('no_invoices_found')}</td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
 
-          {/* Pagination */}
           <div className="flex items-center justify-between mt-4">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Show</span>
+              <span className="text-sm text-gray-600">{t('show')}</span>
               <select
                 value={perPage}
                 onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
@@ -396,7 +392,7 @@ const response = await pay(invoiceId);
                 <option value={25}>25</option>
                 <option value={50}>50</option>
               </select>
-              <span className="text-sm text-gray-600">entries</span>
+              <span className="text-sm text-gray-600">{t('entries')}</span>
             </div>
 
             <div className="flex items-center gap-2">
@@ -405,10 +401,9 @@ const response = await pay(invoiceId);
                 disabled={currentPage === 1}
                 className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50"
               >
-                Previous
+                {t('previous')}
               </button>
 
-              {/* page numbers */}
               {Array.from({ length: pageCount }, (_, i) => i + 1).map((pNum) => (
                 <button
                   key={pNum}
@@ -424,14 +419,13 @@ const response = await pay(invoiceId);
                 disabled={currentPage === pageCount}
                 className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50"
               >
-                Next
+                {t('next')}
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Payment Modal */}
       <PaymentModal
         isOpen={isModalOpen}
         onClose={() => {

@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useInventories } from '@/mycomponents/inventory/hooks/useInventories';
 import axiosClient from '@/lib/axiosClient';
 import { toast } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 interface Product {
   id: string;
@@ -33,6 +34,7 @@ interface RawStock {
 }
 
 const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) => {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { inventories, getStocks, isLoading, remove, isMutating } = useInventories();
@@ -57,6 +59,7 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
     } else {
       setProducts([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, inventory, inventories, getStocks]);
 
   const loadStocks = async () => {
@@ -83,13 +86,13 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
 
         return {
           id: stock._id || `prod-${idx}`,
-          name: prod?.name || stock.name || 'Unknown Product',
-          category: (prod?.category && typeof prod.category === 'object' ? prod.category.name : prod?.category) || 'N/A',
-          units: prod?.sku || 'N/A',
+          name: prod?.name || stock.name || t('unknown_product'),
+          category: (prod?.category && typeof prod.category === 'object' ? prod.category.name : prod?.category) || t('n_a'),
+          units: prod?.sku || t('n_a'),
           unitCount: qty,
-          price: `${priceVal.toFixed(2)} SR`,
+          price: `${priceVal.toFixed(2)} ${t('currency_sr')}`,
           priceValue: priceVal,
-          total: `${(qty * priceVal).toFixed(2)} SR`,
+          total: `${(qty * priceVal).toFixed(2)} ${t('currency_sr')}`,
           totalValue: qty * priceVal,
           raw: stock,
         };
@@ -97,7 +100,7 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
 
       setProducts(mappedProducts);
     } catch (err) {
-      console.error("Error loading stocks:", err);
+      console.error(t('failed_load_stocks'), err);
       setProducts([]);
     } finally {
       setStocksLoading(false);
@@ -114,13 +117,13 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
       `https://picsum.photos/seed/${encodeURIComponent(inv._id || 'default')}/400/300`;
 
     return {
-      id: inv._id || 'N/A',
-      name: inv.name || 'Unnamed Inventory',
-      location: inv.location || 'N/A',
-      capacity: typeof inv.capacity === 'number' ? String(inv.capacity) : inv.capacity || 'N/A',
+      id: inv._id || t('n_a'),
+      name: inv.name || t('unnamed_inventory'),
+      location: inv.location || t('n_a'),
+      capacity: typeof inv.capacity === 'number' ? String(inv.capacity) : inv.capacity || t('n_a'),
       image,
     };
-  }, [inventory]);
+  }, [inventory, t]);
 
   const totalProducts = products.length;
   const startEntry = totalProducts === 0 ? 0 : (currentPage - 1) * entriesPerPage + 1;
@@ -139,13 +142,13 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
 
   const handleDeleteInventory = async () => {
     if (!id) return;
-    if (!confirm('Are you sure you want to delete this inventory?')) return;
+    if (!window.confirm(t('confirm_delete_inventory'))) return;
     try {
       await remove(id);
       navigate('/dashboard/inventories');
     } catch (err) {
       console.error('Error deleting inventory:', err);
-      toast.error('Failed to delete inventory');
+      toast.error(t('failed_delete_inventory'));
     }
   };
 
@@ -164,7 +167,10 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
   const submitEdit = async () => {
     if (!editingProduct || !editingProduct.raw) return;
     const stockId = editingProduct.raw._id || editingProduct.id;
-    if (!stockId) return alert('Cannot determine stock id for update.');
+    if (!stockId) {
+      alert(t('cannot_determine_stock_id'));
+      return;
+    }
 
     const payload: any = { quantity: Number(editQty) };
     if (!Number.isNaN(Number(editPrice))) payload.price = Number(editPrice);
@@ -190,9 +196,9 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
                 ...p,
                 unitCount: newQty,
                 priceValue: newPrice,
-                price: `${newPrice.toFixed(2)} SR`,
+                price: `${newPrice.toFixed(2)} ${t('currency_sr')}`,
                 totalValue: newQty * newPrice,
-                total: `${(newQty * newPrice).toFixed(2)} SR`,
+                total: `${(newQty * newPrice).toFixed(2)} ${t('currency_sr')}`,
                 raw: updatedStock?.data ?? updatedStock ?? p.raw,
               }
             : p
@@ -201,7 +207,7 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
       closeEditModal();
     } catch (err) {
       console.error('Error updating stock:', err);
-      alert('Failed to update stock.');
+      alert(t('failed_update_stock'));
     } finally {
       setEditLoading(false);
     }
@@ -210,14 +216,14 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
   const handleDeleteProduct = async (productId: string) => {
     const p = products.find((x) => x.id === productId);
     if (!p) return;
-    if (!confirm('Delete this product from the inventory?')) return;
+    if (!window.confirm(t('confirm_delete_product'))) return;
     const stockId = p.raw?._id || p.id;
     try {
       await axiosClient.delete(`/stocks/${stockId}`);
       setProducts((prev) => prev.filter((x) => x.id !== productId));
     } catch (err) {
       console.error('Error deleting stock:', err);
-      alert('Failed to delete stock.');
+      toast.error(t('failed_delete_stock'));
     }
   };
 
@@ -229,7 +235,7 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
   if (isLoading || !inventoryData) {
     return (
       <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
-        <div className="text-gray-500">Loading inventory details...</div>
+        <div className="text-gray-500">{t('loading_inventory_details')}</div>
       </div>
     );
   }
@@ -240,13 +246,13 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
         {/* Header */}
         <div className="mb-6">
           <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 mb-4">
-            <span>Dashboard</span>
+            <span>{t('dashboard')}</span>
             <span>›</span>
-            <span>Inventories</span>
+            <span>{t('inventories')}</span>
             <span>›</span>
             <span className="text-gray-700">{inventoryData.name}</span>
           </div>
-          <h1 className="text-2xl font-bold">Inventory Management</h1>
+          <h1 className="text-2xl font-bold">{t('inventory_management')}</h1>
         </div>
 
         {/* Info Card */}
@@ -256,11 +262,11 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
               <h2 className="text-lg font-semibold mb-2">{inventoryData.name}</h2>
               <div className="space-y-1 text-sm">
                 <div>
-                  <span className="text-gray-600">Location:</span>
+                  <span className="text-gray-600">{t('location_label')}</span>
                   <span className="ml-2">{inventoryData.location}</span>
                 </div>
                 <div>
-                  <span className="text-gray-600">Capacity:</span>
+                  <span className="text-gray-600">{t('capacity_label')}</span>
                   <span className="ml-2">{inventoryData.capacity}</span>
                 </div>
               </div>
@@ -272,19 +278,19 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
                   onClick={handleEditClickHeader}
                   className="px-4 py-2 bg-slate-700 text-white rounded-full hover:bg-blue-800 text-sm"
                 >
-                  Edit Details
+                  {t('edit_details_btn')}
                 </button>
                 <button
                   onClick={handleDeleteInventory}
                   disabled={isMutating}
                   className="px-4 py-2 bg-red-600 text-white rounded-full hover:bg-red-700 text-sm disabled:opacity-50"
                 >
-                  Delete
+                  {t('delete_btn')}
                 </button>
               </div>
               <div className="flex items-center gap-2 sm:gap-4">
                 <div className="text-xs sm:text-sm">
-                  <span className="text-gray-600">Id:</span>
+                  <span className="text-gray-600">{t('id_label')}</span>
                   <span className="ml-1 sm:ml-2 font-medium">{inventoryData.id}</span>
                 </div>
                 <div className="w-24 sm:w-40 h-20 sm:h-28 overflow-hidden rounded-lg bg-gray-100">
@@ -302,16 +308,16 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
         {/* Products Table */}
         <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
           <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
-            <h2 className="text-lg font-semibold">Inventory Products</h2>
+            <h2 className="text-lg font-semibold">{t('inventory_products')}</h2>
             <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm">
               <span className="text-gray-500">
-                Showing {startEntry}-{endEntry} of {totalProducts}
+                {t('showing')} {startEntry}-{endEntry} {t('of')} {totalProducts}
               </span>
               <button
                 onClick={() => navigate(`/dashboard/addstocktoinventory/${id}`, { state: { inventoryId: id } })}
                 className="px-4 py-2 bg-slate-700 text-white rounded-full hover:bg-blue-800"
               >
-                Manage Stocks
+                {t('manage_stocks')}
               </button>
             </div>
           </div>
@@ -321,25 +327,25 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
             <table className="min-w-max w-full text-xs sm:text-sm">
               <thead className="border-b bg-gray-50">
                 <tr className="text-left text-gray-600">
-                  <th className="pb-3 font-medium px-2">Product</th>
-                  <th className="pb-3 font-medium px-2">Category</th>
-                  <th className="pb-3 font-medium px-2">Units</th>
-                  <th className="pb-3 font-medium px-2">Price</th>
-                  <th className="pb-3 font-medium px-2">Total</th>
-                  <th className="pb-3 font-medium px-2"></th>
+                  <th className="pb-3 font-medium px-2">{t('product_col')}</th>
+                  <th className="pb-3 font-medium px-2">{t('category_col')}</th>
+                  <th className="pb-3 font-medium px-2">{t('units_col')}</th>
+                  <th className="pb-3 font-medium px-2">{t('price_col')}</th>
+                  <th className="pb-3 font-medium px-2">{t('total_col')}</th>
+                  <th className="pb-3 font-medium px-2">{t('actions_col')}</th>
                 </tr>
               </thead>
               <tbody>
                 {stocksLoading ? (
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-gray-500">
-                      Loading products...
+                      {t('loading_products')}
                     </td>
                   </tr>
                 ) : paginatedProducts.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-gray-500">
-                      No products found
+                      {t('no_products_found')}
                     </td>
                   </tr>
                 ) : (
@@ -358,14 +364,14 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
                           <button
                             onClick={() => handleEditProduct(product.id)}
                             className="p-1 text-blue-600 hover:bg-blue-50 rounded-full"
-                            title="Edit"
+                            title={t('edit_label')}
                           >
                             <Edit2 size={16} />
                           </button>
                           <button
                             onClick={() => handleDeleteProduct(product.id)}
                             className="p-1 text-red-600 hover:bg-red-50 rounded-full"
-                            title="Delete"
+                            title={t('delete_product')}
                           >
                             <Trash2 size={16} />
                           </button>
@@ -381,7 +387,7 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
           {/* pagination */}
           <div className="flex flex-wrap items-center justify-between mt-4 gap-2 text-xs sm:text-sm">
             <div className="flex items-center gap-1 sm:gap-2">
-              <span>Show</span>
+              <span>{t('show_label')}</span>
               <select
                 value={entriesPerPage}
                 onChange={(e) => {
@@ -394,7 +400,7 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
                 <option value="25">25</option>
                 <option value="50">50</option>
               </select>
-              <span>entries</span>
+              <span>{t('entries_label')}</span>
             </div>
             <div className="flex gap-1 sm:gap-2">
               <button
@@ -402,7 +408,7 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
                 disabled={currentPage === 1}
                 className="px-2 sm:px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50"
               >
-                Previous
+                {t('previous_label')}
               </button>
               {Array.from({ length: Math.min(3, maxPages) }, (_, i) => i + 1).map((pageNum) => (
                 <button
@@ -420,7 +426,7 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
                 disabled={currentPage >= maxPages}
                 className="px-2 sm:px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50"
               >
-                Next
+                {t('next_label')}
               </button>
             </div>
           </div>
@@ -431,14 +437,14 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
       {editingProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-lg font-medium mb-4">Edit Product</h3>
+            <h3 className="text-lg font-medium mb-4">{t('edit_product_title')}</h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm text-gray-600 mb-1">Product</label>
+                <label className="block text-sm text-gray-600 mb-1">{t('product_col')}</label>
                 <div className="text-sm text-gray-900">{editingProduct.name}</div>
               </div>
               <div>
-                <label className="block text-sm text-gray-600 mb-1">Quantity</label>
+                <label className="block text-sm text-gray-600 mb-1">{t('edit_quantity_label')}</label>
                 <input
                   type="number"
                   value={editQty}
@@ -447,7 +453,7 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-600 mb-1">Price (SR)</label>
+                <label className="block text-sm text-gray-600 mb-1">{t('edit_price_label')}</label>
                 <input
                   type="number"
                   value={editPrice}
@@ -458,14 +464,14 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
             </div>
             <div className="flex justify-end gap-3 mt-6">
               <button onClick={closeEditModal} className="px-4 py-2 bg-gray-200 rounded-full text-sm">
-                Cancel
+                {t('cancel_label')}
               </button>
               <button
                 onClick={submitEdit}
                 disabled={editLoading}
                 className="px-4 py-2 bg-slate-700 text-white rounded-full text-sm disabled:opacity-50"
               >
-                {editLoading ? 'Saving...' : 'Save'}
+                {editLoading ? t('saving_label') : t('save_label')}
               </button>
             </div>
           </div>

@@ -4,6 +4,7 @@ import { useInventories } from '@/mycomponents/inventory/hooks/useInventories';
 import { useStockTransfer } from '../hooks/useStockTransfer';
 import { toast } from 'react-hot-toast';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 interface TransferredProduct {
   id: string;
@@ -19,13 +20,13 @@ interface TransferredProduct {
 }
 
 const UpdateTransferComponent: React.FC = () => {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
   // hooks
   const { inventories, getStocks } = useInventories();
   const { getDeliveredTransferById, loading: updatingTransfer } = useStockTransfer();
-
 
   // local table state
   const [productsTable, setProductsTable] = useState<TransferredProduct[]>([]);
@@ -48,7 +49,6 @@ const UpdateTransferComponent: React.FC = () => {
   const [loadingTransfer, setLoadingTransfer] = useState(true);
   const [transferring, setTransferring] = useState(false);
 
-  // helper to extract stocks array from service response
   function extractStocksArray(stocksData: any): any[] {
     if (!stocksData) return [];
     if (Array.isArray(stocksData)) return stocksData;
@@ -60,15 +60,12 @@ const UpdateTransferComponent: React.FC = () => {
     return [];
   }
 
-  // create a stable wrapper around getDeliveredTransferById to use safely in deps
   const getTransferById = useCallback(
-    async (transferId: string) => {
-      return await getDeliveredTransferById(transferId);
-    },
+    async (transferId: string) => await getDeliveredTransferById(transferId),
     [getDeliveredTransferById]
   );
 
-  // ✅ جلب بيانات التحويل الموجود
+  // Load transfer data
   useEffect(() => {
     const loadTransfer = async () => {
       if (!id) return;
@@ -76,9 +73,6 @@ const UpdateTransferComponent: React.FC = () => {
       setLoadingTransfer(true);
       try {
         const transfer = await getTransferById(id);
-        console.log('📦 Transfer data:', transfer);
-
-        // استخراج البيانات
         const transferData = (transfer as any)?.stockTransfer || transfer;
 
         if (transferData) {
@@ -88,7 +82,6 @@ const UpdateTransferComponent: React.FC = () => {
           setSelectedFrom(transferData.from || '');
           setSelectedTo(transferData.to || '');
 
-          // تحويل المنتجات للجدول
           if (transferData.products && Array.isArray(transferData.products)) {
             const mappedProducts = transferData.products.map((p: any, idx: number) => {
               const productObj = p.product || p.productId || {};
@@ -98,7 +91,7 @@ const UpdateTransferComponent: React.FC = () => {
               return {
                 id: p._id || p.id || `product-${idx}`,
                 productId: productId,
-                name: productObj?.name || p.name || 'Unknown Product',
+                name: productObj?.name || p.name || t('unknown_product'),
                 code: productObj?.code || p.code || '',
                 units: p.quantity || p.unit || 0,
                 price: p.price || 0,
@@ -116,16 +109,16 @@ const UpdateTransferComponent: React.FC = () => {
         }
       } catch (err) {
         console.error('❌ Error loading transfer:', err);
-        toast.error('Failed to load transfer data');
+        toast.error(t('failed_load_transfer'));
       } finally {
         setLoadingTransfer(false);
       }
     };
 
     loadTransfer();
-  }, [id, getTransferById]);
+  }, [id, getTransferById, t]);
 
-  // load available products when From changes
+  // Load available products when From changes
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
@@ -147,26 +140,13 @@ const UpdateTransferComponent: React.FC = () => {
           const productId =
             typeof productObj === 'object' ? (productObj._id ?? productObj.id) : productObj;
           const name =
-            productObj?.name ?? productObj?.productName ?? s.name ?? `Product ${idx + 1}`;
+            productObj?.name ?? productObj?.productName ?? s.name ?? `${t('product')} ${idx + 1}`;
           const code = productObj?.code ?? productObj?.sku ?? s.code ?? '';
-          const price = productObj?.price
-            ? Number(productObj.price)
-            : s.price
-            ? Number(s.price)
-            : 0;
-          const availableUnits =
-            typeof s.quantity === 'number' ? s.quantity : Number(s.quantity ?? 0);
+          const price = productObj?.price ? Number(productObj.price) : s.price ? Number(s.price) : 0;
+          const availableUnits = typeof s.quantity === 'number' ? s.quantity : Number(s.quantity ?? 0);
           const stockId = s._id ?? s.id ?? `${productId ?? 'p'}-${idx}`;
 
-          return {
-            stockId,
-            productId,
-            name,
-            code,
-            price,
-            availableUnits,
-            raw: s,
-          };
+          return { stockId, productId, name, code, price, availableUnits, raw: s };
         });
 
         if (!cancelled) setAvailableProducts(mapped);
@@ -182,9 +162,9 @@ const UpdateTransferComponent: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [selectedFrom, getStocks]);
+  }, [selectedFrom, getStocks, t]);
 
-  // when selected product changes populate code/price/units
+  // When selected product changes populate code/price/units
   useEffect(() => {
     if (!selectedProductStockId) {
       setSelectedProductCode('');
@@ -202,49 +182,40 @@ const UpdateTransferComponent: React.FC = () => {
     }
   }, [selectedProductStockId, availableProducts]);
 
-  // sorted inventory options
   const inventoryOptions = useMemo(() => {
-    return (inventories || []).slice().sort((a: any, b: any) => {
-      const na = (a.name ?? '').toString().toLowerCase();
-      const nb = (b.name ?? '').toString().toLowerCase();
-      return na.localeCompare(nb);
-    });
+    return (inventories || []).slice().sort((a: any, b: any) =>
+      (a.name ?? '').toLowerCase().localeCompare((b.name ?? '').toLowerCase())
+    );
   }, [inventories]);
 
-  // إضافة منتج جديد للجدول
   const handleAddProduct = async () => {
     if (!selectedFrom) {
-      toast.error('Please select "Transfer from" inventory.');
+      toast.error(t('select_from_inventory'));
       return;
     }
     if (!selectedTo) {
-      toast.error('Please select "To" inventory.');
+      toast.error(t('select_to_inventory'));
       return;
     }
     if (selectedFrom === selectedTo) {
-      toast.error('From and To must be different.');
+      toast.error(t('from_to_different'));
       return;
     }
 
-    const productName =
-      selectedProductName ||
-      (selectedProductStockId
-        ? availableProducts.find((p) => p.stockId === selectedProductStockId)?.name ?? ''
-        : '');
-    const productCode =
-      selectedProductCode ||
-      (selectedProductStockId
-        ? availableProducts.find((p) => p.stockId === selectedProductStockId)?.code ?? ''
-        : '');
+const productName =
+  selectedProductName || (availableProducts.find(p => p.stockId === selectedProductStockId)?.name ?? '');
+const productCode =
+  selectedProductCode || (availableProducts.find(p => p.stockId === selectedProductStockId)?.code ?? '');
+
     const priceToUse = Number(selectedPrice ?? 0);
     const unitsToUse = Number(selectedUnits ?? 1);
 
     if (!productName) {
-      toast.error('Please select a product.');
+      toast.error(t('select_product'));
       return;
     }
     if (!unitsToUse || unitsToUse <= 0) {
-      toast.error('Units must be > 0.');
+      toast.error(t('units_greater_than_zero'));
       return;
     }
 
@@ -258,79 +229,62 @@ const UpdateTransferComponent: React.FC = () => {
         code: productCode,
         units: unitsToUse,
         price: priceToUse,
-        from:
-          inventoryOptions.find((inv: any) => (inv._id ?? inv.id) === selectedFrom)?.name ??
-          selectedFrom,
-        to:
-          inventoryOptions.find((inv: any) => (inv._id ?? inv.id) === selectedTo)?.name ??
-          selectedTo,
+        from: inventoryOptions.find(inv => (inv._id ?? inv._id) === selectedFrom)?.name ?? selectedFrom,
+        to: inventoryOptions.find(inv => (inv._id ?? inv._id) === selectedTo)?.name ?? selectedTo,
       };
 
       setProductsTable((prev) => [newRow, ...prev]);
-
-      // reset product inputs
       setSelectedProductStockId('');
       setSelectedProductCode('');
       setSelectedProductName('');
       setSelectedUnits(1);
       setSelectedPrice(0);
 
-      toast.success('Product added to table');
+      toast.success(t('product_added_table'));
     } catch (err) {
       console.error('Add product failed:', err);
-      toast.error('Failed to add product');
+      toast.error(t('failed_add_product'));
     } finally {
       setTransferring(false);
     }
   };
 
-  // حذف منتج من الجدول
   const handleRemoveProduct = (productId: string) => {
     setProductsTable((prev) => prev.filter((p) => p.id !== productId));
-    toast.success('Product removed from table');
+    toast.success(t('product_removed_table'));
   };
 
-  // حفظ التعديلات
   const handleUpdateTransfer = async () => {
     if (!id) {
-      toast.error('Transfer ID is missing');
+      toast.error(t('transfer_id_missing'));
       return;
     }
     if (!selectedFrom) {
-      toast.error('Please select "Transfer from"');
+      toast.error(t('select_from_inventory'));
       return;
     }
     if (!selectedTo) {
-      toast.error('Please select "To"');
+      toast.error(t('select_to_inventory'));
       return;
     }
     if (productsTable.length === 0) {
-      toast.error('No products to save');
+      toast.error(t('no_products_to_save'));
       return;
     }
 
-    const mergedProductsMap: Record<
-      string,
-      { productId: string; unit: number; price: number }
-    > = {};
-
+    const mergedProductsMap: Record<string, { productId: string; unit: number; price: number }> = {};
     for (const row of productsTable) {
       if (!row.productId) continue;
       if (!mergedProductsMap[row.productId]) {
-        mergedProductsMap[row.productId] = {
-          productId: row.productId,
-          unit: Number(row.units),
-          price: Number(row.price),
-        };
+        mergedProductsMap[row.productId] = { productId: row.productId, unit: Number(row.units), price: Number(row.price) };
       } else {
         mergedProductsMap[row.productId].unit += Number(row.units);
       }
     }
 
     const productsPayload = Object.values(mergedProductsMap);
-
     if (productsPayload.length === 0) {
-      toast.error('No valid products to save');
+      toast.error(t('no_valid_products'));
       return;
     }
 
@@ -338,11 +292,7 @@ const UpdateTransferComponent: React.FC = () => {
       reference: reference || `TRF-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       from: selectedFrom,
       to: selectedTo,
-      products: productsPayload.map((p) => ({
-        productId: p.productId,
-        unit: p.unit,
-        price: p.price,
-      })),
+      products: productsPayload.map(p => ({ productId: p.productId, unit: p.unit, price: p.price })),
       shippingCost: Number(shippingCost || 0),
       notes: notes || '',
     };
@@ -350,29 +300,22 @@ const UpdateTransferComponent: React.FC = () => {
     console.log('📤 updateStockTransfer payload:', JSON.stringify(payload, null, 2));
 
     try {
-const res = await getDeliveredTransferById(id); // مؤقت لعدم وجود update
-console.log("🔁 (Debug) Would update transfer with payload:", payload);
+      const res = await getDeliveredTransferById(id); // temporary
+      console.log("🔁 (Debug) Would update transfer with payload:", payload);
       console.log('✅ updateStockTransfer success:', res);
-      toast.success('✅ Transfer updated successfully');
+      toast.success(t('transfer_updated_successfully'));
 
-      // العودة لصفحة الإدارة
-      setTimeout(() => {
-        navigate('/dashboard/transfermanagement');
-      }, 1000);
+      setTimeout(() => navigate('/dashboard/transfermanagement'), 1000);
     } catch (err: any) {
       console.error('Failed to update transfer:', err);
-      toast.error(
-        `Failed to update transfer: ${err?.response?.data?.message || err?.message || String(err)}`
-      );
+      toast.error(t('failed_update_transfer', { error: err?.response?.data?.message || err?.message || String(err) }));
     }
   };
 
   if (loadingTransfer) {
     return (
       <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-gray-500 mb-2">⏳ Loading transfer data...</div>
-        </div>
+        <div className="text-center text-gray-500">⏳ {t('loading_transfer_data')}</div>
       </div>
     );
   }
@@ -381,8 +324,8 @@ console.log("🔁 (Debug) Would update transfer with payload:", payload);
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Inventory Management</h1>
-        <p className="text-sm text-gray-500">Dashboard &gt; Inventory &gt; Update Transfer</p>
+        <h1 className="text-2xl font-semibold text-gray-900">{t('inventory_management')}</h1>
+        <p className="text-sm text-gray-500">{t('dashboard')} &gt; {t('inventory')} &gt; {t('update_transfer')}</p>
       </div>
 
       {/* Main Form */}

@@ -4,6 +4,7 @@ import { useJournal } from '../hooks/useJournal';
 import { useAccounts } from '../../accounts/hooks/useAccounts';
 import type { JournalEntry as ServiceJournalEntry } from '../services/journalService';
 import { toast } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 interface Journal {
   _id: string;
@@ -14,6 +15,7 @@ interface Journal {
 
 const JournalEntriesViewer: React.FC = () => {
   const { entries: hookJournals, loading: hookLoadingJournals } = useJournal();
+  const { t } = useTranslation();
   
 const { 
     entries, 
@@ -39,7 +41,7 @@ const {
 
   const getAccountName = (accountId: string): string => {
     const account = accounts.find(acc => acc._id === accountId || acc.id === accountId);
-    return account?.name || 'Unknown Account';
+    return account?.name || t('Unknown Account');
   };
 
   const getAccountCode = (accountId: string): string | undefined => {
@@ -60,15 +62,15 @@ const {
   };
 
   const handleDelete = async (entryId: string) => {
-    if (!confirm('Are you sure you want to delete this entry?')) return;
+    if (!confirm(t('Are you sure you want to delete this entry?'))) return;
 
     try {
       setDeletingId(entryId);
       await removeEntry(entryId);
-      toast.success('✅ Entry deleted successfully');
+      toast.success(t('✅ Entry deleted successfully'));
     } catch (err) {
       console.error('Error deleting entry:', err);
-      toast.error('❌ Error deleting entry');
+      toast.error(t('❌ Error deleting entry'));
     } finally {
       setDeletingId(null);
     }
@@ -77,10 +79,10 @@ const {
   const handleRefresh = async () => {
     if (!selectedJournalId) return;
     try {
-      toast.success('✅ Entries refreshed');
+      toast.success(t('✅ Entries refreshed'));
     } catch (err) {
       console.error('Error refreshing entries:', err);
-      toast.error('❌ Error refreshing entries');
+      toast.error(t('❌ Error refreshing entries'));
     }
   };
 
@@ -115,8 +117,8 @@ const {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Journal Entries Viewer</h1>
-          <p className="text-sm text-gray-500">Dashboard › Accounting › Journal Entries</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">{t('Journal Entries Viewer')}</h1>
+          <p className="text-sm text-gray-500">{t('Dashboard')} › {t('Accounting')} › {t('Journal Entries')}</p>
         </div>
 
         {/* Journal Selection Card */}
@@ -124,7 +126,7 @@ const {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
               <FileText className="w-5 h-5 text-gray-600" />
-              Select Journal
+              {t('Select Journal')}
             </h2>
             {selectedJournalId && (
               <button
@@ -133,7 +135,7 @@ const {
                 className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors disabled:opacity-50"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                <span className="text-sm font-medium">Refresh</span>
+                <span className="text-sm font-medium">{t('Refresh')}</span>
               </button>
             )}
           </div>
@@ -141,7 +143,7 @@ const {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Choose Journal
+                {t('Choose Journal')}
               </label>
               <div className="relative">
                 <select
@@ -157,7 +159,7 @@ const {
                     paddingRight: '2.5rem',
                   }}
                 >
-                  <option value="">-- Select a Journal --</option>
+                  <option value="">{t('-- Select a Journal --')}</option>
                   {journals.map((journal) => (
                     <option key={journal._id} value={journal._id}>
                       {journal.name}
@@ -171,9 +173,9 @@ const {
             {selectedJournal && (
               <div className="md:col-span-1">
                 <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                  <p className="text-xs text-blue-600 font-medium mb-1">Selected Journal</p>
+                  <p className="text-xs text-blue-600 font-medium mb-1">{t('Selected Journal')}</p>
                   <p className="text-sm font-bold text-blue-900">{selectedJournal.name}</p>
-                  <p className="text-xs text-blue-700 mt-1">Code: {selectedJournal.code}</p>
+                  <p className="text-xs text-blue-700 mt-1">{t('Code:')} {selectedJournal.code}</p>
                 </div>
               </div>
             )}
@@ -185,37 +187,37 @@ const {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-green-100 text-sm font-medium">Total Debit</p>
+                <p className="text-green-100 text-sm font-medium">{t('Total Debit')}</p>
                 <TrendingUp className="w-6 h-6 text-green-100" /> 
               </div>
               <p className="text-3xl font-bold">{formatCurrency(grandDebit)}</p>
-              <p className="text-green-100 text-sm mt-1">SR</p>
+              <p className="text-green-100 text-sm mt-1">{t('SR')}</p>
             </div>
 
             <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-xl shadow-lg p-6 text-white">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-red-100 text-sm font-medium">Total Credit</p>
+                <p className="text-red-100 text-sm font-medium">{t('Total Credit')}</p>
                 <TrendingDown className="w-6 h-6 text-red-100" />
               </div>
               <p className="text-3xl font-bold">{formatCurrency(grandCredit)}</p>
-              <p className="text-red-100 text-sm mt-1">SR</p>
+              <p className="text-red-100 text-sm mt-1">{t('SR')}</p>
             </div>
 
             <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
-  <div className="flex items-center justify-between mb-2">
-    <p className="text-blue-100 text-sm font-medium">Total</p>
-    <FileText className="w-6 h-6 text-blue-100" />
-  </div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-blue-100 text-sm font-medium">{t('Total')}</p>
+                <FileText className="w-6 h-6 text-blue-100" />
+              </div>
 
-  {/* Total = grandDebit - grandCredit */}
-  <p className="text-3xl font-bold">
-    {formatCurrency(grandDebit - grandCredit)}
-  </p>
+              {/* Total = grandDebit - grandCredit */}
+              <p className="text-3xl font-bold">
+                {formatCurrency(grandDebit - grandCredit)}
+              </p>
 
-  <p className="text-blue-100 text-sm mt-1">
-    {grandDebit === grandCredit ? '✓ Balanced' : '✗ Unbalanced'}
-  </p>
-</div>
+              <p className="text-blue-100 text-sm mt-1">
+                {grandDebit === grandCredit ? t('✓ Balanced') : t('✗ Unbalanced')}
+              </p>
+            </div>
 
           </div>
         )}
@@ -225,7 +227,7 @@ const {
           <div className="bg-white rounded-xl shadow-sm p-12 flex items-center justify-center">
             <div className="flex flex-col items-center gap-3">
               <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
-              <p className="text-gray-600">Loading journal entries...</p>
+              <p className="text-gray-600">{t('Loading journal entries...')}</p>
             </div>
           </div>
         ) : error ? (
@@ -238,14 +240,14 @@ const {
         ) : !selectedJournalId ? (
           <div className="bg-white rounded-xl shadow-sm p-12 text-center">
             <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Journal Selected</h3>
-            <p className="text-gray-500">Please select a journal from the dropdown above to view its entries.</p>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('No Journal Selected')}</h3>
+            <p className="text-gray-500">{t('Please select a journal from the dropdown above to view its entries.')}</p>
           </div>
         ) : entries.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm p-12 text-center">
             <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Entries Found</h3>
-            <p className="text-gray-500">This journal doesn't have any entries yet.</p>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('No Entries Found')}</h3>
+            <p className="text-gray-500">{t("This journal doesn't have any entries yet.")}</p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -262,14 +264,14 @@ const {
                       <div className="flex items-center gap-4">
                         <span className="text-2xl font-bold">#{entryIndex + 1}</span>
                         <div>
-                          <p className="text-sm text-gray-300">Entry ID</p>
+                          <p className="text-sm text-gray-300">{t('Entry ID')}</p>
                           <p className="font-mono text-sm">{entryData._id.slice(-8).toUpperCase()}</p>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-4">
                         <div className="text-right">
-                          <p className="text-sm text-gray-300">Created At</p>
+                          <p className="text-sm text-gray-300">{t('Created At')}</p>
                           <div className="flex items-center gap-2">
                             <Calendar className="w-4 h-4" />
                             <p className="text-sm font-medium">{formatDate(entryData.createdAt)}</p>
@@ -283,7 +285,7 @@ const {
                               : 'bg-red-500/20 text-red-200 border border-red-400'
                           }`}
                         >
-                          {isBalanced ? '✓ Balanced' : '✗ Unbalanced'}
+                          {isBalanced ? t('✓ Balanced') : t('✗ Unbalanced')}
                         </div>
 
                         {/* Delete Button */}
@@ -291,7 +293,7 @@ const {
                           onClick={() => handleDelete(entryData._id)}
                           disabled={deletingId === entryData._id}
                           className="p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Delete Entry"
+                          title={t('Delete Entry')}
                         >
                           <Trash2 className={`w-4 h-4 text-red-200 ${deletingId === entryData._id ? 'animate-pulse' : ''}`} />
                         </button>
@@ -306,18 +308,18 @@ const {
                         <thead>
                           <tr className="border-b-2 border-gray-200">
                             <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 bg-gray-50">#</th>
-                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 bg-gray-50">Account</th>
-                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 bg-gray-50">Description</th>
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 bg-gray-50">{t('Account')}</th>
+                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 bg-gray-50">{t('Description')}</th>
                             <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 bg-gray-50">
                               <div className="flex items-center justify-end gap-1">
                                 <TrendingUp className="w-4 h-4 text-green-600" />
-                                Debit (SR)
+                                {t('Debit (SR)')}
                               </div>
                             </th>
                             <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 bg-gray-50">
                               <div className="flex items-center justify-end gap-1">
                                 <TrendingDown className="w-4 h-4 text-red-600" />
-                                Credit (SR)
+                                {t('Credit (SR)')}
                               </div>
                             </th>
                           </tr>
@@ -350,7 +352,7 @@ const {
 
                           {/* Entry Total */}
                           <tr className="bg-gray-100 font-bold border-t-2 border-gray-300">
-                            <td colSpan={3} className="py-4 px-4 text-right text-gray-900">Entry Total:</td>
+                            <td colSpan={3} className="py-4 px-4 text-right text-gray-900">{t('Entry Total:')}</td>
                             <td className="py-4 px-4 text-right font-mono text-green-700 text-lg">{formatCurrency(totalDebit)}</td>
                             <td className="py-4 px-4 text-right font-mono text-red-700 text-lg">{formatCurrency(totalCredit)}</td>
                           </tr>
@@ -367,15 +369,15 @@ const {
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   <DollarSign className="w-8 h-8" />
-                  <h3 className="text-xl font-semibold">Grand Total</h3>
+                  <h3 className="text-xl font-semibold">{t('Grand Total')}</h3>
                 </div>
                 <div className="flex items-center gap-6 text-right">
                   <div>
-                    <p className="text-sm text-gray-300">Debit</p>
+                    <p className="text-sm text-gray-300">{t('Debit')}</p>
                     <p className="text-lg font-bold">{formatCurrency(grandDebit)}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-300">Credit</p>
+                    <p className="text-sm text-gray-300">{t('Credit')}</p>
                     <p className="text-lg font-bold">{formatCurrency(grandCredit)}</p>
                   </div>
                 </div>

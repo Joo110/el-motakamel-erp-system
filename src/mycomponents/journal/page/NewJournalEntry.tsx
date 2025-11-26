@@ -4,6 +4,7 @@ import { toast } from "react-hot-toast";
 import useJournalEntries from "../hooks/useJournalEntries";
 import useAccounts from "../../accounts/hooks/useAccounts";
 import useJournal from "../hooks/useJournal";
+import { useTranslation } from "react-i18next";
 
 interface JournalLine {
   id: string;
@@ -14,6 +15,8 @@ interface JournalLine {
 }
 
 const NewJournalEntry = () => {
+  const { t } = useTranslation();
+
   const defaultLines: JournalLine[] = [
     { id: "1", accountId: "", description: "", debit: 0, credit: 0 },
     { id: "2", accountId: "", description: "", debit: 0, credit: 0 },
@@ -24,20 +27,21 @@ const NewJournalEntry = () => {
   const [saving, setSaving] = useState(false);
 
   const { accounts, refresh: refreshAccounts } = useAccounts();
-const { entries: journals, refresh: refreshJournals } = useJournal();
+  const { entries: journals, refresh: refreshJournals } = useJournal();
   const { createEntry } = useJournalEntries();
-useEffect(() => {
-  const fetchData = async () => {
-    try {
-      await refreshAccounts();      // جلب الحسابات
-      await refreshJournals();      // جلب الـ journals
-    } catch (err) {
-      console.error("Error fetching data", err);
-      toast.error("❌ Error fetching journals or accounts.");
-    }
-  };
-  fetchData();
-}, [refreshAccounts, refreshJournals]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        await refreshAccounts();
+        await refreshJournals();
+      } catch (err) {
+        console.error("Error fetching data", err);
+        toast.error(`❌ ${t("Error fetching journals or accounts.")}`);
+      }
+    };
+    fetchData();
+  }, [refreshAccounts, refreshJournals, t]);
 
   const handleJournalChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedJournal(e.target.value);
@@ -69,7 +73,7 @@ useEffect(() => {
       setSaving(true);
 
       if (!selectedJournal) {
-        toast.error("❌ Please select a journal!");
+        toast.error(`❌ ${t("Please select a journal!")}`);
         return;
       }
 
@@ -77,16 +81,15 @@ useEffect(() => {
         (line) => !line.accountId || !line.description.trim()
       );
       if (emptyLines.length > 0) {
-        toast.error("❌ Please fill all line details!");
+        toast.error(`❌ ${t("Please fill all line details!")}`);
         return;
       }
 
       if (!isBalanced()) {
-        toast.error("❌ Entry is not balanced! Debit must equal Credit.");
+        toast.error(`❌ ${t("Entry is not balanced! Debit must equal Credit.")}`);
         return;
       }
 
-      // Payload يبعت فقط _id صالح من Mongo
       const payload = {
         jornalId: selectedJournal,
         lines: lines.map((line) => ({
@@ -98,7 +101,7 @@ useEffect(() => {
       };
 
       await createEntry(payload);
-      toast.success("✅ Journal entry created successfully!");
+      toast.success(`✅ ${t("Journal entry created successfully!")}`);
       setSelectedJournal("");
       setLines(defaultLines);
     } catch (error: any) {
@@ -106,7 +109,7 @@ useEffect(() => {
       const msg =
         error?.response?.data?.message ||
         error?.message ||
-        "Error creating journal entry. Please try again.";
+        t("Error creating journal entry. Please try again.");
       toast.error(`❌ ${msg}`);
     } finally {
       setSaving(false);
@@ -129,21 +132,21 @@ useEffect(() => {
           <div className="p-2 bg-[#1f334d] rounded-lg">
             <FileText className="text-white" size={24} />
           </div>
-          <h1 className="text-3xl font-bold text-gray-800">Journal Entries</h1>
+          <h1 className="text-3xl font-bold text-gray-800">{t("Journal Entries")}</h1>
         </div>
       </div>
 
       {/* Journal Selection */}
       <div className="mb-8">
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Select Journal<span className="text-red-500 ml-1">*</span>
+          {t("Select Journal")}<span className="text-red-500 ml-1">*</span>
         </label>
         <select
           value={selectedJournal}
           onChange={handleJournalChange}
           className="w-full max-w-md px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none bg-white"
         >
-          <option value="">Select a journal...</option>
+          <option value="">{t("Select a journal...")}</option>
           {journals.map((journal) => (
             <option key={journal._id} value={journal._id}>
               {journal.name} ({journal.code})
@@ -159,10 +162,10 @@ useEffect(() => {
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 w-8">#</th>
-                <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">Account</th>
-                <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">Description</th>
-                <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 w-32">Debit (SR)</th>
-                <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 w-32">Credit (SR)</th>
+                <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">{t("Account")}</th>
+                <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">{t("Description")}</th>
+                <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 w-32">{t("Debit (SR)")}</th>
+                <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 w-32">{t("Credit (SR)")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -175,7 +178,7 @@ useEffect(() => {
                       onChange={(e) => handleLineChange(line.id, "accountId", e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                     >
-                      <option value="">Select account...</option>
+                      <option value="">{t("Select account...")}</option>
                       {accounts.map((account) => (
                         <option key={account._id} value={account._id}>
                           {account.name} ({account.code})
@@ -188,7 +191,7 @@ useEffect(() => {
                       type="text"
                       value={line.description}
                       onChange={(e) => handleLineChange(line.id, "description", e.target.value)}
-                      placeholder="Enter description..."
+                      placeholder={t("Enter description...")}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                     />
                   </td>
@@ -219,8 +222,8 @@ useEffect(() => {
 
       {/* Totals */}
       <div className="flex justify-end gap-8 mb-6 font-semibold">
-        <div>Total Debit: {totalDebit.toFixed(2)} SR</div>
-        <div>Total Credit: {totalCredit.toFixed(2)} SR</div>
+        <div>{t("Total Debit")}: {totalDebit.toFixed(2)} SR</div>
+        <div>{t("Total Credit")}: {totalCredit.toFixed(2)} SR</div>
       </div>
 
       {/* Action Buttons */}
@@ -230,7 +233,7 @@ useEffect(() => {
           className="flex items-center gap-2 px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl shadow-sm hover:bg-gray-50 transition-all font-medium"
         >
           <X size={18} />
-          <span>Cancel</span>
+          <span>{t("Cancel")}</span>
         </button>
 
         <button
@@ -241,7 +244,7 @@ useEffect(() => {
           }`}
         >
           <Save size={18} />
-          <span>{saving ? "Saving..." : "Save Entry"}</span>
+          <span>{saving ? t("Saving...") : t("Save Entry")}</span>
         </button>
       </div>
     </div>

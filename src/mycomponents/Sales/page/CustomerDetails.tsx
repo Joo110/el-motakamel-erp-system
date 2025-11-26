@@ -5,8 +5,10 @@ import { useCustomers } from '../../Sales/hooks/useCustomers';
 import { useSaleOrders } from '../../Sales/hooks/useSaleOrders';
 import { useInventories } from '../../inventory/hooks/useInventories';
 import { useUsers } from '../../user/hooks/useUsers';
+import { useTranslation } from 'react-i18next';
 
 const CustomerDetails: React.FC = () => {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const { getCustomer } = useCustomers(false);
   const { items: orders, fetch: fetchOrders } = useSaleOrders(undefined, false);
@@ -28,12 +30,11 @@ const CustomerDetails: React.FC = () => {
         setCustomer(c);
         await Promise.all([fetchOrders(), refetchInventories(), refetchUsers()]);
       } catch (err) {
-        console.error('Failed to load customer or related data', err);
+        console.error(t('failed_to_load_customer_data', 'Failed to load customer or related data'), err);
       } finally {
         setLoading(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const customerOrders = useMemo(() => {
@@ -82,8 +83,8 @@ const CustomerDetails: React.FC = () => {
     return pages;
   };
 
-  if (loading) return <p className="p-6">Loading customer details...</p>;
-  if (!customer) return <p className="p-6 text-gray-500">Customer not found.</p>;
+  if (loading) return <p className="p-6">{t('loading_customer_details', 'Loading customer details...')}</p>;
+  if (!customer) return <p className="p-6 text-gray-500">{t('customer_not_found', 'Customer not found.')}</p>;
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
@@ -91,8 +92,8 @@ const CustomerDetails: React.FC = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-3">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Sales Management</h1>
-            <p className="text-sm text-gray-500">Dashboard &gt; Customer &gt; Details</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{t('sales_management', 'Sales Management')}</h1>
+            <p className="text-sm text-gray-500">{t('dashboard')} &gt; {t('customer')} &gt; {t('details')}</p>
           </div>
         </div>
 
@@ -103,21 +104,21 @@ const CustomerDetails: React.FC = () => {
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-6 gap-2">
                 <h2 className="text-lg sm:text-xl font-bold text-gray-900">{customer.name}</h2>
                 <div className="text-sm sm:text-right">
-                  <p className="text-gray-500">Id:</p>
+                  <p className="text-gray-500">{t('id_label', 'Id:')}</p>
                   <p className="font-semibold text-gray-900 break-all">{customer._id}</p>
                 </div>
               </div>
               <div className="space-y-3 text-sm sm:text-base">
                 <div className="flex flex-col sm:flex-row">
-                  <span className="font-semibold text-gray-700 sm:w-32">Location:</span>
+                  <span className="font-semibold text-gray-700 sm:w-32">{t('location', 'Location:')}</span>
                   <span className="text-gray-600">{customer.address ?? '-'}</span>
                 </div>
                 <div className="flex flex-col sm:flex-row">
-                  <span className="font-semibold text-gray-700 sm:w-32">Phone:</span>
+                  <span className="font-semibold text-gray-700 sm:w-32">{t('phone', 'Phone:')}</span>
                   <span className="text-gray-600 break-all">{customer.phone ?? '-'}</span>
                 </div>
                 <div className="flex flex-col sm:flex-row">
-                  <span className="font-semibold text-gray-700 sm:w-32">Email:</span>
+                  <span className="font-semibold text-gray-700 sm:w-32">{t('email', 'Email:')}</span>
                   <span className="text-gray-600 break-all">{customer.email ?? '-'}</span>
                 </div>
               </div>
@@ -129,16 +130,23 @@ const CustomerDetails: React.FC = () => {
         <div className="bg-white rounded-lg shadow">
           <div className="p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-2">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-900">Orders</h2>
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900">{t('orders', 'Orders')}</h2>
               <p className="text-sm text-gray-500">
-                Showing {startEntry}-{endEntry} of {totalOrders} Orders
+                {t('showing', 'Showing')} {startEntry}-{endEntry} {t('of', 'of')} {totalOrders} {t('orders', 'Orders')}
               </p>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm sm:text-base">
                 <thead>
                   <tr className="border-b">
-                    {['Order number', 'Inventory', 'Total Price', 'Created by', 'Order Time', 'Status'].map((h) => (
+                    {[
+                      t('order_number', 'Order number'),
+                      t('inventory', 'Inventory'),
+                      t('total_price', 'Total Price'),
+                      t('created_by', 'Created by'),
+                      t('order_time', 'Order Time'),
+                      t('status', 'Status')
+                    ].map((h) => (
                       <th key={h} className="text-left py-3 px-4 font-medium text-gray-700 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -161,7 +169,7 @@ const CustomerDetails: React.FC = () => {
                   {paginatedOrders.length === 0 && (
                     <tr>
                       <td colSpan={7} className="text-center py-6 text-gray-500">
-                        No orders found for this customer.
+                        {t('no_orders_found_for_customer', 'No orders found for this customer.')}
                       </td>
                     </tr>
                   )}
@@ -172,7 +180,7 @@ const CustomerDetails: React.FC = () => {
             {/* Pagination */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-4 gap-3">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Show</span>
+                <span className="text-sm text-gray-600">{t('show', 'Show')}</span>
                 <select
                   className="border border-gray-300 rounded-full px-2 py-1 text-sm"
                   value={entriesPerPage}
@@ -185,7 +193,7 @@ const CustomerDetails: React.FC = () => {
                   <option value={10}>10</option>
                   <option value={25}>25</option>
                 </select>
-                <span className="text-sm text-gray-600">entries</span>
+                <span className="text-sm text-gray-600">{t('entries', 'entries')}</span>
               </div>
 
               <div className="flex flex-wrap justify-center sm:justify-end gap-2">
@@ -194,7 +202,7 @@ const CustomerDetails: React.FC = () => {
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
                 >
-                  Previous
+                  {t('previous', 'Previous')}
                 </button>
 
                 {getPaginationPages(currentPage, totalPages).map((p) => (
@@ -216,7 +224,7 @@ const CustomerDetails: React.FC = () => {
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
                 >
-                  Next
+                  {t('next', 'Next')}
                 </button>
               </div>
             </div>

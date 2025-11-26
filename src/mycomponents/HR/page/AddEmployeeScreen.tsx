@@ -5,6 +5,7 @@ import { useEmployees } from '../../HR/hooks/useEmployees';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { Edit2, Upload } from 'lucide-react';
+import { useTranslation } from 'react-i18next'; // تم إضافة الاستيراد
 
 type EmployeeFormData = {
   name: string;
@@ -26,6 +27,7 @@ type EmployeeFormData = {
 };
 
 const AddEmployeeScreen: React.FC = () => {
+  const { t } = useTranslation(); // تم استخدام الـ hook
   const navigate = useNavigate();
   const [formData, setFormData] = useState<EmployeeFormData>({
     name: '',
@@ -75,7 +77,7 @@ const AddEmployeeScreen: React.FC = () => {
     if (!file) return;
 
     if (file.size > 3 * 1024 * 1024) {
-      toast.error('❌ Image file is too large! Please upload an image under 3MB.');
+      toast.error(t('validation_image_too_large')); // استخدام الترجمة
       setImage(null);
       setImageFile(null);
       return;
@@ -91,66 +93,66 @@ const AddEmployeeScreen: React.FC = () => {
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
-      toast.error('Name is required');
+      toast.error(t('validation_name_required')); // استخدام الترجمة
       return;
     }
     if (!formData.jobTitle.trim()) {
-      toast.error('Job Title is required');
+      toast.error(t('validation_job_title_required')); // استخدام الترجمة
       return;
     }
     if (!formData.nationalId.trim()) {
-      toast.error('National ID is required');
+      toast.error(t('validation_national_id_required')); // استخدام الترجمة
       return;
     }
     if (!isNumeric(formData.nationalId.trim()) || formData.nationalId.trim().length < 6) {
-      toast.error('National ID must be numeric and at least 6 digits');
+      toast.error(t('validation_national_id_invalid')); // استخدام الترجمة
       return;
     }
     if (!formData.email.trim()) {
-      toast.error('Email is required');
+      toast.error(t('validation_email_required')); // استخدام الترجمة
       return;
     }
     if (!isEmail(formData.email)) {
-      toast.error('Invalid email address');
+      toast.error(t('validation_email_invalid')); // استخدام الترجمة
       return;
     }
     if (!formData.department) {
-      toast.error('Please select a Department');
+      toast.error(t('validation_department_required')); // استخدام الترجمة
       return;
     }
     if (!formData.role) {
-      toast.error('Please select a Role');
+      toast.error(t('validation_role_required')); // استخدام الترجمة
       return;
     }
     if (!formData.manager) {
-      toast.error('Please select a Manager');
+      toast.error(t('validation_manager_required')); // استخدام الترجمة
       return;
     }
     if (!formData.dateOfBirth) {
-      toast.error('Please select Date of Birth');
+      toast.error(t('validation_dob_required')); // استخدام الترجمة
       return;
     }
     if (!formData.dateOfEmployment) {
-      toast.error('Please select Date of Employment');
+      toast.error(t('validation_doe_required')); // استخدام الترجمة
       return;
     }
     if (formData.phone && !isNumeric(formData.phone)) {
-      toast.error('Phone must contain numbers only');
+      toast.error(t('validation_phone_numeric')); // استخدام الترجمة
       return;
     }
     if (formData.alternatePhone && !isNumeric(formData.alternatePhone)) {
-      toast.error('Alternate Phone must contain numbers only');
+      toast.error(t('validation_alt_phone_numeric')); // استخدام الترجمة
       return;
     }
     if (formData.salary && isNaN(Number(formData.salary))) {
-      toast.error('Salary must be a number');
+      toast.error(t('validation_salary_numeric')); // استخدام الترجمة
       return;
     }
     if (formData.dateOfBirth && formData.dateOfEmployment) {
       const dob = new Date(formData.dateOfBirth);
       const empd = new Date(formData.dateOfEmployment);
       if (empd < dob) {
-        toast.error('Employment date cannot be before birth date');
+        toast.error(t('validation_date_mismatch')); // استخدام الترجمة
         return;
       }
     }
@@ -181,7 +183,7 @@ const AddEmployeeScreen: React.FC = () => {
       const created = await createEmployee(form as unknown as any);
 
       if (created) {
-        toast.success('Employee created successfully');
+        toast.success(t('success_employee_created')); // استخدام الترجمة
         navigate('/dashboard/hr/employees');
       } 
     } catch (err: any) {
@@ -196,16 +198,16 @@ const AddEmployeeScreen: React.FC = () => {
 
       if (message.includes('E11000 duplicate key error')) {
         if (message.includes('email')) {
-          toast.error('❌ This email is already registered!');
+          toast.error(t('error_email_duplicate')); // استخدام الترجمة
         } else if (message.includes('phone')) {
-          toast.error('❌ This phone number is already registered!');
+          toast.error(t('error_phone_duplicate')); // استخدام الترجمة
         } else if (message.includes('alternativePhone')) {
-          toast.error('❌ This alternative phone is already registered!');
+          toast.error(t('error_alt_phone_duplicate')); // استخدام الترجمة
         } else {
-          toast.error('❌ Duplicate field value detected.');
+          toast.error(t('error_duplicate_field')); // استخدام الترجمة
         }
       } else {
-        toast.error(message || 'Error creating employee');
+        toast.error(t(message || 'error_creating_employee')); // استخدام الترجمة
       }
     }
   };
@@ -219,13 +221,13 @@ const AddEmployeeScreen: React.FC = () => {
       {/* Header */}
       <div className="bg-white border-b px-6 py-3">
         <div className="max-w-6xl mx-auto px-6">
-          <h1 className="text-3xl font-bold text-gray-900">HR Management</h1>
+          <h1 className="text-3xl font-bold text-gray-900">{t('hr_management')}</h1>
           <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-            <span>Dashboard</span>
+            <span>{t('dashboard')}</span>
             <span>&gt;</span>
-            <span>HR</span>
+            <span>{t('hr')}</span>
             <span>&gt;</span>
-            <span>Add</span>
+            <span>{t('add')}</span>
           </div>
         </div>
       </div>
@@ -233,13 +235,13 @@ const AddEmployeeScreen: React.FC = () => {
       {/* Main Content */}
       <div className="max-w-5xl mx-auto px-6 py-6">
         <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h2 className="text-base font-semibold text-gray-900 mb-5">Personal Details</h2>
+          <h2 className="text-base font-semibold text-gray-900 mb-5">{t('personal_details')}</h2>
 
           {/* Personal Details Grid */}
           <div className="grid grid-cols-3 gap-5 mb-5">
             <div className="col-span-2 space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Employee Name</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">{t('employee_name')}</label>
                 <input
                   type="text"
                   value={formData.name}
@@ -249,7 +251,7 @@ const AddEmployeeScreen: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Job Title</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">{t('job_title')}</label>
                 <input
                   type="text"
                   value={formData.jobTitle}
@@ -259,7 +261,7 @@ const AddEmployeeScreen: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">National Id</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">{t('national_id')}</label>
                 <input
                   type="text"
                   value={formData.nationalId}
@@ -271,36 +273,36 @@ const AddEmployeeScreen: React.FC = () => {
 
             <div>
               {/* Image Preview */}
-          <div className="w-full h-36 bg-white rounded flex items-center justify-center text-gray-400 mb-2 text-xs overflow-hidden border border-gray-300">
-  {image ? (
-    <img
-      src={image}
-      alt="Employee avatar preview"
-      className="w-full h-full object-contain object-center bg-white"
-    />
-  ) : (
-    <span className="text-gray-400 text-sm">Image preview</span>
-  )}
-</div>
+            <div className="w-full h-36 bg-white rounded flex items-center justify-center text-gray-400 mb-2 text-xs overflow-hidden border border-gray-300">
+              {image ? (
+                <img
+                  src={image}
+                  alt="Employee avatar preview"
+                  className="w-full h-full object-contain object-center bg-white"
+                />
+              ) : (
+                <span className="text-gray-400 text-sm">{t('image_preview')}</span>
+              )}
+            </div>
 
-<div className="flex gap-2">
-  <label className="flex-1 cursor-pointer">
-    <div className="flex items-center justify-center gap-2 px-3 py-1.5 bg-gray-700 text-white rounded text-xs hover:bg-gray-800 transition-all">
-      {image ? <Edit2 size={14} /> : <Upload size={14} />}
-      <span>{image ? 'Edit Image' : 'Upload Image'}</span>
-    </div>
-    <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-  </label>
+            <div className="flex gap-2">
+              <label className="flex-1 cursor-pointer">
+                <div className="flex items-center justify-center gap-2 px-3 py-1.5 bg-gray-700 text-white rounded text-xs hover:bg-gray-800 transition-all">
+                  {image ? <Edit2 size={14} /> : <Upload size={14} />}
+                  <span>{image ? t('edit_image') : t('upload_image')}</span>
+                </div>
+                <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+              </label>
 
-  {image && (
-    <button 
-      onClick={() => { setImage(null); setImageFile(null); }}
-      className="px-3 py-1.5 bg-red-500 text-white rounded text-xs hover:bg-red-600"
-    >
-      Remove
-    </button>
-  )}
-</div>
+              {image && (
+                <button 
+                  onClick={() => { setImage(null); setImageFile(null); }}
+                  className="px-3 py-1.5 bg-red-500 text-white rounded text-xs hover:bg-red-600"
+                >
+                  {t('remove')}
+                </button>
+              )}
+            </div>
 
             </div>
           </div>
@@ -308,7 +310,7 @@ const AddEmployeeScreen: React.FC = () => {
           {/* Contact Information */}
           <div className="grid grid-cols-2 gap-5 mb-5">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Address</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t('address')}</label>
               <input
                 type="text"
                 value={formData.address}
@@ -318,7 +320,7 @@ const AddEmployeeScreen: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Date of Birth</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t('date_of_birth')}</label>
               <input
                 type="date"
                 value={formData.dateOfBirth}
@@ -328,7 +330,7 @@ const AddEmployeeScreen: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t('email')}</label>
               <input
                 type="email"
                 value={formData.email}
@@ -338,7 +340,7 @@ const AddEmployeeScreen: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Phone</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t('phone')}</label>
               <input
                 type="tel"
                 value={formData.phone}
@@ -348,7 +350,7 @@ const AddEmployeeScreen: React.FC = () => {
             </div>
 
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Alternate Phone</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t('alternate_phone')}</label>
               <input
                 type="tel"
                 value={formData.alternatePhone}
@@ -359,11 +361,11 @@ const AddEmployeeScreen: React.FC = () => {
           </div>
 
           {/* Job Details Section */}
-          <h2 className="text-base font-semibold text-gray-900 mb-5 mt-6">Job Details</h2>
+          <h2 className="text-base font-semibold text-gray-900 mb-5 mt-6">{t('job_details')}</h2>
 
           <div className="grid grid-cols-3 gap-5 mb-5">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Department</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t('department')}</label>
               <select
                 value={formData.department}
                 onChange={(e) => setFormData({ ...formData, department: e.target.value })}
@@ -379,7 +381,7 @@ const AddEmployeeScreen: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Work Location</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t('work_location')}</label>
               <select
                 value={formData.workLocation}
                 onChange={(e) => setFormData({ ...formData, workLocation: e.target.value })}
@@ -394,7 +396,7 @@ const AddEmployeeScreen: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Role</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t('role')}</label>
               <select
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
@@ -410,7 +412,7 @@ const AddEmployeeScreen: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Manager</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t('manager')}</label>
               <select
                 value={formData.manager}
                 onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
@@ -426,36 +428,36 @@ const AddEmployeeScreen: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Level of Experience</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t('level_of_experience')}</label>
               <select
                 value={formData.level}
                 onChange={(e) => setFormData({ ...formData, level: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
               >
                 <option value=""></option>
-                <option value="Junior">Junior</option>
-                <option value="Mid-Level">Mid-Level</option>
-                <option value="Senior">Senior</option>
-                <option value="Director">Director</option>
+                <option value="Junior">{t('junior')}</option>
+                <option value="Mid-Level">{t('mid_level')}</option>
+                <option value="Senior">{t('senior')}</option>
+                <option value="Director">{t('director')}</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Employment Type</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t('employment_type')}</label>
               <select
                 value={formData.employmentType}
                 onChange={(e) => setFormData({ ...formData, employmentType: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
               >
                 <option value=""></option>
-                <option value="full-time">Full Time</option>
-                <option value="part-time">Part Time</option>
-                <option value="project-based">Project Based</option>
+                <option value="full-time">{t('full_time')}</option>
+                <option value="part-time">{t('part_time')}</option>
+                <option value="project-based">{t('project_based')}</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Salary</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t('salary')}</label>
               <input
                 type="text"
                 value={formData.salary}
@@ -465,7 +467,7 @@ const AddEmployeeScreen: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Date of Employment</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t('date_of_employment')}</label>
               <input
                 type="date"
                 value={formData.dateOfEmployment}
@@ -481,13 +483,13 @@ const AddEmployeeScreen: React.FC = () => {
               onClick={handleCancel}
               className="px-5 py-2 border border-gray-300 text-gray-700 rounded text-sm hover:bg-gray-50"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               onClick={handleSave}
               className="px-5 py-2 bg-slate-700 text-white rounded text-sm hover:bg-slate-800"
             >
-              Save Details
+              {t('save_details')}
             </button>
           </div>
         </div>

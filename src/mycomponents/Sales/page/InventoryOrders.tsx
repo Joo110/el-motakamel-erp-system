@@ -9,9 +9,13 @@ import { useCustomers } from '../../Sales/hooks/useCustomers';
 import { useInventories } from '../../inventory/hooks/useInventories';
 import { useUsers } from '../../user/hooks/useUsers';
 
+// i18next
+import { useTranslation } from 'react-i18next';
+
 type TabType = 'draft' | 'approved' | 'delivered';
 
 const InventoryOrders: React.FC = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>('draft');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
@@ -35,13 +39,12 @@ const InventoryOrders: React.FC = () => {
   useEffect(() => {
     void (async () => {
       try {
-        console.log('📦 Fetching sale orders for tab:', activeTab);
         await fetch(activeTab);
       } catch (err) {
-        console.error('❌ Failed to fetch orders for', activeTab, err);
+        console.error(`${t('failed_to_load')}: ${activeTab}`, err);
       }
     })();
-  }, [activeTab, fetch]);
+  }, [activeTab, fetch, t]);
 
   useEffect(() => {
     if (typeof fetchCustomers === 'function') void fetchCustomers();
@@ -53,31 +56,23 @@ const InventoryOrders: React.FC = () => {
     [data, currentPage, itemsPerPage]
   );
 
-  // ✅ enhanced: better logging for approve/deliver/invoice
   const handleActionClick = async (orderId: string) => {
-    console.log('🟡 handleActionClick triggered', { orderId, activeTab });
     try {
       if (activeTab === 'draft') {
-        console.log('🟢 Approving order:', orderId);
         if (!approve) throw new Error('Approve function not available');
-        const result = await approve(orderId);
-        console.log('✅ Approve API response:', result);
-        toast.success('✅ Order approved successfully!');
+        await approve(orderId);
+        toast.success(t('order_approved'));
         await fetch(activeTab);
       } else if (activeTab === 'approved') {
-        console.log('🟣 Marking as delivered:', orderId);
         if (!markDelivered) throw new Error('markDelivered function not available');
-        const result = await markDelivered(orderId);
-        console.log('✅ Deliver API response:', result);
-        toast.success('🚚 Order marked as delivered!');
+        await markDelivered(orderId);
+        toast.success(t('order_delivered'));
         await fetch(activeTab);
       } else {
-        console.log('🧾 Navigating to invoice screen for:', orderId);
         navigate(`/dashboard/stock-out-draft/${orderId}`, { state: { status: 'invoice' } });
       }
     } catch (err: any) {
-      console.error('❌ Action failed:', err);
-      toast.error('❌ Failed: ' + (err?.message || String(err)));
+      toast.error(`${t('action_failed')}: ${err?.message || String(err)}`);
     }
   };
 
@@ -97,14 +92,17 @@ const InventoryOrders: React.FC = () => {
 
     const totalPrice = (order.totalAmount ?? order.total ?? 0).toString();
     const createdByName =
-      usersMap.get(order.createdBy) ||
-      (usersLoading ? 'Loading user...' : order.createdBy || '-');
+      usersMap.get(order.createdBy) || (usersLoading ? t('loading_user') : order.createdBy || '-');
     const orderTime = order.createdAt
       ? new Date(order.createdAt).toLocaleString()
       : order.orderTime ?? '-';
 
     const action =
-      activeTab === 'draft' ? 'Approve' : activeTab === 'approved' ? 'Delivered' : 'Invoice';
+      activeTab === 'draft'
+        ? t('approve')
+        : activeTab === 'approved'
+        ? t('deliver')
+        : t('invoice');
 
     return { orderNumber, customer, inventory, totalPrice, createdByName, orderTime, action };
   };
@@ -112,8 +110,10 @@ const InventoryOrders: React.FC = () => {
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">Inventory Management</h1>
-        <div className="text-sm text-gray-500">Dashboard {'>'} Inventory {'>'} Sales Order</div>
+        <h1 className="text-2xl font-bold mb-2">{t('inventory_management')}</h1>
+        <div className="text-sm text-gray-500">
+          {t('dashboard')} {'>'} {t('inventory')} {'>'} {t('sales_order')}
+        </div>
       </div>
 
       {/* Tabs */}
@@ -122,7 +122,6 @@ const InventoryOrders: React.FC = () => {
           <button
             key={tab}
             onClick={() => {
-              console.log('🔁 Switched tab to:', tab);
               setActiveTab(tab);
               setCurrentPage(1);
             }}
@@ -132,15 +131,15 @@ const InventoryOrders: React.FC = () => {
                 : 'bg-white text-gray-600 hover:bg-gray-100'
             }`}
           >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {tab === 'draft' ? t('draft') : tab === 'approved' ? t('approved') : t('delivered')}
           </button>
         ))}
       </div>
 
       {/* Info */}
       <div className="text-right text-sm text-gray-500 mb-4">
-        Showing {data.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-
-        {Math.min(currentPage * itemsPerPage, data.length)} of {data.length} orders
+        {t('showing')} {data.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-
+        {Math.min(currentPage * itemsPerPage, data.length)} {t('of')} {data.length} {t('orders')}
       </div>
 
       {/* Table */}
@@ -149,13 +148,13 @@ const InventoryOrders: React.FC = () => {
           <table className="w-full">
             <thead className="border-b">
               <tr className="text-left text-sm text-gray-600">
-                <th className="pb-3 font-medium">Order number</th>
-                <th className="pb-3 font-medium">Customer</th>
-                <th className="pb-3 font-medium">Inventory</th>
-                <th className="pb-3 font-medium">Total Price</th>
-                <th className="pb-3 font-medium">Created by</th>
-                <th className="pb-3 font-medium">Order Time</th>
-                <th className="pb-3 font-medium">Action</th>
+                <th className="pb-3 font-medium">{t('order_number')}</th>
+                <th className="pb-3 font-medium">{t('customer')}</th>
+                <th className="pb-3 font-medium">{t('inventory')}</th>
+                <th className="pb-3 font-medium">{t('total_price')}</th>
+                <th className="pb-3 font-medium">{t('created_by')}</th>
+                <th className="pb-3 font-medium">{t('order_time')}</th>
+                <th className="pb-3 font-medium">{t('action')}</th>
               </tr>
             </thead>
             <tbody>
@@ -169,35 +168,33 @@ const InventoryOrders: React.FC = () => {
                     <td className="py-4 text-sm">{row.totalPrice}</td>
                     <td className="py-4 text-sm">{row.createdByName}</td>
                     <td className="py-4 text-sm">{row.orderTime}</td>
-                <td className="py-4">
-  <div className="flex gap-2">
-    <button
-      className="px-4 py-1.5 text-sm text-white bg-slate-700 rounded-full hover:bg-slate-800 transition-colors"
-      onClick={() => handleActionClick(item._id)}
-    >
-      {row.action}
-    </button>
-    <button
-      className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
-      onClick={() => {
-        console.log('👁️ Viewing Order ID:', item._id);
-        navigate(`/dashboard/stock-out-draft/${item._id}`, {
-          state: { status: activeTab },
-        });
-      }}
-    >
-      View
-    </button>  
-  </div>
-</td>
-
+                    <td className="py-4">
+                      <div className="flex gap-2">
+                        <button
+                          className="px-4 py-1.5 text-sm text-white bg-slate-700 rounded-full hover:bg-slate-800 transition-colors"
+                          onClick={() => handleActionClick(item._id)}
+                        >
+                          {row.action}
+                        </button>
+                        <button
+                          className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+                          onClick={() => {
+                            navigate(`/dashboard/stock-out-draft/${item._id}`, {
+                              state: { status: activeTab },
+                            });
+                          }}
+                        >
+                          {t('view')}
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 );
               })}
               {paginatedData.length === 0 && (
                 <tr>
                   <td colSpan={7} className="text-center py-6 text-gray-500">
-                    {loading ? 'Loading...' : error ? `Failed to load: ${error.message}` : 'No orders found.'}
+                    {loading ? t('loading') : error ? `${t('failed_to_load')}: ${error.message}` : t('no_orders_found')}
                   </td>
                 </tr>
               )}

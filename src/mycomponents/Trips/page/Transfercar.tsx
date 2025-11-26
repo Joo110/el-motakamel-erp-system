@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ArrowRight } from 'lucide-react';
 import { useInventories } from '@/mycomponents/inventory/hooks/useInventories';
-import { useStockTransfer } from '../hooks/useStockTransfer';
+import { useStockTransfer } from '../../inventory/hooks/useStockTransfer';
 import { toast } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 
@@ -138,27 +138,27 @@ const TransferComponent: React.FC = () => {
   // Transfer: add row to local table
   const handleTransfer = async () => {
     if (!selectedFrom) {
-      toast.error(t('please_select_inventory') || 'Please select "Transfer from" inventory first.');
+      toast.error(t('select_transfer_from_first'));
       return;
     }
     if (!selectedProductStockId) {
-      toast.error(t('please_select_product') || 'Please select a product to transfer.');
+      toast.error(t('select_product_transfer'));
       return;
     }
     if (!selectedTo) {
-      toast.error(t('please_select_inventory') || 'Please select "To" inventory.');
+      toast.error(t('select_to_inventory'));
       return;
     }
     if (selectedFrom === selectedTo) {
-      toast.error(t('source_destination_must_different') || 'Source and destination inventories must be different.');
+      toast.error(t('source_dest_different'));
       return;
     }
     if (!selectedUnits || selectedUnits <= 0) {
-      toast.error(t('quantity_gt_zero') || 'Units must be greater than 0.');
+      toast.error(t('units_greater_zero'));
       return;
     }
     if (!selectedPrice || selectedPrice < 0) {
-      toast.error(t('price_must_greater_zero') || 'Price must be 0 or greater.');
+      toast.error(t('price_zero_greater'));
       return;
     }
 
@@ -190,15 +190,15 @@ const TransferComponent: React.FC = () => {
 
   const handleSaveTransfer = async () => {
     if (!selectedFrom) {
-      toast.error(t('please_select_inventory') || 'Please select "Transfer from" before saving.');
+      toast(t('select_from_before_saving'));
       return;
     }
     if (!selectedTo) {
-      toast.error(t('please_select_inventory') || 'Please select "To" before saving.');
+      toast(t('select_to_before_saving'));
       return;
     }
     if (productsTable.length === 0) {
-      toast.error(t('no_transferred_products') || 'No transferred products to save.');
+      toast(t('no_products_to_save'));
       return;
     }
 
@@ -220,7 +220,7 @@ const TransferComponent: React.FC = () => {
     const productsPayload = Object.values(mergedProductsMap);
 
     if (productsPayload.length === 0) {
-      toast.error(t('invalid_product_fields_check_console') || 'None of the table rows contain valid productId — please add products from the product dropdown.');
+      toast(t('invalid_product_rows'));
       return;
     }
 
@@ -238,14 +238,18 @@ const TransferComponent: React.FC = () => {
       for (const row of productsTable) {
         const productInStock = availableProducts.find((p) => p.productId === row.productId);
         if (productInStock && row.units > productInStock.availableUnits) {
-          toast.error(t('requested_exceeds_available') || `❌ Requested quantity (${row.units}) exceeds available (${productInStock.availableUnits}) for product ${row.name}`);
+          toast.error(t('quantity_exceeds_available', { 
+            requested: row.units, 
+            available: productInStock.availableUnits, 
+            name: row.name 
+          }));
           return;
         }
       }
 
       const res = await createStockTransfer(payload);
       console.log('✅ createStockTransfer success response:', res);
-      toast.success(t('stock_transfer_created') || '✅ Stock transfer created successfully');
+      toast.success(t('transfer_created_success'));
 
       // reset all form
       setProductsTable([]);
@@ -259,31 +263,35 @@ const TransferComponent: React.FC = () => {
       setShippingCost('');
     } catch (err: any) {
       console.error('Failed to create stock transfer:', err);
-      toast.error(`${t('failed_save_transfer') || 'Failed to save transfer. See console for details.'} ${err?.response?.status ? `(${err.response.status})` : ''}`);
+      toast.error(`${t('failed_save_transfer')} ${err?.response?.status || err?.code || err?.message}`);
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">{t('inventory_management') || 'Inventory Management'}</h1>
-        <p className="text-sm text-gray-500">{t('breadcrumb_dashboard') || 'Dashboard'} &gt; {t('inventories') || 'Inventory'} &gt; {t('transfer') || 'Transfer'}</p>
+        <h1 className="text-2xl font-semibold text-gray-900">{t('Transfer_Management')}</h1>
+        <p className="text-sm text-gray-500">
+          {t('Dashboard')} &gt; {t('Transfer')} &gt; {t('car')}
+        </p>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-6">{t('transfer') || 'Transfer'}</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-6">{t('Transfer')}</h2>
 
         {/* Step 1: From Inventory */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end mb-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">{t('transfer_from') || 'Transfer from'}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('Transfer_from')}</label>
             <div className="relative">
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
                 value={selectedFrom}
                 onChange={(e) => setSelectedFrom(e.target.value)}
               >
-                <option value="">{(inventories?.length ?? 0) === 0 ? t('loading_inventories') || 'Loading inventories...' : t('select_inventory') || 'Select inventory'}</option>
+                <option value="">
+                  {(inventories?.length ?? 0) === 0 ? t('Loading_inventory') : t('Select_inventory')}
+                </option>
                 {inventoryOptions.map((inv: any) => (
                   <option key={inv._id ?? inv.id} value={inv._id ?? inv.id}>
                     {inv.name}
@@ -296,7 +304,7 @@ const TransferComponent: React.FC = () => {
 
           {/* Step 2: Product */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">{t('product_label') || 'Product'}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('Product')}</label>
             <div className="relative">
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 appearance-none text-sm"
@@ -305,11 +313,19 @@ const TransferComponent: React.FC = () => {
                 disabled={!selectedFrom || loadingProducts || availableProducts.length === 0}
               >
                 <option value="">
-                  {!selectedFrom ? (t('select_from_first') || 'Select "From" inventory first') : loadingProducts ? (t('loading_products') || 'Loading products...') : (t('select_product') || 'Select product')}
+                  {!selectedFrom
+                    ? t('select_from_first')
+                    : loadingProducts
+                    ? t('Loading_products')
+                    : t('Select_product')}
                 </option>
                 {availableProducts.map((p) => (
-                  <option key={p.stockId} value={p.stockId} title={`${p.name} ${p.code ? `(${p.code})` : ''} — ${p.availableUnits ?? 0} available`}>
-                    {p.name} {p.code ? `(${p.code})` : ''} — {p.availableUnits ?? 0} available
+                  <option
+                    key={p.stockId}
+                    value={p.stockId}
+                    title={`${p.name} ${p.code ? `(${p.code})` : ''} — ${p.availableUnits ?? 0} ${t('available')}`}
+                  >
+                    {p.name} {p.code ? `(${p.code})` : ''} — {p.availableUnits ?? 0} {t('available')}
                   </option>
                 ))}
               </select>
@@ -319,7 +335,7 @@ const TransferComponent: React.FC = () => {
 
           {/* Step 3: To Inventory */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">{t('to_label') || 'To'}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('To')}</label>
             <div className="relative flex items-center gap-2">
               <ArrowRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
               <div className="relative flex-1">
@@ -328,7 +344,9 @@ const TransferComponent: React.FC = () => {
                   value={selectedTo}
                   onChange={(e) => setSelectedTo(e.target.value)}
                 >
-                  <option value="">{(inventories?.length ?? 0) === 0 ? t('loading_inventories') || 'Loading inventories...' : t('select_inventory') || 'Select inventory'}</option>
+                  <option value="">
+                    {(inventories?.length ?? 0) === 0 ? t('Loading_car') : t('Select_car')}
+                  </option>
                   {inventoryOptions.map((inv: any) => (
                     <option key={inv._id ?? inv.id} value={inv._id ?? inv.id}>
                       {inv.name}
@@ -344,17 +362,17 @@ const TransferComponent: React.FC = () => {
         {/* Reference & Shipping */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">{t('reference_label') || 'Reference'}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('Reference')}</label>
             <input
               type="text"
               value={reference}
               onChange={(e) => setReference(e.target.value)}
-              placeholder={t('enter_reference') || 'Enter reference number'}
+              placeholder={t('Enter_reference_number')}
               className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">{t('shipping_cost') || 'Shipping Cost'}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('Shipping_Cost')}</label>
             <input
               type="number"
               value={shippingCost}
@@ -368,7 +386,7 @@ const TransferComponent: React.FC = () => {
         {/* Units & Price */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">{t('units_label') || 'Units'}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('Units')}</label>
             <input
               type="number"
               min={1}
@@ -378,7 +396,7 @@ const TransferComponent: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">{t('price_label') || 'Price'}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('Price')}</label>
             <input
               type="number"
               min={0}
@@ -402,14 +420,14 @@ const TransferComponent: React.FC = () => {
                 }}
                 className="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-700 rounded-full text-sm hover:bg-gray-300"
               >
-                {t('reset') || 'Reset'}
+                {t('Reset')}
               </button>
               <button
                 onClick={handleTransfer}
                 disabled={transferring}
                 className="w-full sm:w-auto px-4 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-blue-800"
               >
-                {transferring ? (t('transferring') || 'Transferring...') : (t('transfer') || 'Transfer')}
+                {transferring ? t('Transferring') : t('Transfer')}
               </button>
             </div>
           </div>
@@ -417,18 +435,18 @@ const TransferComponent: React.FC = () => {
 
         {/* Transferred Products Table */}
         <div className="mb-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">{t('transferred_products') || 'Transferred Products'}</h2>
+          <h2 className="text-lg font-medium text-gray-900 mb-4">{t('Transferred_Products')}</h2>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[700px]">
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left text-xs font-medium text-gray-600 pb-3 w-8"></th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('product_col') || 'Product'}</th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('code_col') || 'Code'}</th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('units_col') || 'Units'}</th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('price_col') || 'Price'}</th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('from_label') || 'From'}</th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('to_label') || 'To'}</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('Product')}</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('Code')}</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('Units')}</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('Price')}</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('From')}</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('To')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -453,7 +471,7 @@ const TransferComponent: React.FC = () => {
                 {productsTable.length === 0 && (
                   <tr>
                     <td colSpan={7} className="py-8 text-center text-gray-500">
-                      {t('no_transferred_products') || 'No transferred products yet'}
+                      {t('no_transferred_products_yet')}
                     </td>
                   </tr>
                 )}
@@ -464,21 +482,21 @@ const TransferComponent: React.FC = () => {
 
         {/* Notes */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">{t('notes_label') || 'Notes'}</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t('Notes')}</label>
           <textarea className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" rows={4}></textarea>
         </div>
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row justify-end gap-3">
           <button className="w-full sm:w-auto px-6 py-2 border border-gray-300 text-gray-700 rounded-full text-sm hover:bg-gray-50">
-            {t('cancel_label') || 'Cancel'}
+            {t('Cancel')}
           </button>
           <button
             className="w-full sm:w-auto px-6 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-blue-800"
             onClick={handleSaveTransfer}
             disabled={creatingTransfer}
           >
-            {creatingTransfer ? (t('saving_label') || 'Saving...') : (t('save_transfer_label') || 'Save Transfer')}
+            {creatingTransfer ? t('Saving') : t('Save_Transfer')}
           </button>
         </div>
       </div>

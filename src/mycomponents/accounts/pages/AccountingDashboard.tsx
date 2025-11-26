@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import useAccounts from '../hooks/useAccounts';
+import { useTranslation } from 'react-i18next';
 //import { toast } from 'react-hot-toast';
 
 const AccountingDashboard: React.FC = () => {
@@ -10,6 +11,7 @@ const AccountingDashboard: React.FC = () => {
   const [newAccount, setNewAccount] = useState({ name: '', code: '' });
   const [entries, setEntries] = useState<number>(6);
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const totalAccounts = accounts?.length ?? 0;
@@ -84,9 +86,9 @@ const AccountingDashboard: React.FC = () => {
       <div className="max-w-7xl mx-auto px-2 sm:px-0">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Accounting</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('accounting')}</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Dashboard &gt; Accounting &gt; Journals
+            {t('Dashboard')} &gt;  {t('Accounting')} &gt; {t('Journals')}
           </p>
         </div>
 
@@ -94,19 +96,19 @@ const AccountingDashboard: React.FC = () => {
         <div className="bg-white rounded-lg shadow">
           {/* Top Bar - responsive (stacks on small screens) */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-4 border-b border-gray-200 gap-3">
-            <h2 className="text-lg font-semibold text-gray-900">Accounts</h2>
+            <h2 className="text-lg font-semibold text-gray-900">{t('Accounts')}</h2>
 
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               <span className="text-sm text-gray-600">
-                Showing {start}-{end} of {totalAccounts} inventory
+                {t('Showing')} {start}-{end} of {totalAccounts} {t('inventory')}
               </span>
               <button
                 onClick={() => setShowModal(true)}
                 className="px-5 py-2 rounded-xl bg-slate-700 hover:bg-slate-800 text-white font-medium flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Add Account</span>
-                <span className="sm:hidden text-sm">Add</span>
+                <span className="hidden sm:inline">{t('Add_Account')}</span>
+                <span className="sm:hidden text-sm">{t('Add')}</span>
               </button>
             </div>
           </div>
@@ -114,7 +116,7 @@ const AccountingDashboard: React.FC = () => {
           {/* Accounts Grid */}
           <div className="p-4 sm:p-6">
             {loading ? (
-              <div className="py-12 text-center text-gray-500">Loading accounts...</div>
+              <div className="py-12 text-center text-gray-500">{t('Loading accounts...')}</div>
             ) : (
               // responsive grid: 1 col on xs, 2 on md, 3 on lg
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -128,12 +130,10 @@ const AccountingDashboard: React.FC = () => {
                       <div>
                         <div className="flex justify-between items-start mb-3 gap-3">
                           <h3 className="font-semibold text-gray-900 break-words">{acc.name}</h3>
-                          <span className="text-sm text-gray-600 whitespace-nowrap">Code: {acc.code}</span>
+                          <span className="text-sm text-gray-600 whitespace-nowrap">{t('Code:')} {acc.code}</span>
                         </div>
                         <div className="space-y-1">
                           <p className="text-sm text-gray-500">{acc.type ?? 'Type'}</p>
-                          <p className="text-sm text-gray-500">{acc.debitCredit ?? 'Debit'}</p>
-                          <p className="text-sm text-gray-500">{acc.debitCredit ?? 'Debit'}</p>
                         </div>
                       </div>
 
@@ -157,7 +157,7 @@ const AccountingDashboard: React.FC = () => {
           {/* Bottom Pagination - responsive */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 sm:px-6 py-4 border-t border-gray-200 gap-3">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Show</span>
+              <span className="text-sm text-gray-600">{t('Show')}</span>
               <select
                 value={entries}
                 onChange={(e) => {
@@ -170,7 +170,7 @@ const AccountingDashboard: React.FC = () => {
                 <option value={12}>12</option>
                 <option value={24}>24</option>
               </select>
-              <span className="text-sm text-gray-600">entries</span>
+              <span className="text-sm text-gray-600">{t('entries')}</span>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
@@ -179,7 +179,7 @@ const AccountingDashboard: React.FC = () => {
                 disabled={currentPage === 1}
                 className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded disabled:opacity-50"
               >
-                Previous
+                {t('Previous')}
               </button>
 
               {getPaginationPages(currentPage, totalPages).map((p) => (
@@ -199,7 +199,7 @@ const AccountingDashboard: React.FC = () => {
                 disabled={currentPage === totalPages}
                 className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded disabled:opacity-50"
               >
-                Next
+                {t('Next')}
               </button>
             </div>
           </div>
@@ -223,7 +223,7 @@ const AccountingDashboard: React.FC = () => {
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Name
+                  {t('Name')}
                 </label>
                 <input
                   type="text"
@@ -236,7 +236,7 @@ const AccountingDashboard: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Code
+                  {t('Code')}
                 </label>
                 <input
                   type="text"
@@ -253,13 +253,13 @@ const AccountingDashboard: React.FC = () => {
                 onClick={() => setShowModal(false)}
                 className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
               >
-                Cancel
+                {t('Cancel')}
               </button>
               <button
                 onClick={handleAddAccount}
                 className="px-6 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-800 text-white font-medium flex items-center gap-2"
               >
-                Add Account
+                {t('Add Account')}
               </button>
             </div>
           </div>

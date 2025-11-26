@@ -1,11 +1,12 @@
-// src/mycomponents/Precious/page/SupplierSearchList.tsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search, Edit2, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Suppliers } from '../hooks/Suppliers';
 import { toast } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 const SupplierSearchList: React.FC = () => {
+  const { t } = useTranslation();
   const { suppliers, loading, error, fetchSuppliers, removeSupplier } = Suppliers(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -19,13 +20,11 @@ const SupplierSearchList: React.FC = () => {
 
   const handleDelete = async (id?: string) => {
     if (!id) return;
-    if (!window.confirm('Are you sure you want to delete this supplier?')) return;
+    if (!window.confirm(t('confirm_delete_supplier'))) return;
 
     try {
       console.log('🗑️ Trying to delete supplier:', id);
       const res: any = await removeSupplier(id);
-      console.log('🧩 Delete response:', res);
-
       const isDeleted =
         !res ||
         res.success === true ||
@@ -34,15 +33,14 @@ const SupplierSearchList: React.FC = () => {
         (typeof res?.message === 'string' && res.message.toLowerCase().includes('deleted'));
 
       if (isDeleted) {
-        console.log('✅ Supplier deleted successfully');
+        toast.success(t('supplier_deleted_success'));
         await fetchSuppliers?.();
       } else {
-        console.warn('⚠️ Unexpected delete response:', res);
-        toast.error('Supplier may not have been deleted. Check console for details.');
+        toast.error(t('supplier_delete_warning'));
       }
     } catch (err) {
       console.error('❌ Delete failed:', err);
-      toast.error('Delete failed. Check console.');
+      toast.error(t('delete_failed'));
     }
   };
 
@@ -75,21 +73,21 @@ const SupplierSearchList: React.FC = () => {
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Supplier Management</h1>
-            <p className="text-sm text-gray-500">Dashboard &gt; Supplier Search</p>
+            <h1 className="text-2xl font-bold text-gray-900">{t('supplier_management')}</h1>
+            <p className="text-sm text-gray-500">{t('dashboard')} &gt; {t('supplier_search')}</p>
           </div>
           <Link
             to="/dashboard/precious/supplier/new"
             className="bg-gray-800 hover:bg-blue-800 text-white px-4 py-2 rounded-full flex items-center gap-2"
           >
-            <span className="text-lg">+</span> Add Supplier
+            <span className="text-lg">+</span> {t('add_supplier')}
           </Link>
         </div>
 
         {/* Supplier Search */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Supplier Search</h2>
+            <h2 className="text-lg font-semibold text-gray-900">{t('supplier_search')}</h2>
             <button className="text-gray-400">▼</button>
           </div>
           <div className="flex gap-3">
@@ -97,7 +95,7 @@ const SupplierSearchList: React.FC = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
-                placeholder="Search suppliers by name, phone, or email..."
+                placeholder={t('search_placeholder')}
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
@@ -111,7 +109,7 @@ const SupplierSearchList: React.FC = () => {
               className="bg-gray-800 hover:bg-blue-800 text-white px-6 py-2 rounded-full flex items-center gap-2"
             >
               <Search className="w-4 h-4" />
-              Search
+              {t('search')}
             </button>
           </div>
         </div>
@@ -120,20 +118,20 @@ const SupplierSearchList: React.FC = () => {
         <div className="bg-white rounded-lg shadow">
           <div className="p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Suppliers</h2>
+              <h2 className="text-lg font-semibold text-gray-900">{t('suppliers')}</h2>
               <p className="text-sm text-gray-500">
-                Showing {paginatedData.length > 0 ? `${(currentPage - 1) * rowsPerPage + 1}-${Math.min(currentPage * rowsPerPage, filtered.length)}` : 0} of {filtered.length} Supplier
+                {t('showing')} {paginatedData.length > 0 ? `${(currentPage - 1) * rowsPerPage + 1}-${Math.min(currentPage * rowsPerPage, filtered.length)}` : 0} {t('of')} {filtered.length} {t('suppliers')}
               </p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Name</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Address</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Email</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Phone</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Actions</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">{t('name')}</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">{t('address')}</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">{t('email')}</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">{t('phone')}</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">{t('actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -171,7 +169,7 @@ const SupplierSearchList: React.FC = () => {
                   {paginatedData.length === 0 && (
                     <tr>
                       <td colSpan={5} className="text-center py-6 text-gray-500">
-                        {loading ? 'Loading suppliers...' : error ?? 'No suppliers found.'}
+                        {loading ? t('loading_suppliers') : error ?? t('no_suppliers_found')}
                       </td>
                     </tr>
                   )}
@@ -182,7 +180,7 @@ const SupplierSearchList: React.FC = () => {
             {/* Pagination */}
             <div className="flex justify-between items-center mt-4">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Show</span>
+                <span className="text-sm text-gray-600">{t('show')}</span>
                 <select
                   className="border border-gray-300 rounded-full px-2 py-1 text-sm"
                   value={rowsPerPage}
@@ -195,7 +193,7 @@ const SupplierSearchList: React.FC = () => {
                   <option>25</option>
                   <option>50</option>
                 </select>
-                <span className="text-sm text-gray-600">entries</span>
+                <span className="text-sm text-gray-600">{t('entries')}</span>
               </div>
               <div className="flex gap-2">
                 <button
@@ -203,7 +201,7 @@ const SupplierSearchList: React.FC = () => {
                   className="px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-600 hover:bg-gray-50"
                   disabled={currentPage === 1}
                 >
-                  Previous
+                  {t('previous')}
                 </button>
                 {Array.from({ length: totalPages }, (_, i) => (
                   <button
@@ -223,7 +221,7 @@ const SupplierSearchList: React.FC = () => {
                   className="px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-600 hover:bg-gray-50"
                   disabled={currentPage === totalPages}
                 >
-                  Next
+                  {t('next')}
                 </button>
               </div>
             </div>

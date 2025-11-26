@@ -2,8 +2,10 @@ import React, { useState } from "react";
 import { BookOpen, Save, X } from "lucide-react";
 import { toast } from 'react-hot-toast';
 import useJournal from "../hooks/useJournal";
+import { useTranslation } from 'react-i18next';
 
 const NewJournal = () => {
+  const { t } = useTranslation();
   const { entries, createEntry, refresh } = useJournal();
 
   const [formData, setFormData] = useState({
@@ -40,19 +42,19 @@ const NewJournal = () => {
       setSaving(true);
 
       if (!formData.name.trim()) {
-        toast.error("❌ Please enter journal name!");
+        toast.error(t("❌ Please enter journal name!"));
         setSaving(false);
         return;
       }
 
       if (!formData.code.trim()) {
-        toast.error("❌ Please enter journal code!");
+        toast.error(t("❌ Please enter journal code!"));
         setSaving(false);
         return;
       }
 
       if (!formData.jornalType.trim()) {
-        toast.error("❌ Please enter or select journal type!");
+        toast.error(t("❌ Please enter or select journal type!"));
         setSaving(false);
         return;
       }
@@ -66,22 +68,22 @@ const NewJournal = () => {
       const result = await createEntry(payload);
 
       if (result?.err?.code === 11000) {
-        toast.error("❌ This journal code is already in use!");
+        toast.error(t("❌ This journal code is already in use!"));
         setSaving(false);
         return;
       }
 
       await refresh();
 
-      toast.success("✅ Journal created successfully!");
+      toast.success(t("✅ Journal created successfully!"));
       handleCancel();
     } catch (error: any) {
       console.error("❌ Error creating journal:", error);
 
       if (error?.err?.code === 11000) {
-        toast.error("❌ This journal code is already in use!");
+        toast.error(t("❌ This journal code is already in use!"));
       } else {
-        toast.error("❌ Error creating journal. Please try again.");
+        toast.error(t("❌ Error creating journal. Please try again."));
       }
     } finally {
       setSaving(false);
@@ -104,31 +106,31 @@ const NewJournal = () => {
           <div className="p-2 bg-[#1f334d] rounded-lg">
             <BookOpen className="text-white" size={24} />
           </div>
-          <h1 className="text-3xl font-bold text-gray-800">Journal Management</h1>
+          <h1 className="text-3xl font-bold text-gray-800">{t('Journal Management')}</h1>
         </div>
 
         <div className="flex items-center gap-2 text-sm text-gray-500 flex-wrap">
-          <span>Dashboard</span>
+          <span>{t('Dashboard')}</span>
           <span>›</span>
-          <span>Accounting</span>
+          <span>{t('Accounting')}</span>
           <span>›</span>
-          <span>Journals</span>
+          <span>{t('Journals')}</span>
           <span>›</span>
-          <span className="text-gray-700">New Journal</span>
+          <span className="text-gray-700">{t('New Journal')}</span>
         </div>
       </div>
 
       <div className="max-w-3xl mx-auto">
         <div className="bg-white rounded-lg shadow-sm p-8">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-semibold text-gray-800">Create New Journal</h2>
-            <div className="text-sm text-gray-500">إنشاء دفتر يومية جديد</div>
+            <h2 className="text-2xl font-semibold text-gray-800">{t('Create New Journal')}</h2>
+            <div className="text-sm text-gray-500">{t('إنشاء دفتر يومية جديد')}</div>
           </div>
 
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Journal Name
+                {t('Journal Name')}
                 <span className="text-red-500 ml-1">*</span>
               </label>
               <input
@@ -137,13 +139,13 @@ const NewJournal = () => {
                 value={formData.name}
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
-                placeholder="Enter journal name"
+                placeholder={t('Enter journal name')}
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Journal Type
+                {t('Journal Type')}
                 <span className="text-red-500 ml-1">*</span>
               </label>
 
@@ -161,14 +163,14 @@ const NewJournal = () => {
                     paddingRight: "2.5rem",
                   }}
                 >
-                  <option value="">-- Select Journal Type --</option>
+                  <option value="">{t('-- Select Journal Type --')}</option>
                   {entries.map((j) => (
                     <option key={j._id} value={j.jornalType}>
                       {j.jornalType} — {j.name}
                     </option>
                   ))}
                   <option value="__add_new__" className="font-bold text-blue-600">
-                    ➕ Add new type...
+                    {t('➕ Add new type...')}
                   </option>
                 </select>
               ) : (
@@ -178,14 +180,14 @@ const NewJournal = () => {
                   value={formData.jornalType}
                   onChange={handleInputChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
-                  placeholder="Write new journal type..."
+                  placeholder={t('Write new journal type...')}
                 />
               )}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Journal Code
+                {t('Journal Code')}
                 <span className="text-red-500 ml-1">*</span>
               </label>
               <input
@@ -194,7 +196,7 @@ const NewJournal = () => {
                 value={formData.code}
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
-                placeholder="Enter unique journal code"
+                placeholder={t('Enter unique journal code')}
               />
             </div>
 
@@ -206,9 +208,9 @@ const NewJournal = () => {
                   </svg>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-blue-900 mb-1">About Journals</h4>
+                  <h4 className="text-sm font-medium text-blue-900 mb-1">{t('About Journals')}</h4>
                   <p className="text-sm text-blue-800">
-                    Journals are used to record financial transactions.
+                    {t('Journals are used to record financial transactions.')}
                   </p>
                 </div>
               </div>
@@ -221,7 +223,7 @@ const NewJournal = () => {
               className="flex items-center gap-2 px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl shadow-sm hover:bg-gray-50 transition-all font-medium"
             >
               <X size={18} />
-              <span>Cancel</span>
+              <span>{t('Cancel')}</span>
             </button>
 
             <button
@@ -232,7 +234,7 @@ const NewJournal = () => {
               }`}
             >
               <Save size={18} />
-              <span>{saving ? "Saving..." : "Save Journal"}</span>
+              <span>{saving ? t('Saving...') : t('Save Journal')}</span>
             </button>
           </div>
         </div>

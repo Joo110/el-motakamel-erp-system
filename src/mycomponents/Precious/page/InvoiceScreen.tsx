@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { usePurchaseInvoices } from '../hooks/useAllinvoices';
+import { useTranslation } from 'react-i18next';
 
 interface Product {
   name: string;
@@ -14,6 +15,7 @@ interface Product {
 }
 
 const InvoiceScreen: React.FC = () => {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const { getInvoice, loading } = usePurchaseInvoices();
 
@@ -113,7 +115,7 @@ const InvoiceScreen: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading invoice...</p>
+          <p className="mt-4 text-gray-600">{t('loading_invoice')}</p>
         </div>
       </div>
     );
@@ -124,13 +126,13 @@ const InvoiceScreen: React.FC = () => {
       {/* Header - Hidden in print */}
       <div className="mb-6 no-print">
         <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-          <span>Dashboard</span>
+          <span>{t('dashboard')}</span>
           <span>›</span>
-          <span>Inventory</span>
+          <span>{t('inventory')}</span>
           <span>›</span>
-          <span>Stock in</span>
+          <span>{t('stock_in')}</span>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900">Precious Management</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('precious_management')}</h1>
       </div>
 
       {/* Invoice Container */}
@@ -140,14 +142,14 @@ const InvoiceScreen: React.FC = () => {
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          <span className="text-lg font-semibold">Invoice</span>
+          <span className="text-lg font-semibold">{t('invoice')}</span>
         </div>
 
         <div className="p-6">
           {/* Order Info */}
           <div className="grid grid-cols-2 gap-6 mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Order number:</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('order_number')}:</label>
               <input
                 type="text"
                 value={invoiceData?.invoiceNumber ?? invoiceData?._id ?? ''}
@@ -156,7 +158,7 @@ const InvoiceScreen: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Order Date:</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('order_date')}:</label>
               <input
                 type="text"
                 value={invoiceData?.createdAt ? new Date(invoiceData.createdAt).toLocaleString() : (invoiceData?.orderDate ?? '')}
@@ -170,10 +172,10 @@ const InvoiceScreen: React.FC = () => {
           <div className="grid grid-cols-2 gap-6 mb-6">
             {/* Supplier */}
             <div className="border border-gray-200 rounded-lg p-4">
-              <h3 className="font-semibold text-gray-900 mb-3">Supplier</h3>
+              <h3 className="font-semibold text-gray-900 mb-3">{t('supplier')}</h3>
               <div className="space-y-2">
                 <div>
-                  <label className="block text-xs text-gray-600 mb-1">Supplier ID:</label>
+                  <label className="block text-xs text-gray-600 mb-1">{t('supplier_id')}:</label>
                   <input
                     type="text"
                     value={String(invoiceData?.supplier ?? invoiceData?.supplierId ?? '')}
@@ -182,7 +184,7 @@ const InvoiceScreen: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-600 mb-1">Invoice ID:</label>
+                  <label className="block text-xs text-gray-600 mb-1">{t('invoice_id')}:</label>
                   <input
                     type="text"
                     value={String(invoiceData?._id ?? '')}
@@ -191,7 +193,7 @@ const InvoiceScreen: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-600 mb-1">Payment Status:</label>
+                  <label className="block text-xs text-gray-600 mb-1">{t('payment_status')}:</label>
                   <input
                     type="text"
                     value={String(invoiceData?.paymentStatus ?? '')}
@@ -204,10 +206,10 @@ const InvoiceScreen: React.FC = () => {
 
             {/* Company Info */}
             <div className="border border-gray-200 rounded-lg p-4">
-              <h3 className="font-semibold text-gray-900 mb-3">Organization / Order</h3>
+              <h3 className="font-semibold text-gray-900 mb-3">{t('organization_order')}</h3>
               <div className="space-y-2">
                 <div>
-                  <label className="block text-xs text-gray-600 mb-1">Organization ID:</label>
+                  <label className="block text-xs text-gray-600 mb-1">{t('organization_id')}:</label>
                   <input
                     type="text"
                     value={String(invoiceData?.organization ?? '')}
@@ -216,7 +218,7 @@ const InvoiceScreen: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-600 mb-1">Purchase Order ID:</label>
+                  <label className="block text-xs text-gray-600 mb-1">{t('purchase_order_id')}:</label>
                   <input
                     type="text"
                     value={String(invoiceData?.pruchaseOrder ?? invoiceData?.purchaseOrder ?? '')}
@@ -225,7 +227,7 @@ const InvoiceScreen: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-600 mb-1">Last Updated:</label>
+                  <label className="block text-xs text-gray-600 mb-1">{t('last_updated')}:</label>
                   <input
                     type="text"
                     value={invoiceData?.updatedAt ? new Date(invoiceData.updatedAt).toLocaleString() : ''}
@@ -239,66 +241,48 @@ const InvoiceScreen: React.FC = () => {
 
           {/* Requested Products */}
           <div className="mb-6">
-            <h3 className="font-semibold text-gray-900 mb-3">Requested Products</h3>
+            <h3 className="font-semibold text-gray-900 mb-3">{t('requested_products')}</h3>
             <div className="overflow-x-auto border border-gray-200 rounded-lg">
               <table className="w-full table-fixed">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-600" style={{width: '15%'}}>Product</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-600" style={{width: '12%'}}>Inventory</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-600" style={{width: '10%'}}>Code</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-600" style={{width: '8%'}}>Units</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-600" style={{width: '10%'}}>Delivered</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-600" style={{width: '12%'}}>Price</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-600" style={{width: '8%'}}>Tax</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-600" style={{width: '12%'}}>Total</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-600" style={{width: '15%'}}>{t('product')}</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-600" style={{width: '12%'}}>{t('inventory_column')}</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-600" style={{width: '10%'}}>{t('code')}</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-600" style={{width: '8%'}}>{t('units')}</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-600" style={{width: '10%'}}>{t('delivered')}</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-600" style={{width: '12%'}}>{t('price')}</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-600" style={{width: '8%'}}>{t('tax')}</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-600" style={{width: '12%'}}>{t('total')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {products.map((product, index) => (
                     <tr key={index} className="border-t border-gray-200">
-                      <td className="px-3 py-2">
-                        <div className="text-sm break-words">{product.name}</div>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="text-sm break-words">{product.inventory}</div>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="text-sm break-words">{product.code}</div>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="text-sm">{product.units}</div>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="text-sm">{product.delivered}</div>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="text-sm">{product.price}</div>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="text-sm">{product.tax}</div>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="text-sm">{product.total}</div>
-                      </td>
+                      <td className="px-3 py-2"><div className="text-sm break-words">{product.name}</div></td>
+                      <td className="px-3 py-2"><div className="text-sm break-words">{product.inventory}</div></td>
+                      <td className="px-3 py-2"><div className="text-sm break-words">{product.code}</div></td>
+                      <td className="px-3 py-2"><div className="text-sm">{product.units}</div></td>
+                      <td className="px-3 py-2"><div className="text-sm">{product.delivered}</div></td>
+                      <td className="px-3 py-2"><div className="text-sm">{product.price}</div></td>
+                      <td className="px-3 py-2"><div className="text-sm">{product.tax}</div></td>
+                      <td className="px-3 py-2"><div className="text-sm">{product.total}</div></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-
             <div className="flex justify-end mt-2">
               <div className="text-sm font-medium text-gray-700">
-                Total: <span className="ml-2">{calculateTotal()} SR</span>
+                {t('total')}: <span className="ml-2">{calculateTotal()} SR</span>
               </div>
             </div>
           </div>
 
           {/* Notes and Payment */}
           <div className="grid grid-cols-2 gap-6 mb-6">
-            {/* Notes */}
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">Notes</label>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">{t('notes')}</label>
               <textarea
                 rows={4}
                 value={invoiceData?.notes ?? invoiceData?.note ?? ''}
@@ -306,13 +290,11 @@ const InvoiceScreen: React.FC = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
               />
             </div>
-
-            {/* Payment */}
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">Payment</label>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">{t('payment')}</label>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Tax:</span>
+                  <span className="text-gray-600">{t('tax')}:</span>
                   <input
                     type="text"
                     value={String(invoiceData?.tax ?? '0')}
@@ -321,7 +303,7 @@ const InvoiceScreen: React.FC = () => {
                   />
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Shipping:</span>
+                  <span className="text-gray-600">{t('shipping')}:</span>
                   <input
                     type="text"
                     value={String(invoiceData?.shipping ?? '0')}
@@ -330,7 +312,7 @@ const InvoiceScreen: React.FC = () => {
                   />
                 </div>
                 <div className="flex justify-between text-sm font-semibold pt-2 border-t">
-                  <span>Total Payment:</span>
+                  <span>{t('total_payment')}:</span>
                   <input
                     type="text"
                     value={String(invoiceData?.totalPayment ?? '0')}
@@ -345,7 +327,7 @@ const InvoiceScreen: React.FC = () => {
           {/* Signatures */}
           <div className="grid grid-cols-3 gap-6 pt-4 border-t border-gray-200">
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Reported By:</label>
+              <label className="block text-xs text-gray-600 mb-1">{t('reported_by')}:</label>
               <input
                 type="text"
                 value={invoiceData?.reportedBy ?? ''}
@@ -354,7 +336,7 @@ const InvoiceScreen: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Approved By:</label>
+              <label className="block text-xs text-gray-600 mb-1">{t('approved_by')}:</label>
               <input
                 type="text"
                 value={invoiceData?.approvedBy ?? ''}
@@ -363,7 +345,7 @@ const InvoiceScreen: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Received By:</label>
+              <label className="block text-xs text-gray-600 mb-1">{t('received_by')}:</label>
               <input
                 type="text"
                 value={invoiceData?.receivedBy ?? ''}
@@ -379,13 +361,13 @@ const InvoiceScreen: React.FC = () => {
               className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
               onClick={handlePrint}
             >
-              Print
+              {t('print')}
             </button>
             <button 
               className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               onClick={handleDownloadPDF}
             >
-              Download PDF
+              {t('download_pdf')}
             </button>
           </div>
         </div>
@@ -394,84 +376,31 @@ const InvoiceScreen: React.FC = () => {
   );
 };
 
-// Print styles injection
+// Print styles injection (unchanged)
 const printStyles = `
   @media print {
-    body * {
-      visibility: hidden;
-    }
-    .print-area, .print-area * {
-      visibility: visible;
-    }
-    .print-area {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-      margin: 0 !important;
-      padding: 0 !important;
-      font-size: 8px !important;
-      box-shadow: none !important;
-      border-radius: 0 !important;
-    }
-    .no-print {
-      display: none !important;
-    }
-    input, textarea {
-      border: none !important;
-      background: transparent !important;
-      padding: 1px 0 !important;
-      font-weight: 500;
-      font-size: 8px !important;
-    }
-    .rounded-md, .rounded-lg {
-      border-radius: 0 !important;
-    }
-    .shadow-lg {
-      box-shadow: none !important;
-    }
-
-    .overflow-x-auto {
-      overflow: visible !important;
-    }
-
-    table {
-      width: 100% !important;
-      table-layout: fixed !important;
-      font-size: 7.5px !important;
-    }
-
-    th, td {
-      padding: 2px 1px !important;
-      font-size: 7.5px !important;
-      word-wrap: break-word !important;
-      overflow: hidden !important;
-    }
-
-    /* Adjust column widths for print */
-    th:nth-child(1), td:nth-child(1) { width: 14% !important; } /* Product */
-    th:nth-child(2), td:nth-child(2) { width: 11% !important; } /* Inventory */
-    th:nth-child(3), td:nth-child(3) { width: 9% !important; }  /* Code */
-    th:nth-child(4), td:nth-child(4) { width: 7% !important; }  /* Units */
-    th:nth-child(5), td:nth-child(5) { width: 9% !important; }  /* Delivered */
-    th:nth-child(6), td:nth-child(6) { width: 12% !important; } /* Price */
-    th:nth-child(7), td:nth-child(7) { width: 7% !important; }  /* Tax */
-    th:nth-child(8), td:nth-child(8) { width: 12% !important; } /* Total */
-
-    table .break-words {
-      word-break: break-word !important;
-      white-space: normal !important;
-    }
-
-    .border-b {
-      border-bottom: 1px solid #e5e7eb !important;
-    }
+    body * { visibility: hidden; }
+    .print-area, .print-area * { visibility: visible; }
+    .print-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0 !important; padding: 0 !important; font-size: 8px !important; box-shadow: none !important; border-radius: 0 !important; }
+    .no-print { display: none !important; }
+    input, textarea { border: none !important; background: transparent !important; padding: 1px 0 !important; font-weight: 500; font-size: 8px !important; }
+    .rounded-md, .rounded-lg { border-radius: 0 !important; }
+    .shadow-lg { box-shadow: none !important; }
+    .overflow-x-auto { overflow: visible !important; }
+    table { width: 100% !important; table-layout: fixed !important; font-size: 7.5px !important; }
+    th, td { padding: 2px 1px !important; font-size: 7.5px !important; word-wrap: break-word !important; overflow: hidden !important; }
+    th:nth-child(1), td:nth-child(1) { width: 14% !important; }
+    th:nth-child(2), td:nth-child(2) { width: 11% !important; }
+    th:nth-child(3), td:nth-child(3) { width: 9% !important; }
+    th:nth-child(4), td:nth-child(4) { width: 7% !important; }
+    th:nth-child(5), td:nth-child(5) { width: 9% !important; }
+    th:nth-child(6), td:nth-child(6) { width: 12% !important; }
+    th:nth-child(7), td:nth-child(7) { width: 7% !important; }
+    th:nth-child(8), td:nth-child(8) { width: 12% !important; }
+    table .break-words { word-break: break-word !important; white-space: normal !important; }
+    .border-b { border-bottom: 1px solid #e5e7eb !important; }
   }
-
-  @page {
-    margin: 0.3cm;
-    size: A4 landscape;
-  }
+  @page { margin: 0.3cm; size: A4 landscape; }
 `;
 
 if (typeof document !== 'undefined') {

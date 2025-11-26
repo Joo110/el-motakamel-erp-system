@@ -4,6 +4,7 @@ import { useInventories } from "@/mycomponents/inventory/hooks/useInventories";
 import { useProducts } from "@/mycomponents/product/hooks/useProducts";
 import { useCategories } from "@/mycomponents/category/hooks/useCategories";
 import { getInventoriesService } from "@/mycomponents/inventory/services/inventories";
+import { useTranslation } from 'react-i18next';
 
 interface StockItem {
   _id: string;
@@ -44,6 +45,8 @@ interface CategoryItem {
 }
 
 const StockSearchView: React.FC = () => {
+  const { t } = useTranslation();
+
   const {
     getAllStocks,
     getAllStockTransfers,
@@ -78,12 +81,13 @@ const StockSearchView: React.FC = () => {
       map.set(id, name);
     });
 
-    const arr: CategoryItem[] = [{ id: "All Categories", name: "All Categories" }];
+    // keep id sentinel "All Categories" for logic compatibility, but show translated label
+    const arr: CategoryItem[] = [{ id: "All Categories", name: t('all_categories') ?? 'All Categories' }];
     for (const [id, name] of map.entries()) {
       arr.push({ id, name });
     }
     return arr;
-  }, [apiCategories]);
+  }, [apiCategories, t]);
 
   const resolveCategoryNameById = (id: string | undefined) => {
     if (!id) return "—";
@@ -229,7 +233,7 @@ const StockSearchView: React.FC = () => {
           } else {
             prodName = t.productName ?? "N/A";
           }
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const resolveInventoryName = (invField: any, fieldName: string) => {
             if (!invField) return "N/A";
             if (typeof invField === 'string') {
@@ -363,7 +367,7 @@ const StockSearchView: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-4"></div>
-          <p className="text-gray-600">Loading inventory data...</p>
+          <p className="text-gray-600">{t('loading_inventory_details') || 'Loading inventory data...'}</p>
         </div>
       </div>
     );
@@ -373,12 +377,12 @@ const StockSearchView: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-4">Error loading inventory data</p>
+          <p className="text-red-600 mb-4">{t('failed_load_stocks') || 'Error loading inventory data'}</p>
           <button
             onClick={loadAllStocksAndTransfers}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
-            Retry
+            {t('retry') || 'Retry'}
           </button>
         </div>
       </div>
@@ -390,25 +394,25 @@ const StockSearchView: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-            <span>Dashboard</span>
+            <span>{t('breadcrumb_dashboard') || 'Dashboard'}</span>
             <span>›</span>
-            <span className="text-gray-700">Stock Search</span>
+            <span className="text-gray-700">{t('stock_search') || 'Stock Search'}</span>
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <h1 className="text-2xl font-bold">Inventory Management</h1>
+            <h1 className="text-2xl font-bold">{t('inventory_management') || 'Inventory Management'}</h1>
             {/* breadcrumb/title alignment preserved; stacked on small screens */}
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">Stock Search</h2>
+          <h2 className="text-lg font-semibold mb-4">{t('stock_search') || 'Stock Search'}</h2>
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="text"
-                placeholder="Search products by name, code, or description..."
+                placeholder={t('search_placeholder') || 'Search products by name, code, or description...'}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:outline-none"
@@ -436,14 +440,14 @@ const StockSearchView: React.FC = () => {
                 className="px-6 py-2 bg-slate-700 text-white rounded-full hover:bg-blue-800 transition-colors flex items-center gap-2 whitespace-nowrap flex-shrink-0 w-full sm:w-auto"
               >
                 <Search size={18} />
-                Search
+                {t('search') || 'Search'}
               </button>
               <button
                 onClick={handleReset}
                 className="px-6 py-2 bg-gray-400 text-gray-800 rounded-full hover:bg-gray-500 transition-colors flex items-center gap-2 whitespace-nowrap flex-shrink-0 w-full sm:w-auto"
               >
                 <RotateCcw size={18} />
-                Reset
+                {t('reset') || 'Reset'}
               </button>
             </div>
           </div>
@@ -451,9 +455,9 @@ const StockSearchView: React.FC = () => {
 
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
-            <h2 className="text-lg font-semibold">Stock</h2>
+            <h2 className="text-lg font-semibold">{t('stock') || 'Stock'}</h2>
             <span className="text-sm text-gray-500">
-              Showing {filteredStockItems.length > 0 ? (stockCurrentPage - 1) * stockPageSize + 1 : 0}-{Math.min(stockCurrentPage * stockPageSize, filteredStockItems.length)} of {filteredStockItems.length} products
+              {t('showing') || 'Showing'} {filteredStockItems.length > 0 ? (stockCurrentPage - 1) * stockPageSize + 1 : 0}-{Math.min(stockCurrentPage * stockPageSize, filteredStockItems.length)} {t('of') || 'of'} {filteredStockItems.length} {t('products') || 'products'}
             </span>
           </div>
 
@@ -461,10 +465,10 @@ const StockSearchView: React.FC = () => {
             <table className="w-full min-w-max">
               <thead className="border-b">
                 <tr className="text-left text-sm text-gray-600">
-                  <th className="pb-3 font-medium">Product</th>
-                  <th className="pb-3 font-medium">Inventory</th>
-                  <th className="pb-3 font-medium">Units/Inventory</th>
-                  <th className="pb-3 font-medium">Last update</th>
+                  <th className="pb-3 font-medium">{t('product_col') || 'Product'}</th>
+                  <th className="pb-3 font-medium">{t('inventory_col') || 'Inventory'}</th>
+                  <th className="pb-3 font-medium">{t('units_col') || 'Units/Inventory'}</th>
+                  <th className="pb-3 font-medium">{t('last_updated') || 'Last update'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -477,7 +481,7 @@ const StockSearchView: React.FC = () => {
                         <td className="py-4 flex items-center gap-3 whitespace-nowrap">
                           <div className="w-10 h-10 bg-gray-200 rounded-full flex-shrink-0"></div>
                           <div>
-                            <div className="font-medium">{item.product?.name || 'N/A'}</div>
+                            <div className="font-medium">{item.product?.name || t('n_a') || 'N/A'}</div>
                             <div className="text-sm text-gray-500">{categoryName}</div>
                           </div>
                         </td>
@@ -494,7 +498,7 @@ const StockSearchView: React.FC = () => {
                 ) : (
                   <tr>
                     <td colSpan={4} className="py-8 text-center text-gray-500">
-                      No products found
+                      {t('no_products_found') || 'No products found'}
                     </td>
                   </tr>
                 )}
@@ -504,7 +508,7 @@ const StockSearchView: React.FC = () => {
 
           <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-3">
             <div className="flex items-center gap-2 text-sm whitespace-nowrap">
-              <span>Show</span>
+              <span>{t('show_label') || 'Show'}</span>
               <select
                 value={stockPageSize}
                 onChange={(e) => {
@@ -518,7 +522,7 @@ const StockSearchView: React.FC = () => {
                 <option>25</option>
                 <option>50</option>
               </select>
-              <span>entries</span>
+              <span>{t('entries_label') || 'entries'}</span>
             </div>
 
             <div className="flex items-center gap-2 overflow-x-auto py-1">
@@ -527,7 +531,7 @@ const StockSearchView: React.FC = () => {
                 disabled={stockCurrentPage === 1}
                 className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 whitespace-nowrap"
               >
-                Previous
+                {t('previous_label') || 'Previous'}
               </button>
 
               <div className="flex gap-2 px-1">
@@ -549,7 +553,7 @@ const StockSearchView: React.FC = () => {
                 disabled={stockCurrentPage === stockTotalPages}
                 className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 whitespace-nowrap"
               >
-                Next
+                {t('next_label') || 'Next'}
               </button>
             </div>
           </div>
@@ -557,9 +561,9 @@ const StockSearchView: React.FC = () => {
 
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
-            <h2 className="text-lg font-semibold">Transactions</h2>
+            <h2 className="text-lg font-semibold">{t('transactions') || 'Transactions'}</h2>
             <span className="text-sm text-gray-500">
-              Showing {filteredTransactions.length > 0 ? (transCurrentPage - 1) * transPageSize + 1 : 0}-{Math.min(transCurrentPage * transPageSize, filteredTransactions.length)} of {filteredTransactions.length} transactions
+              {t('showing') || 'Showing'} {filteredTransactions.length > 0 ? (transCurrentPage - 1) * transPageSize + 1 : 0}-{Math.min(transCurrentPage * transPageSize, filteredTransactions.length)} {t('of') || 'of'} {filteredTransactions.length} {t('transactions') || 'transactions'}
             </span>
           </div>
 
@@ -567,13 +571,13 @@ const StockSearchView: React.FC = () => {
             <table className="w-full min-w-max">
               <thead className="border-b">
                 <tr className="text-left text-sm text-gray-600">
-                  <th className="pb-3 font-medium">Product</th>
-                  <th className="pb-3 font-medium">Trans. Number</th>
-                  <th className="pb-3 font-medium">Units</th>
-                  <th className="pb-3 font-medium">Type</th>
-                  <th className="pb-3 font-medium">From</th>
-                  <th className="pb-3 font-medium">To</th>
-                  <th className="pb-3 font-medium">Time/Date</th>
+                  <th className="pb-3 font-medium">{t('product_col') || 'Product'}</th>
+                  <th className="pb-3 font-medium">Trans. {t('number') || 'Number'}</th>
+                  <th className="pb-3 font-medium">{t('units_label') || 'Units'}</th>
+                  <th className="pb-3 font-medium">{t('type') || 'Type'}</th>
+                  <th className="pb-3 font-medium">{t('from_label') || 'From'}</th>
+                  <th className="pb-3 font-medium">{t('to_label') || 'To'}</th>
+                  <th className="pb-3 font-medium">{t('time_date') || 'Time/Date'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -586,7 +590,7 @@ const StockSearchView: React.FC = () => {
                         <td className="py-4 flex items-center gap-3 whitespace-nowrap">
                           <div className="w-10 h-10 bg-gray-200 rounded-full flex-shrink-0"></div>
                           <div>
-                            <div className="font-medium">{trans.product?.name || 'N/A'}</div>
+                            <div className="font-medium">{trans.product?.name || t('n_a') || 'N/A'}</div>
                             <div className="text-sm text-gray-500">{categoryName}</div>
                           </div>
                         </td>
@@ -598,7 +602,7 @@ const StockSearchView: React.FC = () => {
                             trans.type === 'Out' ? 'bg-red-100 text-red-700' :
                             'bg-blue-100 text-blue-700'
                           }`}>
-                            {trans.type}
+                            {trans.type === 'In' ? (t('stock_in') || 'In') : trans.type === 'Out' ? (t('stock_out') || 'Out') : (t('transfer') || 'Transfer')}
                           </span>
                         </td>
                         <td className="py-4 whitespace-nowrap">{trans.fromInventory?.name || '-'}</td>
@@ -612,7 +616,7 @@ const StockSearchView: React.FC = () => {
                 ) : (
                   <tr>
                     <td colSpan={7} className="py-8 text-center text-gray-500">
-                      No transactions found
+                      {t('no_transactions_found') || 'No transactions found'}
                     </td>
                   </tr>
                 )}
@@ -622,7 +626,7 @@ const StockSearchView: React.FC = () => {
 
           <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-3">
             <div className="flex items-center gap-2 text-sm whitespace-nowrap">
-              <span>Show</span>
+              <span>{t('show_label') || 'Show'}</span>
               <select
                 value={transPageSize}
                 onChange={(e) => {
@@ -636,7 +640,7 @@ const StockSearchView: React.FC = () => {
                 <option>25</option>
                 <option>50</option>
               </select>
-              <span>entries</span>
+              <span>{t('entries_label') || 'entries'}</span>
             </div>
 
             <div className="flex items-center gap-2 overflow-x-auto py-1">
@@ -645,7 +649,7 @@ const StockSearchView: React.FC = () => {
                 disabled={transCurrentPage === 1}
                 className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 whitespace-nowrap"
               >
-                Previous
+                {t('previous_label') || 'Previous'}
               </button>
 
               <div className="flex gap-2 px-1">
@@ -665,9 +669,9 @@ const StockSearchView: React.FC = () => {
               <button
                 onClick={() => setTransCurrentPage(prev => Math.min(transTotalPages, prev + 1))}
                 disabled={transCurrentPage === transTotalPages}
-                className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 whitespace-nowrap"
+                className="px-3 py-1 border rounded-full hover:bg-gray-50.disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 whitespace-nowrap"
               >
-                Next
+                {t('next_label') || 'Next'}
               </button>
             </div>
           </div>

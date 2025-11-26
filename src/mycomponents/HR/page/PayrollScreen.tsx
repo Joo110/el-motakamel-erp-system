@@ -25,14 +25,13 @@ type PayrollItem = {
 
 const PayrollScreen: React.FC = () => {
   const { payrolls, fetch, updatePayroll } = usePayrolls();
-  const { payPayroll } = usePayInvoice();
-
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const { payInvoice, payPayroll, response: payResponse, loading: payLoading, error: payError } = usePayInvoice();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('November');
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [selectedDepartment, setSelectedDepartment] = useState('All Departments');
   const [entriesPerPage, setEntriesPerPage] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
   const [showModifyModal, setShowModifyModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<PayrollItem | null>(null);
 
@@ -53,6 +52,7 @@ const PayrollScreen: React.FC = () => {
     void fetch();
   }, [fetch]);
 
+  // --- map backend payroll -> UI shape
   const mappedPayrolls: PayrollItem[] = useMemo(() => {
     if (!Array.isArray(payrolls)) return [];
 
@@ -137,6 +137,11 @@ const PayrollScreen: React.FC = () => {
     });
   }, [payrolls]);
 
+  useEffect(() => {
+    console.log("PayrollScreen: raw payrolls from hook:", payrolls);
+    console.log("PayrollScreen: mappedPayrolls:", mappedPayrolls);
+  }, [payrolls, mappedPayrolls]);
+
   const filteredPayroll = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
 
@@ -153,14 +158,13 @@ const PayrollScreen: React.FC = () => {
             if (!String(item.date).toLowerCase().includes(selectedMonth.toLowerCase())) return false;
           }
         } catch {
-  // eslint يحذر هنا لأن البلوك فارغ
-}
-
+          // ignore
+        }
       }
 
-if (selectedDepartment !== 'All Departments') {
-  // intentionally left empty
-}
+      if (selectedDepartment !== 'All Departments') {
+        // UI unchanged (no dept field)
+      }
 
       if (!q) return true;
       return (
@@ -170,27 +174,26 @@ if (selectedDepartment !== 'All Departments') {
     });
   }, [mappedPayrolls, searchTerm, selectedMonth, selectedStatus, selectedDepartment]);
 
-  const totalPages = Math.ceil(filteredPayroll.length / entriesPerPage);
-
   const displayed = useMemo(() => {
-    const start = (currentPage - 1) * entriesPerPage;
-    const end = start + entriesPerPage;
-    return filteredPayroll.slice(start, end);
-  }, [filteredPayroll, currentPage, entriesPerPage]);
+    return filteredPayroll.slice(0, entriesPerPage);
+  }, [filteredPayroll, entriesPerPage]);
 
-  const goToPage = (page: number) => {
-    if (page < 1 || page > totalPages) return;
-    setCurrentPage(page);
-  };
+  // Handlers using hook.updatePayroll
+const handlePaySalary = async (id: string) => {
+  try {
+    // 1) استدعاء endpoint الدفع عبر usePayInvoice hook
+    await payPayroll(id); // <-- هنا استخدمنا payPayroll بدل pay
 
-  const handlePaySalary = async (id: string) => {
     try {
-      await payPayroll(id);
       await updatePayroll(id, { status: 'paid' });
-    } catch (err) {
-      console.error('Pay failed', err);
+    } catch (updateErr) {
+      console.error('Failed to update payroll status after pay:', updateErr);
     }
-  };
+
+  } catch (err) {
+    console.error('Pay failed', err);
+  }
+};
 
   const handleModify = (employee: PayrollItem) => {
     setSelectedEmployee(employee);
@@ -299,6 +302,7 @@ if (selectedDepartment !== 'All Departments') {
             </div>
 
             <div className="flex flex-wrap gap-4 items-end">
+              {/* Search Input */}
               <div className="flex-1 min-w-[250px] relative">
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
@@ -310,6 +314,7 @@ if (selectedDepartment !== 'All Departments') {
                 />
               </div>
 
+              {/* Month */}
               <div className="w-44">
                 <select
                   value={selectedMonth}
@@ -320,6 +325,7 @@ if (selectedDepartment !== 'All Departments') {
                 </select>
               </div>
 
+              {/* Status */}
               <div className="w-36">
                 <select
                   value={selectedStatus}
@@ -330,6 +336,7 @@ if (selectedDepartment !== 'All Departments') {
                 </select>
               </div>
 
+              {/* Department */}
               <div className="w-48">
                 <select
                   value={selectedDepartment}
@@ -340,6 +347,7 @@ if (selectedDepartment !== 'All Departments') {
                 </select>
               </div>
 
+              {/* Buttons */}
               <button className="px-6 py-2.5 bg-slate-700 text-white rounded-xl hover:bg-slate-800 text-sm flex items-center gap-2">
                 <Search size={16} />
                 Search
@@ -391,7 +399,9 @@ if (selectedDepartment !== 'All Departments') {
                     <td className="px-6 py-4 text-sm text-gray-600">{item.date}</td>
                     <td className="px-6 py-4 flex items-center gap-2">
                       {item.status === 'Paid' ? (
-                        <span className="text-sm text-green-600">{item.status}</span>
+                        <>
+                          <span className="text-sm text-green-600">{item.status}</span>
+                        </>
                       ) : (
                         <button
                           onClick={() => handlePaySalary(item.id)}
@@ -412,13 +422,13 @@ if (selectedDepartment !== 'All Departments') {
               </tbody>
             </table>
 
-                   {/* Pagination */}
+            {/* Pagination */}
             <div className="flex items-center justify-between mt-6">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-700">Show</span>
                 <select
                   value={entriesPerPage}
-                  onChange={(e) => { setEntriesPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                  onChange={(e) => setEntriesPerPage(Number(e.target.value))}
                   className="px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-slate-500 focus:border-transparent outline-none"
                 >
                   <option value={10}>10</option>
@@ -429,29 +439,13 @@ if (selectedDepartment !== 'All Departments') {
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => goToPage(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className={`px-4 py-2 text-sm border rounded-xl ${currentPage === 1 ? 'text-gray-400 border-gray-200' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
-                >
+                <button className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">
                   Previous
                 </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                  <button
-                    key={page}
-                    onClick={() => goToPage(page)}
-                    className={`px-4 py-2 text-sm rounded-xl ${page === currentPage ? 'bg-slate-700 text-white' : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'}`}
-                  >
-                    {page}
-                  </button>
-                ))}
-                <button
-                  onClick={() => goToPage(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className={`px-4 py-2 text-sm border rounded-xl ${currentPage === totalPages ? 'text-gray-400 border-gray-200' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
-                >
-                  Next
-                </button>
+                <button className="px-4 py-2 text-sm bg-slate-700 text-white rounded-xl">1</button>
+                <button className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">2</button>
+                <button className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">3</button>
+                <button className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">Next</button>
               </div>
             </div>
           </div>

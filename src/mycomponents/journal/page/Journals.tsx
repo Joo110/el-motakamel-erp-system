@@ -3,9 +3,10 @@ import { Search, Trash2, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import useJournal from '../hooks/useJournal';
+import { useTranslation } from 'react-i18next';
 
 const JournalsList: React.FC = () => {
-
+  const { t } = useTranslation();
   const { entries, loading, refresh, removeEntry } = useJournal();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -17,14 +18,14 @@ const JournalsList: React.FC = () => {
   }, []);
 
   const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to delete "${name}"?`)) return;
+    if (!window.confirm(t('Are you sure you want to delete "{name}"?', { name }))) return;
 
     try {
       await removeEntry(id);
-      toast.success('Journal deleted successfully!');
+      toast.success(t('Journal deleted successfully!'));
       await refresh();
     } catch {
-      toast.error('Failed to delete journal');
+      toast.error(t('Failed to delete journal'));
     }
   };
 
@@ -56,7 +57,7 @@ const JournalsList: React.FC = () => {
   };
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return t('N/A');
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
@@ -71,15 +72,15 @@ const JournalsList: React.FC = () => {
 
         <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Accounting Management</h1>
-            <p className="text-sm text-gray-500">Dashboard &gt; Journals</p>
+            <h1 className="text-2xl font-bold text-gray-900">{t('Accounting Management')}</h1>
+            <p className="text-sm text-gray-500">{t('Dashboard')} &gt; {t('Journals')}</p>
           </div>
           <Link
             to="/dashboard/journals/new"
             className="bg-[#1f334d] hover:bg-gray-900 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-md transition-all font-medium"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Journal</span>
+            <span>{t('Add Journal')}</span>
           </Link>
         </div>
 
@@ -89,7 +90,7 @@ const JournalsList: React.FC = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
-                placeholder="Search by name, type, or code..."
+                placeholder={t('Search by name, type, or code...')}
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
@@ -103,7 +104,7 @@ const JournalsList: React.FC = () => {
               className="bg-[#1f334d] hover:bg-gray-900 text-white px-6 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-all font-medium"
             >
               <Search className="w-4 h-4" />
-              Search
+              {t('Search')}
             </button>
           </div>
         </div>
@@ -114,11 +115,11 @@ const JournalsList: React.FC = () => {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="text-left py-3 px-4">Code</th>
-                    <th className="text-left py-3 px-4">Name</th>
-                    <th className="text-left py-3 px-4">Type</th>
-                    <th className="text-left py-3 px-4">Created</th>
-                    <th className="text-left py-3 px-4">Actions</th>
+                    <th className="text-left py-3 px-4">{t('Code')}</th>
+                    <th className="text-left py-3 px-4">{t('Name')}</th>
+                    <th className="text-left py-3 px-4">{t('Type')}</th>
+                    <th className="text-left py-3 px-4">{t('Created')}</th>
+                    <th className="text-left py-3 px-4">{t('Actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -151,7 +152,7 @@ const JournalsList: React.FC = () => {
                   {paginatedData.length === 0 && (
                     <tr>
                       <td colSpan={5} className="text-center py-8 text-gray-500">
-                        {loading ? 'Loading...' : 'No journals found'}
+                        {loading ? t('Loading...') : t('No journals found')}
                       </td>
                     </tr>
                   )}
@@ -163,8 +164,8 @@ const JournalsList: React.FC = () => {
             {paginatedData.length > 0 && (
               <div className="flex items-center justify-between mt-6">
                 <div className="text-sm text-gray-600">
-                  Showing {(currentPage - 1) * rowsPerPage + 1}–
-                  {Math.min(currentPage * rowsPerPage, filtered.length)} of {filtered.length}
+                  {t('Showing')} {(currentPage - 1) * rowsPerPage + 1}–
+                  {Math.min(currentPage * rowsPerPage, filtered.length)} {t('of')} {filtered.length}
                 </div>
 
                 <div className="flex gap-2">
@@ -172,14 +173,14 @@ const JournalsList: React.FC = () => {
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     className="px-4 py-2 border rounded-lg bg-gray-100 hover:bg-gray-200"
                   >
-                    Prev
+                    {t('Prev')}
                   </button>
                   <span className="px-4 py-2">{currentPage} / {totalPages}</span>
                   <button
                     onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                     className="px-4 py-2 border rounded-lg bg-gray-100 hover:bg-gray-200"
                   >
-                    Next
+                    {t('Next')}
                   </button>
                 </div>
               </div>

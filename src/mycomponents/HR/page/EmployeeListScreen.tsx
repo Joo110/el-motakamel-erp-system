@@ -1,11 +1,17 @@
 import React, { useMemo, useState } from "react";
 import { Search, Plus, Edit, Trash2, Filter } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+// افتراض وجود الدوال التالية
 import useEmployees from "@/mycomponents/HR/hooks/useEmployees";
 import useDepartments from "../../Department/hooks/useDepartments";
+// استخدام دالة الترجمة الجديدة
+import { useTranslation } from "react-i18next"; 
 
 const EmployeeListScreen: React.FC = () => {
   const navigate = useNavigate();
+  // استخدام دالة الترجمة
+  const { t } = useTranslation(); 
+  
   const { employees, loading, error, refresh, deleteEmployee } = useEmployees();
   const { departments, loading: depsLoading } = useDepartments();
   const [searchTerm, setSearchTerm] = useState("");
@@ -26,7 +32,7 @@ const EmployeeListScreen: React.FC = () => {
 
   // helper to safely get department name from employee.department which may be id or object
   const getDeptName = (deptField: any) => {
-    if (!deptField) return "—";
+    if (!deptField) return t("notAvailable");
     // if it's a string id
     if (typeof deptField === "string") {
       const key = deptField.toString();
@@ -40,7 +46,7 @@ const EmployeeListScreen: React.FC = () => {
       if (maybeName) return maybeName;
       if (maybeId && deptMap.has(maybeId)) return deptMap.get(maybeId) as string;
       if (maybeId) return maybeId;
-      return "—";
+      return t("notAvailable");
     }
     // fallback
     return String(deptField);
@@ -81,7 +87,8 @@ const EmployeeListScreen: React.FC = () => {
   }, [filtered, currentPage, entriesPerPage]);
 
   const handleDelete = async (id: string) => {
-    const ok = window.confirm("Are you sure you want to delete this employee?");
+    // استخدام نص الترجمة
+    const ok = window.confirm(t("deleteConfirm")); 
     if (!ok) return;
     try {
       await deleteEmployee(id);
@@ -103,16 +110,17 @@ const EmployeeListScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    // إضافة dir="rtl" لدعم اللغة العربية
+    <div className="min-h-screen bg-gray-50 p-6" dir="rtl"> 
       {/* Header */}
       <div className="bg-white border-b px-6 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">HR Management</h1>
+            <h1 className="text-3xl font-bold text-gray-900">{t("hrManagement")}</h1>
             <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-              <span>Dashboard</span>
-              <span>&gt;</span>
-              <span>HR</span>
+              <span>{t("dashboard")}</span>
+              <span>&lt;</span> {/* عكس اتجاه السهم لدعم RTL */}
+              <span>{t("hr")}</span>
             </div>
           </div>
           <button
@@ -120,7 +128,7 @@ const EmployeeListScreen: React.FC = () => {
             className="px-6 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-800 text-white font-medium flex items-center gap-2"
           >
             <Plus size={20} />
-            Add Employee
+            {t("addEmployee")}
           </button>
         </div>
       </div>
@@ -131,23 +139,25 @@ const EmployeeListScreen: React.FC = () => {
           {/* Search Section */}
           <div className="p-6 border-b">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Employees Search</h2>
+              <h2 className="text-xl font-bold text-gray-900">{t("employeesSearch")}</h2>
               <Filter size={20} className="text-gray-400" />
             </div>
 
             <div className="flex flex-wrap gap-4 items-end">
               {/* Search Input */}
               <div className="flex-1 min-w-[250px] relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                {/* تغيير موقع أيقونة البحث إلى اليمين (right-4) */}
+                <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" /> 
                 <input
                   type="text"
-                  placeholder="Search employees by name, id, or department..."
+                  placeholder={t("searchPlaceholder")}
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-500 text-sm"
+                  // تغيير المسافة البادئة للبحث إلى اليمين (pr-10) 
+                  className="w-full pr-10 pl-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-500 text-sm"
                 />
               </div>
 
@@ -161,7 +171,7 @@ const EmployeeListScreen: React.FC = () => {
                   }}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-500 text-sm"
                 >
-                  <option value="">All Departments</option>
+                  <option value="">{t("allDepartments")}</option>
                   {departmentOptions.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.name}
@@ -178,7 +188,7 @@ const EmployeeListScreen: React.FC = () => {
                 className="px-6 py-2.5 bg-slate-700 text-white rounded-xl hover:bg-slate-800 text-sm flex items-center gap-2"
               >
                 <Search size={16} />
-                Search
+                {t("search")}
               </button>
               <button
                 onClick={() => {
@@ -188,7 +198,7 @@ const EmployeeListScreen: React.FC = () => {
                 }}
                 className="px-6 py-2.5 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 text-sm"
               >
-                Reset
+                {t("reset")}
               </button>
             </div>
           </div>
@@ -196,64 +206,68 @@ const EmployeeListScreen: React.FC = () => {
           {/* Table Section */}
           <div className="p-6 overflow-x-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900">Employees</h3>
+              <h3 className="text-xl font-bold text-gray-900">{t("employeesTitle")}</h3>
               <span className="text-sm text-gray-500">
-                Showing {Math.min((currentPage - 1) * entriesPerPage + 1, totalEntries || 0)}-
-                {Math.min(currentPage * entriesPerPage, totalEntries)} of {totalEntries} employees
+                {/* استخدام دالة الترجمة ذات المعاملات */}
+                {t("showingEmployees", {
+                  start: Math.min((currentPage - 1) * entriesPerPage + 1, totalEntries || 0),
+                  end: Math.min(currentPage * entriesPerPage, totalEntries),
+                  total: totalEntries,
+                })}
               </span>
             </div>
 
             {loading || depsLoading ? (
-              <div className="py-20 text-center text-gray-500">Loading employees...</div>
+              <div className="py-20 text-center text-gray-500">{t("loadingEmployees")}</div>
             ) : error ? (
-              <div className="py-20 text-center text-red-500">Failed to load employees.</div>
+              <div className="py-20 text-center text-red-500">{t("loadError")}</div>
             ) : (
               <>
-                <table className="w-full">
+                <table className="w-full text-right"> {/* جعل اتجاه الجدول لليمين */}
                   <thead>
                     <tr className="border-b bg-gray-50">
-                      <th className="text-left py-4 px-6 text-xs font-medium text-gray-600">Name</th>
-                      <th className="text-left py-4 px-6 text-xs font-medium text-gray-600">Id</th>
-                      <th className="text-left py-4 px-6 text-xs font-medium text-gray-600">Department</th>
-                      <th className="text-left py-4 px-6 text-xs font-medium text-gray-600">Location</th>
-                      <th className="text-left py-4 px-6 text-xs font-medium text-gray-600">Job Title</th>
-                      <th className="text-left py-4 px-6 text-xs font-medium text-gray-600">Type</th>
-                      <th className="text-left py-4 px-6 text-xs font-medium text-gray-600">Status</th>
-                      <th className="text-left py-4 px-6 text-xs font-medium text-gray-600">View</th>
+                      <th className="text-right py-4 px-6 text-xs font-medium text-gray-600">{t("name")}</th>
+                      <th className="text-right py-4 px-6 text-xs font-medium text-gray-600">{t("id")}</th>
+                      <th className="text-right py-4 px-6 text-xs font-medium text-gray-600">{t("department")}</th>
+                      <th className="text-right py-4 px-6 text-xs font-medium text-gray-600">{t("location")}</th>
+                      <th className="text-right py-4 px-6 text-xs font-medium text-gray-600">{t("jobTitle")}</th>
+                      <th className="text-right py-4 px-6 text-xs font-medium text-gray-600">{t("type")}</th>
+                      <th className="text-right py-4 px-6 text-xs font-medium text-gray-600">{t("status")}</th>
+                      <th className="text-right py-4 px-6 text-xs font-medium text-gray-600">{t("view")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {paginated.map((emp: any) => {
                       const empId = emp.id ?? emp._id ?? "";
-                      const displayName = emp.name ?? emp.fullName ?? "—";
+                      const displayName = emp.name ?? emp.fullName ?? t("notAvailable");
                       const departmentName = getDeptName(emp.department);
-                      const location = emp.workLocation ?? emp.location ?? "—";
-                      const type = emp.employmentType ?? emp.type ?? "—";
-                      const jobTitle = emp.jobTitle ?? "—";
-                      const status = emp.status ?? (emp.active ? "Active" : "—");
+                      const location = emp.workLocation ?? emp.location ?? t("notAvailable");
+                      const type = emp.employmentType ?? emp.type ?? t("notAvailable");
+                      const jobTitle = emp.jobTitle ?? t("notAvailable");
+                      const status = emp.status ?? (emp.active ? t("activeStatus") : t("notAvailable"));
 
                       return (
                         <tr key={empId} className="border-b hover:bg-gray-50">
                           <td className="py-4 px-6">
-  <div className="flex items-center gap-3">
-    {emp.avatar || emp.image || emp.profilePic ? (
-      <img
-        src={emp.avatar || emp.image || emp.profilePic}
-        alt={displayName}
-        className="w-10 h-10 rounded-full object-cover border border-gray-200"
-      />
-    ) : (
-      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-500 font-medium text-sm">
-        {displayName
-          .split(" ")
-          .map((n: string) => n[0])
-          .join("")
-          .substring(0, 2)
-          .toUpperCase()}
-      </div>
-    )}
-    <span className="text-sm text-gray-900">{displayName}</span>
-  </div>
+                            <div className="flex items-center gap-3">
+                              {emp.avatar || emp.image || emp.profilePic ? (
+                                <img
+                                  src={emp.avatar || emp.image || emp.profilePic}
+                                  alt={displayName}
+                                  className="w-10 h-10 rounded-full object-cover border border-gray-200"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-500 font-medium text-sm">
+                                  {displayName
+                                    .split(" ")
+                                    .map((n: string) => n[0])
+                                    .join("")
+                                    .substring(0, 2)
+                                    .toUpperCase()}
+                                </div>
+                              )}
+                              <span className="text-sm text-gray-900">{displayName}</span>
+                            </div>
                           </td>
                           <td className="py-4 px-6 text-sm text-gray-600">{empId}</td>
                           <td className="py-4 px-6 text-sm text-gray-600">{departmentName}</td>
@@ -261,7 +275,7 @@ const EmployeeListScreen: React.FC = () => {
                           <td className="py-4 px-6 text-sm text-gray-600">{jobTitle}</td>
                           <td className="py-4 px-6 text-sm text-gray-600">{type}</td>
                           <td className="py-4 px-6">
-                            <span className={`text-sm ${status === "Active" ? "text-green-600" : "text-gray-600"}`}>
+                            <span className={`text-sm ${status === t("activeStatus") ? "text-green-600" : "text-gray-600"}`}>
                               {status}
                             </span>
                           </td>
@@ -272,14 +286,14 @@ const EmployeeListScreen: React.FC = () => {
                                 onClick={() => handleView(empId)}
                                 className="text-blue-600 hover:text-blue-800 text-sm underline"
                               >
-                                view
+                                {t("viewAction")}
                               </button>
 
                               {/* Edit Button */}
                               <button
                                 onClick={() => handleEdit(empId)}
                                 className="text-blue-600 hover:text-blue-800"
-                                title="Edit"
+                                title={t("editAction")}
                               >
                                 <Edit size={16} />
                               </button>
@@ -288,7 +302,7 @@ const EmployeeListScreen: React.FC = () => {
                               <button
                                 onClick={() => handleDelete(empId)}
                                 className="text-blue-600 hover:text-blue-800"
-                                title="Delete"
+                                title={t("deleteAction")}
                               >
                                 <Trash2 size={16} />
                               </button>
@@ -300,7 +314,7 @@ const EmployeeListScreen: React.FC = () => {
                     {paginated.length === 0 && (
                       <tr>
                         <td colSpan={8} className="py-12 text-center text-gray-500">
-                          No employees found.
+                          {t("noEmployeesFound")}
                         </td>
                       </tr>
                     )}
@@ -310,7 +324,7 @@ const EmployeeListScreen: React.FC = () => {
                 {/* Pagination */}
                 <div className="flex items-center justify-between mt-6">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-700">Show</span>
+                    <span className="text-sm text-gray-700">{t("show")}</span>
                     <select
                       value={entriesPerPage}
                       onChange={(e) => {
@@ -323,7 +337,7 @@ const EmployeeListScreen: React.FC = () => {
                       <option value={25}>25</option>
                       <option value={50}>50</option>
                     </select>
-                    <span className="text-sm text-gray-700">entries</span>
+                    <span className="text-sm text-gray-700">{t("entries")}</span>
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -332,9 +346,10 @@ const EmployeeListScreen: React.FC = () => {
                       className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50"
                       disabled={currentPage === 1}
                     >
-                      Previous
+                      {t("previous")}
                     </button>
 
+                    {/* Logic for pagination buttons remains the same */}
                     {Array.from({ length: totalPages }).map((_, idx) => {
                       const page = idx + 1;
                       // only show a few pages for brevity
@@ -351,6 +366,9 @@ const EmployeeListScreen: React.FC = () => {
                           );
                         }
                         if (page === 2 && currentPage > 3) {
+                          return <span key={page} className="px-3">...</span>;
+                        }
+                        if (page === totalPages - 1 && currentPage < totalPages - 2) {
                           return <span key={page} className="px-3">...</span>;
                         }
                         return null;
@@ -372,7 +390,7 @@ const EmployeeListScreen: React.FC = () => {
                       className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50"
                       disabled={currentPage === totalPages}
                     >
-                      Next
+                      {t("next")}
                     </button>
                   </div>
                 </div>

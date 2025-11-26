@@ -2,6 +2,7 @@ import './App.css';
 import { createHashRouter, RouterProvider } from "react-router-dom";
 import { Toaster } from 'react-hot-toast';
 import ProtectedRoute from "./ProtectedRoute";
+import "./i18n";
 
 // Authentication Pages
 import UserLogin from './mycomponents/user/authentication/UserLogin';
@@ -79,6 +80,14 @@ import InvoiceScreen from "./mycomponents/Precious/page/InvoiceScreen";
 import AccountingDashboard from './mycomponents/accounts/pages/AccountingDashboard';
 import AccountingTree from './mycomponents/accounts/pages/AccountingTree';
 
+//Trips Management Pages
+import TripsManagement from './mycomponents/Trips/page/TripsManagement';
+import NewTrip from './mycomponents/Trips/page/NewTrip';
+import DelegatesManagement from './mycomponents/Trips/page/DelegatesManagement';
+import CarsListView from './mycomponents/Trips/page/CarsListView';
+import CarDetailsView from './mycomponents/Trips/page/CarDetailsView';
+import AddCarForm from './mycomponents/Trips/page/AddCarForm';
+import Transfercar from './mycomponents/Trips/page/Transfercar';
 
 function App() {
   const routes = createHashRouter([
@@ -172,6 +181,15 @@ function App() {
     //  Accounts Management Pages
     { path: "accounts/AccountingDashboard", element: <AccountingDashboard /> },
     { path: "accounts/AccountingTree", element: <AccountingTree /> },
+
+    //Trips Management Pages
+    { path: "Trips/TripsManagement", element: <TripsManagement /> },
+    { path: "Trips/NewTrip", element: <NewTrip /> },
+    { path: "Trips/DelegatesManagement/:id", element: <DelegatesManagement /> },
+    { path: "Trips/CarsListView", element: <CarsListView /> },
+    { path: "Trips/CarDetailsView", element: <CarDetailsView /> },
+    { path: "Trips/AddCarForm", element: <AddCarForm /> },
+    { path: "Trips/Transfercar", element: <Transfercar /> },
 
       ],
     },

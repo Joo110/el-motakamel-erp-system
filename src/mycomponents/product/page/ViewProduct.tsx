@@ -4,8 +4,10 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useProducts } from "../hooks/useProducts";
 import { useCategories } from "@/mycomponents/category/hooks/useCategories";
 import type { Product } from "../services/productService";
+import { useTranslation } from "react-i18next";
 
 const ViewProduct: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { getProductById, loading, error } = useProducts();
@@ -29,14 +31,14 @@ const ViewProduct: React.FC = () => {
     return () => { mounted = false; };
   }, [id, getProductById]);
 
-  if (loading || !product) return <p>Loading...</p>;
+  if (loading || !product) return <p>{t("loading")}</p>;
   if (error) return <p className="text-red-500">{error}</p>;
 
   const total = (product.price || 0) * (product.unit || 0) + (product.tax || 0);
 
   // resolve category display name
   const resolveCategoryName = (prodCat: any) => {
-    if (!prodCat) return "Unknown";
+    if (!prodCat) return t("unknown");
     if (typeof prodCat === "string") {
       const found = (apiCategories ?? []).find((c: any) => (c._id ?? c.id) === prodCat);
       if (found) return found.name ?? found.category ?? found.title ?? prodCat;
@@ -53,9 +55,9 @@ const ViewProduct: React.FC = () => {
         if (found) return found.name ?? found.category ?? found.title ?? idCandidate;
         return idCandidate;
       }
-      return "Unknown";
+      return t("unknown");
     }
-    return "Unknown";
+    return t("unknown");
   };
 
   return (
@@ -63,21 +65,21 @@ const ViewProduct: React.FC = () => {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Products Management
+          {t("products_management")}
         </h1>
         <div className="flex items-center gap-2 text-sm text-gray-500">
-          <span>Dashboard</span>
+          <span>{t("dashboard")}</span>
           <ChevronRight className="w-4 h-4" />
-          <span>Products</span>
+          <span>{t("products")}</span>
           <ChevronRight className="w-4 h-4" />
-          <span>View Product</span>
+          <span>{t("view_product")}</span>
         </div>
       </div>
 
       {/* Product Details Card */}
       <div className="bg-white rounded-2xl shadow-sm p-8">
         <h2 className="text-2xl font-bold text-gray-900 mb-8">
-          Product Details
+          {t("product_details")}
         </h2>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -85,14 +87,14 @@ const ViewProduct: React.FC = () => {
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-500 mb-2">
-                Product Name
+                {t("product_name")}
               </label>
               <p className="text-lg text-gray-900 font-medium">{product.name}</p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-500 mb-2">
-                Category
+                {t("category")}
               </label>
               <p className="text-lg text-gray-900">
                 {resolveCategoryName(product.category)}
@@ -101,14 +103,14 @@ const ViewProduct: React.FC = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-500 mb-2">
-                Description
+                {t("description")}
               </label>
               <p className="text-gray-900 leading-relaxed">{product.description}</p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-500 mb-2">
-                Code
+                {t("code")}
               </label>
               <p className="text-lg text-gray-900 font-mono">{product.code}</p>
             </div>
@@ -116,19 +118,19 @@ const ViewProduct: React.FC = () => {
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-500 mb-2">
-                  Price
+                  {t("price")}
                 </label>
                 <p className="text-lg text-gray-900 font-medium">{product.price} SR</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-500 mb-2">
-                  Tax
+                  {t("tax")}
                 </label>
                 <p className="text-lg text-gray-900 font-medium">{product.tax} SR</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-500 mb-2">
-                  Units
+                  {t("units")}
                 </label>
                 <p className="text-lg text-gray-900 font-medium">{product.unit}</p>
               </div>
@@ -136,7 +138,7 @@ const ViewProduct: React.FC = () => {
 
             <div className="pt-4 border-t border-gray-200">
               <div className="flex items-center justify-between">
-                <span className="text-lg font-medium text-gray-900">Total Amount:</span>
+                <span className="text-lg font-medium text-gray-900">{t("total_amount")}</span>
                 <span className="text-2xl font-bold text-slate-700">{total} SR</span>
               </div>
             </div>
@@ -159,7 +161,7 @@ const ViewProduct: React.FC = () => {
                 />
               </div>
               <div className="mt-4 text-center">
-                <p className="text-sm text-gray-500">Product Image</p>
+                <p className="text-sm text-gray-500">{t("product_image")}</p>
               </div>
             </div>
           </div>
@@ -171,13 +173,13 @@ const ViewProduct: React.FC = () => {
             onClick={() => navigate("/dashboard/products")}
             className="px-6 py-2.5 rounded-xl bg-white border border-gray-300 shadow-sm text-gray-700 font-medium transition-all hover:bg-gray-100 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
           >
-            Back to Products
+            {t("back_to_products")}
           </button>
           <button
             onClick={() => navigate(`/dashboard/products/edit/${product._id}`)}
             className="px-6 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-800 text-white font-medium shadow-sm transition-all focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
           >
-            Edit Product
+            {t("edit_product")}
           </button>
         </div>
       </div>

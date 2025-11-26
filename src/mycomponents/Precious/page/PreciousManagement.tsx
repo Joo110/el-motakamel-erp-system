@@ -9,10 +9,12 @@ import { usePurchaseOrdersList } from "../../Precious/hooks/useCreatePurchaseOrd
 import { useSuppliers } from "../../Precious/hooks/useSuppliers";
 import { useUsers } from "../../user/hooks/useUsers";
 import { toast } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 type TabType = "draft" | "approved" | "delivered";
 
 const PreciousManagement = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>("draft");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -54,7 +56,7 @@ const PreciousManagement = () => {
     if (!supplierId) return "-";
     const name = suppliersMap.get(supplierId);
     if (name) return name;
-    if (suppliersLoading) return "Loading supplier...";
+    if (suppliersLoading) return t('loading') + ' supplier...';
     return supplierId;
   };
 
@@ -62,7 +64,7 @@ const PreciousManagement = () => {
     if (!userId) return "-";
     const name = usersMap.get(userId);
     if (name) return name;
-    if (usersLoading) return "Loading user...";
+    if (usersLoading) return t('loading') + ' user...';
     return userId;
   };
 
@@ -70,10 +72,10 @@ const PreciousManagement = () => {
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-2">
-          Purchase Orders Management
+          {t('purchase_orders_management')}
         </h1>
         <div className="text-sm text-gray-500">
-          Dashboard {'>'} Purchase Orders
+          {t('dashboard')} {'>'} {t('purchase_orders_management')}
         </div>
       </div>
 
@@ -89,24 +91,26 @@ const PreciousManagement = () => {
                 : "bg-white text-gray-600 hover:bg-gray-100"
             }`}
           >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {t(tab)}
           </button>
         ))}
       </div>
 
       {/* Info */}
       <div className="text-right text-sm text-gray-500 mb-4">
-        Showing {items.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-
-        {Math.min(currentPage * itemsPerPage, items.length)} of {items.length}{" "}
-        orders
+        {t('showing_orders', {
+          start: items.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1,
+          end: Math.min(currentPage * itemsPerPage, items.length),
+          total: items.length
+        })}
       </div>
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow-sm p-6">
-        {loading && <div className="text-center py-6">Loading...</div>}
+        {loading && <div className="text-center py-6">{t('loading')}</div>}
         {error && (
           <div className="text-center text-red-600 py-6">
-            Failed to load orders: {error.message}
+            {t('failed_to_load_orders', { error: error.message })}
           </div>
         )}
         {!loading && !error && (
@@ -114,13 +118,13 @@ const PreciousManagement = () => {
             <table className="w-full">
               <thead className="border-b">
                 <tr className="text-left text-sm text-gray-600">
-                  <th className="pb-3 font-medium">Invoice Number</th>
-                  <th className="pb-3 font-medium">Supplier</th>
-                  <th className="pb-3 font-medium">Currency</th>
-                  <th className="pb-3 font-medium">Total Amount</th>
-                  <th className="pb-3 font-medium">Created By</th>
-                  <th className="pb-3 font-medium">Created At</th>
-                  <th className="pb-3 font-medium">Action</th>
+                  <th className="pb-3 font-medium">{t('invoice_number')}</th>
+                  <th className="pb-3 font-medium">{t('supplier')}</th>
+                  <th className="pb-3 font-medium">{t('currency')}</th>
+                  <th className="pb-3 font-medium">{t('total_amount')}</th>
+                  <th className="pb-3 font-medium">{t('created_by')}</th>
+                  <th className="pb-3 font-medium">{t('created_at')}</th>
+                  <th className="pb-3 font-medium">{t('action')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -147,18 +151,17 @@ const PreciousManagement = () => {
 
                     <td className="py-4">
                       <div className="flex gap-2">
-                        {/* Approve / Deliver / Invoice */}
                         <button
                           className="px-4 py-1.5 text-sm text-white bg-slate-700 rounded-full hover:bg-slate-800 transition-colors"
                           onClick={async () => {
                             try {
                               if (activeTab === "draft") {
                                 await approvePurchaseOrder(order._id);
-                                toast("✅ Order approved successfully!");
+                                toast("✅ " + t('approve') + " successfully!");
                                 void fetch(activeTab);
                               } else if (activeTab === "approved") {
                                 await deliverPurchaseOrder(order._id);
-                                toast("🚚 Order delivered successfully!");
+                                toast("🚚 " + t('deliver') + " successfully!");
                                 void fetch(activeTab);
                               } else {
                                 navigate(`/dashboard/stock-in-draft/${order._id}`, {
@@ -172,25 +175,24 @@ const PreciousManagement = () => {
                           }}
                         >
                           {activeTab === "draft"
-                            ? "Approve"
+                            ? t('approve')
                             : activeTab === "approved"
-                            ? "Deliver"
-                            : "Invoice"}
+                            ? t('deliver')
+                            : t('invoice')}
                         </button>
 
-                      
-    {/* View */}
-    <button
-      className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
-      onClick={() => {
-        console.log("👁️ Viewing Order ID:", order._id);
-        console.log("📦 Status:", activeTab);
-        navigate(`/dashboard/stock-in-draft/${order._id}`, {
-          state: { status: activeTab },
-        });
-      }}
-    >
-                          View
+                        {/* View */}
+                        <button
+                          className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+                          onClick={() => {
+                            console.log("👁️ Viewing Order ID:", order._id);
+                            console.log("📦 Status:", activeTab);
+                            navigate(`/dashboard/stock-in-draft/${order._id}`, {
+                              state: { status: activeTab },
+                            });
+                          }}
+                        >
+                          {t('view')}
                         </button>
                       </div>
                     </td>
@@ -203,7 +205,7 @@ const PreciousManagement = () => {
                       colSpan={7}
                       className="text-center py-6 text-gray-500"
                     >
-                      No orders found for this status.
+                      {t('no_orders_found')}
                     </td>
                   </tr>
                 )}
@@ -216,7 +218,7 @@ const PreciousManagement = () => {
         {!loading && !error && totalPages > 0 && (
           <div className="flex items-center justify-between mt-6">
             <div className="flex items-center gap-2 text-sm">
-              <span>Show</span>
+              <span>{t('show')}</span>
               <select
                 value={itemsPerPage}
                 onChange={(e) => {
@@ -229,7 +231,7 @@ const PreciousManagement = () => {
                 <option>20</option>
                 <option>50</option>
               </select>
-              <span>entries</span>
+              <span>{t('entries')}</span>
             </div>
 
             <div className="flex items-center gap-2">
@@ -238,7 +240,7 @@ const PreciousManagement = () => {
                 disabled={currentPage === 1}
                 className="px-3 py-1.5 border border-gray-300 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Previous
+                {t('previous')}
               </button>
               {[...Array(totalPages)].map((_, page) => (
                 <button
@@ -260,7 +262,7 @@ const PreciousManagement = () => {
                 disabled={currentPage === totalPages}
                 className="px-3 py-1.5 border border-gray-300 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Next
+                {t('next')}
               </button>
             </div>
           </div>
