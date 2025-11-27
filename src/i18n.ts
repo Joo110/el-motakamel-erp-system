@@ -483,7 +483,7 @@ SaveTrip: "Save Trip",
 
         baseSalaryLabel: "Base Salary",
         totalLabel: "Total",
-   
+   inventory_search: "inventory search:",
 
       sales: "Sales",
       notes: "Notes",
@@ -687,11 +687,11 @@ SaveTrip: "Save Trip",
   "Journal entry created successfully!": "Journal entry created successfully!",
   "Error creating journal entry. Please try again.": "Error creating journal entry. Please try again.",
   "Error fetching journals or accounts.": "Error fetching journals or accounts.",
-
-
-
-
-
+"Select Agent..." : "Select Agent...",
+"Enter Location...": "Enter Location...",
+"Enter driver name...": "Enter driver name...",
+"Select Car...": "Select Car...",
+"Select Area..." : "Select Area...",
 
 
 
@@ -935,6 +935,9 @@ SaveTrip: "Save Trip",
         "Transferred_Products": "Transferred Products",
         "From": "From",
         "no_transferred_products_yet": "No transferred products yet",
+"totalTrips": "totalTrips",
+
+
 
         "Saving": "Saving...",
         "Save_Transfer": "Save Transfer",
@@ -951,6 +954,25 @@ SaveTrip: "Save Trip",
         "quantity_exceeds_available": "❌ Requested quantity ({{requested}}) exceeds available ({{available}}) for product {{name}}",
         "transfer_created_success": "✅ Stock transfer created successfully",
         "failed_save_transfer": "Failed to save transfer. See console for details. server status:",
+
+   
+  "searchPlaceholder": "Search employees by name, id, or department...",
+ 
+  "modify": "Modify",
+  "modifySalary": "Modify Salary",
+  "hoursPlaceholder": "2 hours",
+  "amount": "Amount",
+  "purpose": "Purpose",
+  "totalSalary": "Total Salary",
+  "baseSalary": "Base Salary",
+  "currencySR": "SR",
+  "All": "All",
+  "Paid": "Paid",
+  "Unpaid": "Unpaid",
+  "All Departments": "All Departments",
+  "Technical Support": "Technical Support",
+  "HR": "HR",
+  "Software": "Software",
 
 
 
@@ -1577,7 +1599,7 @@ employeesSearch: "بحث الموظفين",
           select_supplier: "اختر المورد",
           select_product: "اختر المنتج",
           select_inventory: "اختر المخزون",
-
+inventory_search: "بحث عن مخزن",
       stock_in: "وارد",
       precious_management: "إدارة بريشوس",
       invoice: "فاتورة",
@@ -1851,6 +1873,12 @@ employeesSearch: "بحث الموظفين",
 
 
 
+
+  "Select Agent..." : "حدد الوكيل",
+"Enter Location...": "أختار مكان",
+"Enter driver name...": "أختار اسم السائق",
+"Select Car...": "أختار سيارة",
+"Select Area..." : "تحديد المنطقة",
   
 
   "Select a journal...": "اختر دفتر اليومية...",
@@ -1863,7 +1891,7 @@ employeesSearch: "بحث الموظفين",
   "Journal entry created successfully!": "تم إنشاء القيد بنجاح!",
   "Error creating journal entry. Please try again.": "حدث خطأ أثناء إنشاء القيد. حاول مرة أخرى.",
   "Error fetching journals or accounts.": "حدث خطأ أثناء جلب دفاتر اليومية أو الحسابات.",
-
+"totalTrips": "كل الرحلات",
 
 
 
@@ -1931,7 +1959,24 @@ employeesSearch: "بحث الموظفين",
   "action": "الإجراء",
 
 
-
+"hrManagement": "إدارة الموارد البشرية",
+  "pay": "دفع",
+  "modify": "تعديل",
+  "modifySalary": "تعديل الراتب",
+  "hoursPlaceholder": "2 ساعات",
+  "amount": "المبلغ",
+  "purpose": "السبب",
+  "totalSalary": "إجمالي الراتب",
+  "baseSalary": "الراتب الأساسي",
+  "currencySR": "ر.س",
+  "All": "الكل",
+  "Paid": "مدفوع",
+  "Unpaid": "غير مدفوع",
+  "All Departments": "كل الأقسام",
+  "Sales": "المبيعات",
+  "Technical Support": "الدعم الفني",
+  "HR": "الموارد البشرية",
+  "Software": "البرمجيات",
 
   "Trips Management": "إدارة الرحلات",
   "Dashboard > Delegates": "لوحة التحكم > المندوبون",
@@ -1940,7 +1985,6 @@ employeesSearch: "بحث الموظفين",
   "Trip number": "رقم الرحلة",
   "Agent": "المندوب",
   "Driver": "السائق",
-  "Sales": "المبيعات",
   "Area": "المنطقة",
   "Date": "التاريخ",
   "Status": "الحالة",
@@ -1990,8 +2034,6 @@ employeesSearch: "بحث الموظفين",
       "operation_date_label": "تاريخ العملية",
       "save_transfer_label": "حفظ النقل",
 
-
-      "hrManagement": "إدارة الموارد البشرية",
 
 
   
@@ -2167,8 +2209,6 @@ employeesSearch: "بحث الموظفين",
   "total_due": "المبلغ الإجمالي المستحق",
   "remaining": "المتبقي",
   "last_payment": "آخر دفعة",
-  "pay": "دفع",
-
 
   "transactions": "التحويلات",
 

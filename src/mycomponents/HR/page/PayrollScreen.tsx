@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Filter, X, Edit2 } from 'lucide-react';
 import usePayrolls from '../hooks/usePayrolls';
 import { usePayInvoice } from '../../Precious/hooks/usePayInvoice';
+import { useTranslation } from 'react-i18next';
 
 type PayrollItem = {
   id: string;
@@ -24,9 +25,10 @@ type PayrollItem = {
 };
 
 const PayrollScreen: React.FC = () => {
+  const { t } = useTranslation(); // تفعيل هوك الترجمة
   const { payrolls, fetch, updatePayroll } = usePayrolls();
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const { payInvoice, payPayroll, response: payResponse, loading: payLoading, error: payError } = usePayInvoice();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { payInvoice, payPayroll, response: payResponse, loading: payLoading, error: payError } = usePayInvoice();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('November');
   const [selectedStatus, setSelectedStatus] = useState('All');
@@ -61,48 +63,48 @@ const { payInvoice, payPayroll, response: payResponse, loading: payLoading, erro
       const name = (p.employee && (p.employee.name ?? p.employee)) ?? p.name ?? 'Unknown';
 
       const salaryVal = (() => {
-        if (typeof p.salary === 'number') return `${p.salary} SR`;
+        if (typeof p.salary === 'number') return `${p.salary} ${t('currencySR')}`;
         if (typeof p.salary === 'string' && p.salary.trim() !== '') return p.salary;
-        if (p.total && typeof p.total === 'number') return `${p.total} SR`;
-        return '0 SR';
+        if (p.total && typeof p.total === 'number') return `${p.total} ${t('currencySR')}`;
+        return `0 ${t('currencySR')}`;
       })();
 
       const overtimeVal = (() => {
         if (p.overtime !== undefined && p.overtime !== null) {
-          return (typeof p.overtime === 'number' ? `${p.overtime} SR` : String(p.overtime));
+          return (typeof p.overtime === 'number' ? `${p.overtime} ${t('currencySR')}` : String(p.overtime));
         }
-        if (p.overtimeAmount) return `${p.overtimeAmount} SR`;
-        return '0 SR';
+        if (p.overtimeAmount) return `${p.overtimeAmount} ${t('currencySR')}`;
+        return `0 ${t('currencySR')}`;
       })();
 
       const bonusVal = (() => {
         if (p.bonus && typeof p.bonus === 'object') {
           const amt = p.bonus.amount ?? p.bonusAmount ?? 0;
-          return `${amt} SR`;
+          return `${amt} ${t('currencySR')}`;
         }
-        if (p.bonusAmount) return `${p.bonusAmount} SR`;
-        return '0 SR';
+        if (p.bonusAmount) return `${p.bonusAmount} ${t('currencySR')}`;
+        return `0 ${t('currencySR')}`;
       })();
 
       const deductionVal = (() => {
         if (p.deduction && typeof p.deduction === 'object') {
           const amt = p.deduction.amount ?? p.deductionAmount ?? 0;
-          return `${amt} SR`;
+          return `${amt} ${t('currencySR')}`;
         }
-        if (p.deductionAmount) return `${p.deductionAmount} SR`;
-        return '0 SR';
+        if (p.deductionAmount) return `${p.deductionAmount} ${t('currencySR')}`;
+        return `0 ${t('currencySR')}`;
       })();
 
       const totalVal = (() => {
         if (p.total !== undefined && p.total !== null) {
-          return (typeof p.total === 'number' ? `${p.total} SR` : String(p.total));
+          return (typeof p.total === 'number' ? `${p.total} ${t('currencySR')}` : String(p.total));
         }
         const base = Number(p.salary ?? 0) || 0;
         const bonus = Number(p.bonus?.amount ?? p.bonusAmount ?? 0) || 0;
         const ded = Number(p.deduction?.amount ?? p.deductionAmount ?? 0) || 0;
         const ot = Number(p.overtime ?? p.overtimeAmount ?? 0) || 0;
         const calc = base + ot + bonus - ded;
-        return `${Math.round(calc)} SR`;
+        return `${Math.round(calc)} ${t('currencySR')}`;
       })();
 
       const dateVal = (() => {
@@ -135,7 +137,7 @@ const { payInvoice, payPayroll, response: payResponse, loading: payLoading, erro
         deductionPurpose: p.deduction?.purpose ?? p.deductionPurpose ?? '',
       };
     });
-  }, [payrolls]);
+  }, [payrolls, t]);
 
   useEffect(() => {
     console.log("PayrollScreen: raw payrolls from hook:", payrolls);
@@ -152,7 +154,7 @@ const { payInvoice, payPayroll, response: payResponse, loading: payLoading, erro
         try {
           const d = new Date(item.date);
           if (!isNaN(d.getTime())) {
-            const monthName = d.toLocaleString(undefined, { month: 'long' });
+            const monthName = d.toLocaleString('en-US', { month: 'long' }); // Force English match for logic
             if (monthName !== selectedMonth) return false;
           } else {
             if (!String(item.date).toLowerCase().includes(selectedMonth.toLowerCase())) return false;
@@ -179,21 +181,21 @@ const { payInvoice, payPayroll, response: payResponse, loading: payLoading, erro
   }, [filteredPayroll, entriesPerPage]);
 
   // Handlers using hook.updatePayroll
-const handlePaySalary = async (id: string) => {
-  try {
-    // 1) استدعاء endpoint الدفع عبر usePayInvoice hook
-    await payPayroll(id); // <-- هنا استخدمنا payPayroll بدل pay
-
+  const handlePaySalary = async (id: string) => {
     try {
-      await updatePayroll(id, { status: 'paid' });
-    } catch (updateErr) {
-      console.error('Failed to update payroll status after pay:', updateErr);
-    }
+      // 1) استدعاء endpoint الدفع عبر usePayInvoice hook
+      await payPayroll(id); // <-- هنا استخدمنا payPayroll بدل pay
 
-  } catch (err) {
-    console.error('Pay failed', err);
-  }
-};
+      try {
+        await updatePayroll(id, { status: 'paid' });
+      } catch (updateErr) {
+        console.error('Failed to update payroll status after pay:', updateErr);
+      }
+
+    } catch (err) {
+      console.error('Pay failed', err);
+    }
+  };
 
   const handleModify = (employee: PayrollItem) => {
     setSelectedEmployee(employee);
@@ -281,11 +283,11 @@ const handlePaySalary = async (id: string) => {
       <div className="bg-white border-b px-6 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">HR Management</h1>
+            <h1 className="text-3xl font-bold text-gray-900">{t('hrManagement')}</h1>
             <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-              <span>Dashboard</span>
+              <span>{t('dashboard')}</span>
               <span>&gt;</span>
-              <span>Payroll</span>
+              <span>{t('payroll')}</span>
             </div>
           </div>
         </div>
@@ -297,7 +299,7 @@ const handlePaySalary = async (id: string) => {
           {/* Search Section */}
           <div className="p-6 border-b">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Employees Search</h2>
+              <h2 className="text-xl font-bold text-gray-900">{t('employeesSearch')}</h2>
               <Filter size={20} className="text-gray-400" />
             </div>
 
@@ -307,7 +309,7 @@ const handlePaySalary = async (id: string) => {
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
-                  placeholder="Search employees by name, id, or department..."
+                  placeholder={t('searchPlaceholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-500 text-sm"
@@ -321,7 +323,7 @@ const handlePaySalary = async (id: string) => {
                   onChange={(e) => setSelectedMonth(e.target.value)}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-500 text-sm"
                 >
-                  {months.map((month) => <option key={month} value={month}>{month}</option>)}
+                  {months.map((month) => <option key={month} value={month}>{t(month)}</option>)}
                 </select>
               </div>
 
@@ -332,7 +334,7 @@ const handlePaySalary = async (id: string) => {
                   onChange={(e) => setSelectedStatus(e.target.value)}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-500 text-sm"
                 >
-                  {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
+                  {statuses.map((status) => <option key={status} value={status}>{t(status)}</option>)}
                 </select>
               </div>
 
@@ -343,17 +345,17 @@ const handlePaySalary = async (id: string) => {
                   onChange={(e) => setSelectedDepartment(e.target.value)}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-500 text-sm"
                 >
-                  {departments.map((dept) => <option key={dept} value={dept}>{dept}</option>)}
+                  {departments.map((dept) => <option key={dept} value={dept}>{t(dept)}</option>)}
                 </select>
               </div>
 
               {/* Buttons */}
               <button className="px-6 py-2.5 bg-slate-700 text-white rounded-xl hover:bg-slate-800 text-sm flex items-center gap-2">
                 <Search size={16} />
-                Search
+                {t('search')}
               </button>
               <button className="px-6 py-2.5 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 text-sm">
-                Reset
+                {t('reset')}
               </button>
             </div>
           </div>
@@ -361,24 +363,24 @@ const handlePaySalary = async (id: string) => {
           {/* Payroll Table */}
           <div className="p-6 overflow-x-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900">November Payroll</h3>
+              <h3 className="text-xl font-bold text-gray-900">{t(selectedMonth)} {t('payroll')}</h3>
               <span className="text-sm text-gray-500">
-                Showing {Math.min(1, displayed.length)}-{displayed.length} of {filteredPayroll.length} employees
+                {t('showing')} {Math.min(1, displayed.length)}-{displayed.length} {t('of')} {filteredPayroll.length} {t('employees')}
               </span>
             </div>
 
             <table className="w-full">
               <thead>
                 <tr className="border-b bg-gray-50">
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-600">Name</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-600">Id</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-600">Salary</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-600">Overtime</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-600">Bonus</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-600">Deductions</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-600">Total</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-600">Date</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-600">Status</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-600">{t('name')}</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-600">{t('id')}</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-600">{t('salary')}</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-600">{t('overtime')}</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-600">{t('bonus')}</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-600">{t('deductions')}</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-600">{t('total')}</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-600">{t('date')}</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-600">{t('status')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -400,21 +402,21 @@ const handlePaySalary = async (id: string) => {
                     <td className="px-6 py-4 flex items-center gap-2">
                       {item.status === 'Paid' ? (
                         <>
-                          <span className="text-sm text-green-600">{item.status}</span>
+                          <span className="text-sm text-green-600">{t('Paid')}</span>
                         </>
                       ) : (
                         <button
                           onClick={() => handlePaySalary(item.id)}
                           className="px-4 py-1 bg-slate-700 text-white text-sm rounded-xl hover:bg-slate-800"
                         >
-                          Pay
+                          {t('pay')}
                         </button>
                       )}
                       <button
                         onClick={() => handleModify(item)}
                         className="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded-xl hover:bg-gray-300"
                       >
-                        Modify
+                        {t('modify')}
                       </button>
                     </td>
                   </tr>
@@ -425,7 +427,7 @@ const handlePaySalary = async (id: string) => {
             {/* Pagination */}
             <div className="flex items-center justify-between mt-6">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-700">Show</span>
+                <span className="text-sm text-gray-700">{t('show')}</span>
                 <select
                   value={entriesPerPage}
                   onChange={(e) => setEntriesPerPage(Number(e.target.value))}
@@ -435,17 +437,19 @@ const handlePaySalary = async (id: string) => {
                   <option value={25}>25</option>
                   <option value={50}>50</option>
                 </select>
-                <span className="text-sm text-gray-700">entries</span>
+                <span className="text-sm text-gray-700">{t('entries')}</span>
               </div>
 
               <div className="flex items-center gap-2">
                 <button className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">
-                  Previous
+                  {t('previous')}
                 </button>
                 <button className="px-4 py-2 text-sm bg-slate-700 text-white rounded-xl">1</button>
                 <button className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">2</button>
                 <button className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">3</button>
-                <button className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">Next</button>
+                <button className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">
+                  {t('next')}
+                </button>
               </div>
             </div>
           </div>
@@ -458,7 +462,7 @@ const handlePaySalary = async (id: string) => {
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-8 py-5 border-b">
-              <h2 className="text-lg font-semibold text-gray-900">Modify Salary</h2>
+              <h2 className="text-lg font-semibold text-gray-900">{t('modifySalary')}</h2>
               <button onClick={() => setShowModifyModal(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={20} />
               </button>
@@ -476,7 +480,7 @@ const handlePaySalary = async (id: string) => {
                   <p className="text-xs text-gray-500">{selectedEmployee.jobTitle}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-gray-500">id: {selectedEmployee.id}</p>
+                  <p className="text-xs text-gray-500">{t('id')}: {selectedEmployee.id}</p>
                 </div>
               </div>
 
@@ -484,16 +488,16 @@ const handlePaySalary = async (id: string) => {
               <div className="grid grid-cols-3 gap-5 mb-6">
                 {/* Over time */}
                 <div className="border border-gray-200 rounded-2xl p-5">
-                  <h4 className="font-medium text-gray-900 mb-4 text-sm">Over time</h4>
+                  <h4 className="font-medium text-gray-900 mb-4 text-sm">{t('overtime')}</h4>
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1.5">Over time</label>
+                      <label className="block text-xs text-gray-500 mb-1.5">{t('overtime')}</label>
                       <div className="flex items-center gap-2">
                         <input
                           type="text"
                           value={modifyForm.overtimeHours}
                           onChange={(e) => setModifyForm({...modifyForm, overtimeHours: e.target.value})}
-                          placeholder="2 hours"
+                          placeholder={t('hoursPlaceholder')}
                           className="flex-1 px-3 py-2 bg-gray-50 border-0 rounded-lg text-sm focus:ring-2 focus:ring-slate-400 outline-none"
                         />
                         <button className="p-1.5 text-gray-400 hover:text-gray-600">
@@ -510,21 +514,21 @@ const handlePaySalary = async (id: string) => {
                           placeholder="395"
                           className="flex-1 bg-transparent border-0 text-sm focus:outline-none"
                         />
-                        <span className="text-xs text-gray-500">SR</span>
+                        <span className="text-xs text-gray-500">{t('currencySR')}</span>
                       </div>
                     </div>
                     <button onClick={handleSaveOvertime} className="w-full px-4 py-2 bg-slate-700 text-white text-xs rounded-full hover:bg-slate-800 font-medium">
-                      Save
+                      {t('save')}
                     </button>
                   </div>
                 </div>
 
                 {/* Bonus */}
                 <div className="border border-gray-200 rounded-2xl p-5">
-                  <h4 className="font-medium text-gray-900 mb-4 text-sm">Bonus</h4>
+                  <h4 className="font-medium text-gray-900 mb-4 text-sm">{t('bonus')}</h4>
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1.5">Amount</label>
+                      <label className="block text-xs text-gray-500 mb-1.5">{t('amount')}</label>
                       <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
                         <input
                           type="text"
@@ -533,11 +537,11 @@ const handlePaySalary = async (id: string) => {
                           placeholder="0"
                           className="flex-1 bg-transparent border-0 text-sm focus:outline-none"
                         />
-                        <span className="text-xs text-gray-500">SR</span>
+                        <span className="text-xs text-gray-500">{t('currencySR')}</span>
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1.5">Purpose</label>
+                      <label className="block text-xs text-gray-500 mb-1.5">{t('purpose')}</label>
                       <textarea
                         value={modifyForm.bonusPurpose}
                         onChange={(e) => setModifyForm({...modifyForm, bonusPurpose: e.target.value})}
@@ -547,17 +551,17 @@ const handlePaySalary = async (id: string) => {
                       />
                     </div>
                     <button onClick={handleSaveBonus} className="w-full px-4 py-2 bg-slate-700 text-white text-xs rounded-full hover:bg-slate-800 font-medium">
-                      Save
+                      {t('save')}
                     </button>
                   </div>
                 </div>
 
                 {/* Deductions */}
                 <div className="border border-gray-200 rounded-2xl p-5">
-                  <h4 className="font-medium text-gray-900 mb-4 text-sm">Deductions</h4>
+                  <h4 className="font-medium text-gray-900 mb-4 text-sm">{t('deductions')}</h4>
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1.5">Amount</label>
+                      <label className="block text-xs text-gray-500 mb-1.5">{t('amount')}</label>
                       <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
                         <input
                           type="text"
@@ -566,11 +570,11 @@ const handlePaySalary = async (id: string) => {
                           placeholder="0"
                           className="flex-1 bg-transparent border-0 text-sm focus:outline-none"
                         />
-                        <span className="text-xs text-gray-500">SR</span>
+                        <span className="text-xs text-gray-500">{t('currencySR')}</span>
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1.5">Purpose</label>
+                      <label className="block text-xs text-gray-500 mb-1.5">{t('purpose')}</label>
                       <textarea
                         value={modifyForm.deductionPurpose}
                         onChange={(e) => setModifyForm({...modifyForm, deductionPurpose: e.target.value})}
@@ -580,7 +584,7 @@ const handlePaySalary = async (id: string) => {
                       />
                     </div>
                     <button onClick={handleSaveDeduction} className="w-full px-4 py-2 bg-slate-700 text-white text-xs rounded-full hover:bg-slate-800 font-medium">
-                      Save
+                      {t('save')}
                     </button>
                   </div>
                 </div>
@@ -588,18 +592,18 @@ const handlePaySalary = async (id: string) => {
 
               {/* Total Salary Section */}
               <div className="border border-gray-200 rounded-2xl p-5">
-                <h4 className="font-medium text-gray-900 mb-4 text-sm">Total Salary</h4>
+                <h4 className="font-medium text-gray-900 mb-4 text-sm">{t('totalSalary')}</h4>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Base Salary</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('baseSalary')}</p>
                     <p className="text-base font-semibold text-gray-900">{selectedEmployee.salary}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Total</p>
-                    <p className="text-base font-semibold text-gray-900">{calculateTotal()} SR</p>
+                    <p className="text-xs text-gray-500 mb-1">{t('total')}</p>
+                    <p className="text-base font-semibold text-gray-900">{calculateTotal()} {t('currencySR')}</p>
                   </div>
                   <button onClick={handlePayTotal} className="px-8 py-2.5 bg-slate-700 text-white text-sm rounded-full hover:bg-slate-800 font-medium">
-                    Pay
+                    {t('pay')}
                   </button>
                 </div>
               </div>
