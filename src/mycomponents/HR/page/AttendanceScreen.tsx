@@ -24,7 +24,7 @@ type Employee = {
 
 const AttendanceScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const { getToday, getMonth, checkIn: apiCheckIn, checkOut: apiCheckOut } = useAttendances();
   const [view, setView] = useState<'daily' | 'monthly'>('daily');
@@ -40,6 +40,10 @@ const AttendanceScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [dailyEmployees, setDailyEmployees] = useState<Employee[]>([]);
   const [monthlyEmployees, setMonthlyEmployees] = useState<Employee[]>([]);
+
+  // determine language directionality and whether current language is Arabic
+  const lang = (i18n.language || 'en').toLowerCase();
+  const isArabic = lang.startsWith('ar') || (typeof i18n.dir === 'function' && i18n.dir(lang) === 'rtl');
 
   const days = Array.from({ length: 31 }, (_, i) => i + 1);
 
@@ -249,7 +253,7 @@ const AttendanceScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
+    <div className="min-h-screen bg-gray-50 p-6" dir={isArabic ? 'rtl' : 'ltr'}>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('hr_management')}</h1>
         <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -382,7 +386,7 @@ const AttendanceScreen: React.FC = () => {
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-base font-semibold text-gray-900">{t('attendance')}</h3>
             <span className="text-xs text-gray-500">
-              {t('pagination_summary', { startEntry, endEntry, totalEntries })}
+              {t('', { startEntry, endEntry, totalEntries })}
             </span>
           </div>
 
@@ -405,7 +409,9 @@ const AttendanceScreen: React.FC = () => {
                 <tbody>
                   {paginated.map((emp) => (
                     <tr key={`daily-${emp.id}`} className="border-b hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-4 flex items-center gap-3 justify-end">
+                      <td
+                        className={`px-4 py-4 flex items-center gap-3 ${isArabic ? 'justify-end' : 'justify-start'}`}
+                      >
                         {emp.avatar ? (
                           <img src={emp.avatar} alt={emp.name} className="w-10 h-10 rounded-full object-cover border border-gray-200" />
                         ) : (
@@ -413,7 +419,12 @@ const AttendanceScreen: React.FC = () => {
                             {emp.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
                           </div>
                         )}
-                        <span className="text-sm text-gray-900 font-medium">{emp.name}</span>
+                        <span
+                          className="text-sm text-gray-900 font-medium"
+                          style={{ textAlign: isArabic ? 'right' : 'left' }}
+                        >
+                          {emp.name}
+                        </span>
                       </td>
                       <td className="px-4 py-4 text-right">
                         <div className="flex items-center gap-2 justify-end">
@@ -505,12 +516,12 @@ const AttendanceScreen: React.FC = () => {
                 <tbody>
                   {paginated.map((emp) => (
                     <tr key={`monthly-${emp.id}`} className="border-b hover:bg-gray-50">
-                      <td className="px-3 py-3 sticky right-0 bg-white z-10">
-                        <div className="flex items-center gap-2 justify-end">
+                      <td className={`px-3 py-3 sticky right-0 bg-white z-10`}>
+                        <div className={`flex items-center gap-2 ${isArabic ? 'justify-end' : 'justify-start'}`}>
                           <div className="w-8 h-8 bg-gradient-to-br from-slate-400 to-slate-600 rounded-full flex items-center justify-center text-white font-semibold text-[10px] flex-shrink-0">
                             {emp.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
                           </div>
-                          <span className="text-xs text-gray-900 whitespace-nowrap font-medium">{emp.name}</span>
+                          <span className="text-xs text-gray-900 whitespace-nowrap font-medium" style={{ textAlign: isArabic ? 'right' : 'left' }}>{emp.name}</span>
                         </div>
                       </td>
                       {emp.monthlyAttendance?.map((status, dayIdx) => (

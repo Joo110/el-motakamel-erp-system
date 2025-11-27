@@ -387,8 +387,11 @@ monthly_view: "Monthly View",
     add_attendance_button: "Add Attendance",
       daily_view: "Daily View",
 
-     
+     employeesTitle: "employeesTitle",
 
+                  all_Departments: "all_Departments",
+search_Placeholder: "search_Placeholder",
+showing_Employees: "showing_Employees",
 
       stock_out_draft: "Stock-Out Draft",
       loading_sales_order_details: "⏳ Loading sales order details...",
@@ -726,6 +729,8 @@ SaveTrip: "Save Trip",
 "October": "October",
 "November": "November",
 "December": "December",
+
+
 
 
 // Status
@@ -1233,6 +1238,10 @@ Dashboard: "الرئيسية",
       error_creating_employee: "خطأ في إنشاء الموظف",
 
 
+      allDepartments: "allDepartments",
+searchPlaceholder: "searchPlaceholder",
+showingEmployees: "showingEmployees",
+
       // Products Section
       products: "المنتجات",
       add_product: "إضافة منتج",
@@ -1460,6 +1469,9 @@ Customer_Search: "بحث العملاء",
 
 
 
+            all_Departments: "كل التخصصات",
+search_Placeholder: "البحث عن العنصر",
+showing_Employees: "عرض الموظفين",
 
 
     
@@ -1582,7 +1594,7 @@ employeesSearch: "بحث الموظفين",
       back_to_products: "العودة إلى المنتجات",
       product_image: "صورة المنتج",
       view_product: "عرض المنتج",
-
+employeesTitle:"الموظفين",
        transferred_products: "المنتجات المنقولة",
           from_label: "من",
           to_label: "إلى",

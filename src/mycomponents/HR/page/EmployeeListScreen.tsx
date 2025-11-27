@@ -1,17 +1,21 @@
 import React, { useMemo, useState } from "react";
 import { Search, Plus, Edit, Trash2, Filter } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-// افتراض وجود الدوال التالية
 import useEmployees from "@/mycomponents/HR/hooks/useEmployees";
 import useDepartments from "../../Department/hooks/useDepartments";
-// استخدام دالة الترجمة الجديدة
 import { useTranslation } from "react-i18next"; 
 
 const EmployeeListScreen: React.FC = () => {
   const navigate = useNavigate();
-  // استخدام دالة الترجمة
-  const { t } = useTranslation(); 
-  
+  const { t, i18n } = useTranslation(); 
+
+  // detect current language direction / arabic
+  const lang = i18n.language || "en";
+  const isArabic = (lang || "").toLowerCase().startsWith("ar") || i18n.dir?.(lang) === "rtl";
+  const alignClass = isArabic ? "text-right" : "text-left";
+  const iconPosClass = isArabic ? "right-4" : "left-4";
+  const inputPaddingClass = isArabic ? "pr-10 pl-4" : "pl-10 pr-4";
+
   const { employees, loading, error, refresh, deleteEmployee } = useEmployees();
   const { departments, loading: depsLoading } = useDepartments();
   const [searchTerm, setSearchTerm] = useState("");
@@ -87,7 +91,6 @@ const EmployeeListScreen: React.FC = () => {
   }, [filtered, currentPage, entriesPerPage]);
 
   const handleDelete = async (id: string) => {
-    // استخدام نص الترجمة
     const ok = window.confirm(t("deleteConfirm")); 
     if (!ok) return;
     try {
@@ -110,14 +113,13 @@ const EmployeeListScreen: React.FC = () => {
   };
 
   return (
-    // إضافة dir="rtl" لدعم اللغة العربية
-    <div className="min-h-screen bg-gray-50 p-6" dir="rtl"> 
+    <div className="min-h-screen bg-gray-50 p-6" dir={isArabic ? "rtl" : "ltr"}> 
       {/* Header */}
       <div className="bg-white border-b px-6 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">{t("hrManagement")}</h1>
-            <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+            <div className={`flex items-center gap-2 text-sm text-gray-500 mt-1 ${isArabic ? "flex-row-reverse" : ""}`}>
               <span>{t("dashboard")}</span>
               <span>&lt;</span> {/* عكس اتجاه السهم لدعم RTL */}
               <span>{t("hr")}</span>
@@ -146,21 +148,18 @@ const EmployeeListScreen: React.FC = () => {
             <div className="flex flex-wrap gap-4 items-end">
               {/* Search Input */}
               <div className="flex-1 min-w-[250px] relative">
-                {/* تغيير موقع أيقونة البحث إلى اليمين (right-4) */}
-                <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" /> 
+                <Search className={`absolute ${iconPosClass} top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5`} /> 
                 <input
                   type="text"
-                  placeholder={t("searchPlaceholder")}
+                  placeholder={t("search_Placeholder")}
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
                     setCurrentPage(1);
                   }}
-                  // تغيير المسافة البادئة للبحث إلى اليمين (pr-10) 
-                  className="w-full pr-10 pl-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-500 text-sm"
+                  className={`w-full ${inputPaddingClass} py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-500 text-sm`}
                 />
               </div>
-
               {/* Department Select */}
               <div className="w-48 min-w-[150px]">
                 <select
@@ -171,7 +170,7 @@ const EmployeeListScreen: React.FC = () => {
                   }}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-500 text-sm"
                 >
-                  <option value="">{t("allDepartments")}</option>
+                  <option value="">{t("all_Departments")}</option>
                   {departmentOptions.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.name}
@@ -208,8 +207,7 @@ const EmployeeListScreen: React.FC = () => {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold text-gray-900">{t("employeesTitle")}</h3>
               <span className="text-sm text-gray-500">
-                {/* استخدام دالة الترجمة ذات المعاملات */}
-                {t("showingEmployees", {
+                {t("showing_Employees", {
                   start: Math.min((currentPage - 1) * entriesPerPage + 1, totalEntries || 0),
                   end: Math.min(currentPage * entriesPerPage, totalEntries),
                   total: totalEntries,
@@ -223,17 +221,17 @@ const EmployeeListScreen: React.FC = () => {
               <div className="py-20 text-center text-red-500">{t("loadError")}</div>
             ) : (
               <>
-                <table className="w-full text-right"> {/* جعل اتجاه الجدول لليمين */}
+                <table className={`w-full ${isArabic ? "text-right" : "text-left"}`}>
                   <thead>
                     <tr className="border-b bg-gray-50">
-                      <th className="text-right py-4 px-6 text-xs font-medium text-gray-600">{t("name")}</th>
-                      <th className="text-right py-4 px-6 text-xs font-medium text-gray-600">{t("id")}</th>
-                      <th className="text-right py-4 px-6 text-xs font-medium text-gray-600">{t("department")}</th>
-                      <th className="text-right py-4 px-6 text-xs font-medium text-gray-600">{t("location")}</th>
-                      <th className="text-right py-4 px-6 text-xs font-medium text-gray-600">{t("jobTitle")}</th>
-                      <th className="text-right py-4 px-6 text-xs font-medium text-gray-600">{t("type")}</th>
-                      <th className="text-right py-4 px-6 text-xs font-medium text-gray-600">{t("status")}</th>
-                      <th className="text-right py-4 px-6 text-xs font-medium text-gray-600">{t("view")}</th>
+                      <th className={`${alignClass} py-4 px-6 text-xs font-medium text-gray-600`}>{t("name")}</th>
+                      <th className={`${alignClass} py-4 px-6 text-xs font-medium text-gray-600`}>{t("id")}</th>
+                      <th className={`${alignClass} py-4 px-6 text-xs font-medium text-gray-600`}>{t("department")}</th>
+                      <th className={`${alignClass} py-4 px-6 text-xs font-medium text-gray-600`}>{t("location")}</th>
+                      <th className={`${alignClass} py-4 px-6 text-xs font-medium text-gray-600`}>{t("jobTitle")}</th>
+                      <th className={`${alignClass} py-4 px-6 text-xs font-medium text-gray-600`}>{t("type")}</th>
+                      <th className={`${alignClass} py-4 px-6 text-xs font-medium text-gray-600`}>{t("status")}</th>
+                      <th className={`${alignClass} py-4 px-6 text-xs font-medium text-gray-600`}>{t("view")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -249,7 +247,7 @@ const EmployeeListScreen: React.FC = () => {
                       return (
                         <tr key={empId} className="border-b hover:bg-gray-50">
                           <td className="py-4 px-6">
-                            <div className="flex items-center gap-3">
+                            <div className={`flex items-center gap-3 ${isArabic ? "flex-row-reverse" : ""}`}>
                               {emp.avatar || emp.image || emp.profilePic ? (
                                 <img
                                   src={emp.avatar || emp.image || emp.profilePic}
@@ -266,7 +264,12 @@ const EmployeeListScreen: React.FC = () => {
                                     .toUpperCase()}
                                 </div>
                               )}
-                              <span className="text-sm text-gray-900">{displayName}</span>
+                              <span
+                                className="text-sm text-gray-900 block"
+                                style={{ textAlign: isArabic ? "right" : "left" }}
+                              >
+                                {displayName}
+                              </span>
                             </div>
                           </td>
                           <td className="py-4 px-6 text-sm text-gray-600">{empId}</td>
@@ -349,7 +352,6 @@ const EmployeeListScreen: React.FC = () => {
                       {t("previous")}
                     </button>
 
-                    {/* Logic for pagination buttons remains the same */}
                     {Array.from({ length: totalPages }).map((_, idx) => {
                       const page = idx + 1;
                       // only show a few pages for brevity

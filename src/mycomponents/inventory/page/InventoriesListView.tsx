@@ -180,7 +180,7 @@ const InventoriesListView: React.FC<InventoriesListViewProps> = ({
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="text"
-                placeholder={t('search_inventory_placeholder')}
+                placeholder={t('')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
