@@ -57,28 +57,6 @@ const Sidebar = () => {
           ${isOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 md:static md:h-auto z-50`}
       >
         <nav className="flex-1 overflow-y-auto pt-4">
-          {/* User Management Items - Multiple */}
-          {[...Array(2)].map((_, i) => (
-            <div key={`user-${i}`} className="mb-1 relative">
-              <button
-                onClick={() => toggleMenu(`user-${i}`)}
-                className="flex justify-between items-center w-full px-6 py-3 hover:bg-[#34495e] transition-colors group"
-              >
-                <span className="flex items-center gap-3 text-sm text-gray-300 group-hover:text-white">
-                  <Users size={18} strokeWidth={1.5} />
-                  <span>{t("user_management")}</span>
-                </span>
-                <ChevronDown
-                  size={16}
-                  className={`text-gray-400 group-hover:text-white transition-all ${
-                    openMenus[`user-${i}`] ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-              <div className="absolute right-0 top-0 h-full w-1 bg-[#3498db] opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            </div>
-          ))}
-
           {/* Products Management */}
           <div className="mb-1 relative group">
             <button
@@ -833,30 +811,8 @@ const Sidebar = () => {
             )}
           </div>
 
-          {/* More User Management Items */}
-          {[...Array(7)].map((_, i) => (
-            <div key={`user-extra-${i}`} className="mb-1 relative group">
-              <button
-                onClick={() => toggleMenu(`user-extra-${i}`)}
-                className="flex justify-between items-center w-full px-6 py-3 hover:bg-[#34495e] transition-colors"
-              >
-                <span className="flex items-center gap-3 text-sm text-gray-300 group-hover:text-white">
-                  <Users size={18} strokeWidth={1.5} />
-                  <span>{t("user_management")}</span>
-                </span>
-                <ChevronDown
-                  size={16}
-                  className={`text-gray-400 group-hover:text-white transition-all ${
-                    openMenus[`user-extra-${i}`] ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-              <div className="absolute right-0 top-0 h-full w-1 bg-[#3498db] opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            </div>
-          ))}
-
           {/* Footer Section */}
-          <div className="mt-auto bg-[#243047] text-gray-300 text-center py-4 border-t border-[#1a252f]">
+          <div className="mt-80 bg-[#243047] text-gray-300 text-center py-4 border-t border-[#1a252f]">
             <div className="space-y-1">
               <p className="flex items-center justify-center gap-2 text-sm font-medium">
                 <span className="text-gray-200">{t("settings")}</span>
