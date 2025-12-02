@@ -52,7 +52,7 @@ position: "Position",
       entries: "entries",
       previous: "Previous",
       next: "Next",
-
+Residual: "Residual",
 
 
 
@@ -148,13 +148,14 @@ position: "Position",
       privacy_policy: "Privacy Policy",
       terms_conditions: "Terms & Conditions",
       akhdar_platform: "Akhdar Platform",
-
+Precious: "Precious",
       // -------------------------
       // ⭐ Dashboard Home Texts ⭐
       // -------------------------
       dashboard_overview: "Dashboard Overview",
       dashboard_welcome: "Welcome back! Here's what's happening with your store today.",
-
+Save_order: "Save_order",    
+compelete: "compelete",
       total_revenue: "Total Revenue",
       total_users: "Total Users",
       total_products: "Total Products",
@@ -266,7 +267,7 @@ Dashboard: "Dashboard",
     save_inventory: "Save Inventory",
     inventory_name: "Inventory Name",
     upload_image: "Upload Image",
-
+sale_type: "sale type",
 
     status_draft: "Draft",
       status_shipping: "Shipping",
@@ -277,8 +278,8 @@ Dashboard: "Dashboard",
       source_warehouse: "Source Warehouse",
       destination_warehouse: "Destination Warehouse",
       name_label: "Name:",
-  
-      // Component Strings
+  Sectoral: "Sectoral",
+  Sentence: "sentence",
 
       hr: "HR",
       personal_details: "Personal Details",
@@ -326,7 +327,7 @@ employeesSearch: "Employees Search",
       validation_salary_numeric: "Salary must be a number",
       validation_date_mismatch: "Employment date cannot be before birth date",
       validation_image_too_large: "❌ Image file is too large! Please upload an image under 3MB.",
-      
+      residual: "residual",
       // Success/Error Messages
       success_employee_created: "Employee created successfully",
       error_email_duplicate: "❌ This email is already registered!",
@@ -334,7 +335,7 @@ employeesSearch: "Employees Search",
       error_alt_phone_duplicate: "❌ This alternative phone is already registered!",
       error_duplicate_field: "❌ Duplicate field value detected.",
       error_creating_employee: "Error creating employee",
-
+precious_management: "precious_management",
     // SupplierAdd
     supplier_added_successfully: "Supplier added successfully!",
     failed_to_add_supplier: "Failed to add supplier.",
@@ -365,7 +366,6 @@ employeesSearch: "Employees Search",
       view_product: "View Product",
 addEmployee: "Add Employee",
       stock_in: "Stock in",
-      precious_management: "Precious Management",
       invoice: "Invoice",
       order_number: "Order Number",
       order_date: "Order Date",
@@ -1295,7 +1295,7 @@ showingEmployees: "showingEmployees",
     order_approved_successfully: "✅ تم اعتماد الطلب بنجاح!",
     order_delivered_successfully: "🚚 تم تسليم الطلب بنجاح!",
     failed: "❌ فشل:",
-
+precious_management: "أدارة الفاتورة",
 NewTrip: "أضافه رحلة",
    Location: "عنوان",
 SaveTrip: "حفظ",
@@ -1309,7 +1309,7 @@ SaveTrip: "حفظ",
       failed_load_sales_order: "❌ فشل تحميل طلب المبيعات",
       no_sales_order_data_found: "⚠️ لم يتم العثور على بيانات طلب مبيعات للرقم التعريفي",
       invoice_already_exists_opening: "الفاتورة موجودة بالفعل - يتم فتحها الآن",
-      
+      residual: "الباقي",
       // Labels (General)
       type: "النوع",
       time_date: "الوقت والتاريخ",
@@ -1356,8 +1356,8 @@ SaveTrip: "حفظ",
       status_present: "حاضر",
       status_absent: "غائب",
       status_late: "متأخر",
-
-
+      Residual: "الباقي",
+sale_type: "نوع البيع",
 
     title: "المحاسبة",
     breadcrumb: "لوحة التحكم > المحاسبة > اليوميات",
@@ -1396,7 +1396,8 @@ Next: "بعد",
 Showing: "عرض",
 Add_Account: "أضافة",
 accounting: "المحاسبة",
-
+ Sectoral: "قطاعي",
+  Sentence: "جملة",
 
 
 
@@ -1447,6 +1448,8 @@ addEmployee: "إضافة موظف",
     unexpected_delete_response: "قد لا يتم حذف المورد. تحقق من الكونسول للتفاصيل.",
     delete_failed: "فشل الحذف. تحقق من الكونسول.",
 add_inventory_title: "إضافة مخزن",
+Save_order: "اضافه اوردر",
+compelete: "انتهي",
     // SupplierAdd
     add_supplier_title: "إضافة مورد",
     saving: "جاري الحفظ...",
@@ -1613,7 +1616,6 @@ employeesTitle:"الموظفين",
           select_inventory: "اختر المخزون",
 inventory_search: "بحث عن مخزن",
       stock_in: "وارد",
-      precious_management: "إدارة بريشوس",
       invoice: "فاتورة",
       order_number: "رقم الطلب",
    capacity: "السعة",

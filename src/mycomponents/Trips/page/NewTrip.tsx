@@ -1,18 +1,29 @@
-import React, { useState } from 'react';
+
+// FILE: src/mycomponents/trips/NewTrip.tsx
+import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
+import useEmployees from '../../HR/hooks/useEmployees'; // عدّل المسار لو لازم
+import useMobileStocks from '../hooks/useMobileStocks'; // عدّل المسار لو لازم
+import useTrips from '../hooks/useTrips'; // عدّل المسار لو لازم
 
 interface TripFormData {
   Location: string;
-  agent: string;
-  driver: string;
-  car: string;
+  agent: string;  // سيتم تخزين id
+  driver: string; // كتابة نصية
+  car: string;    // سيتم تخزين id
   area: string;
   date: string;
 }
 
 const NewTrip: React.FC = () => {
   const { t } = useTranslation();
+
+  // hooks
+  const { employees, loading: employeesLoading, refresh: refreshEmployees } = useEmployees();
+  const { mobileStocks: carsList, loading: carsLoading, fetch: fetchCars } = useMobileStocks();
+  const { createTrip } = useTrips(); // <-- استخدمنا createTrip من الـ hook
+
   const [formData, setFormData] = useState<TripFormData>({
     Location: '',
     agent: '',
@@ -24,6 +35,12 @@ const NewTrip: React.FC = () => {
 
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    // جلب بيانات الموظفين والسيارات عند المونت
+    void refreshEmployees(); // useEmployees يوفّر refresh
+    void fetchCars();
+  }, [refreshEmployees, fetchCars]);
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
@@ -33,23 +50,43 @@ const NewTrip: React.FC = () => {
     });
   };
 
+  const getEmployeeName = (e: any) =>
+    e?.name ?? e?.fullName ?? e?.title ?? (e._id ?? e.id) ?? String(e);
+
+  const getCarName = (c: any) =>
+    c?.name ?? c?.title ?? c?.plateNumber ?? (c._id ?? c.id) ?? String(c);
+
   const handleSubmit = async () => {
     try {
       setSaving(true);
 
+      // validation بسيط — تطلب agent و driver و location
       if (!formData.Location || !formData.agent || !formData.driver) {
         toast.error(`❌ ${t('Please fill in all required fields!')}`);
         setSaving(false);
         return;
       }
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // payload: أرسل الأسماء/الـ ids بحسب ما يتطلب الـ backend
+      const payload: Record<string, any> = {
+        location: formData.Location,
+  representative: formData.agent, // بدل agentId
+        driver: formData.driver, // driver text
+  car: formData.car || "690b83336f579083d52617a4", // أو اجعل اختيار السيارة إلزامي
+        area: formData.area || undefined,
+        date: formData.date || undefined,
+      };
 
+      // استعمل createTrip من الـ hook
+      await createTrip(payload);
+
+      // hook نفسه بيعمل fetch بعد الإنشاء، لذلك هنا نكتفي بإظهار رسالة و reset
       toast.success(`✅ ${t('Trip created successfully!')}`);
       handleCancel();
     } catch (error: any) {
       console.error('❌ Error creating trip:', error);
-      toast.error(t('Error creating trip.'));
+      const msg = error?.response?.data?.message ?? error?.message ?? t('Error creating trip.');
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -65,26 +102,6 @@ const NewTrip: React.FC = () => {
       date: ''
     });
   };
-
-  const agents = [
-    { id: '1', name: 'EGC' },
-    { id: '2', name: 'Akarab' },
-    { id: '3', name: 'Fresh' }
-  ];
-
-  const areas = [
-    { id: '1', name: 'Riyadh' },
-    { id: '2', name: 'Jeddah' },
-    { id: '3', name: 'Dammam' },
-    { id: '4', name: 'Mecca' },
-    { id: '5', name: 'Medina' }
-  ];
-
-  const cars = [
-    { id: '1', name: 'Car 1' },
-    { id: '2', name: 'Car 2' },
-    { id: '3', name: 'Car 3' }
-  ];
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -128,19 +145,13 @@ const NewTrip: React.FC = () => {
                   name="agent"
                   value={formData.agent}
                   onChange={handleInputChange}
+                  disabled={employeesLoading}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none bg-white"
-                  style={{
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`,
-                    backgroundPosition: "right 0.5rem center",
-                    backgroundRepeat: "no-repeat",
-                    backgroundSize: "1.5em 1.5em",
-                    paddingRight: "2.5rem",
-                  }}
                 >
-                  <option value="">{t('Select Agent...')}</option>
-                  {agents.map((agent) => (
-                    <option key={agent.id} value={agent.name}>
-                      {agent.name}
+                  <option value="">{employeesLoading ? t('Loading...') : t('Select Agent...')}</option>
+                  {employees?.map((emp: any) => (
+                    <option key={emp._id ?? emp.id} value={emp._id ?? emp.id}>
+                      {getEmployeeName(emp)}
                     </option>
                   ))}
                 </select>
@@ -155,8 +166,8 @@ const NewTrip: React.FC = () => {
                   name="driver"
                   value={formData.driver}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
-                  placeholder={t('Enter driver name...')}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                  placeholder={t('Enter Driver Name...')}
                 />
               </div>
             </div>
@@ -167,19 +178,13 @@ const NewTrip: React.FC = () => {
                 name="car"
                 value={formData.car}
                 onChange={handleInputChange}
+                disabled={carsLoading}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none bg-white"
-                style={{
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`,
-                  backgroundPosition: "right 0.5rem center",
-                  backgroundRepeat: "no-repeat",
-                  backgroundSize: "1.5em 1.5em",
-                  paddingRight: "2.5rem",
-                }}
               >
-                <option value="">{t('Select Car...')}</option>
-                {cars.map((car) => (
-                  <option key={car.id} value={car.name}>
-                    {car.name}
+                <option value="">{carsLoading ? t('Loading...') : t('Select Car...')}</option>
+                {carsList?.map((car: any) => (
+                  <option key={car._id ?? car.id} value={car._id ?? car.id}>
+                    {getCarName(car)}
                   </option>
                 ))}
               </select>
@@ -193,20 +198,13 @@ const NewTrip: React.FC = () => {
                   value={formData.area}
                   onChange={handleInputChange}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none bg-white"
-                  style={{
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`,
-                    backgroundPosition: "right 0.5rem center",
-                    backgroundRepeat: "no-repeat",
-                    backgroundSize: "1.5em 1.5em",
-                    paddingRight: "2.5rem",
-                  }}
                 >
                   <option value="">{t('Select Area...')}</option>
-                  {areas.map((area) => (
-                    <option key={area.id} value={area.name}>
-                      {area.name}
-                    </option>
-                  ))}
+                  <option value="Riyadh">Riyadh</option>
+                  <option value="Jeddah">Jeddah</option>
+                  <option value="Dammam">Dammam</option>
+                  <option value="Mecca">Mecca</option>
+                  <option value="Medina">Medina</option>
                 </select>
               </div>
 

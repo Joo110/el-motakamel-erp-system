@@ -18,6 +18,7 @@ interface ProductRow {
   price: number;
   discount: number;
   total: number;
+  saleType: string;
 }
 
 const truncate = (s: string | undefined, n = 30) => {
@@ -38,6 +39,7 @@ const StockInComponent: React.FC = () => {
     units: '0',
     price: '0',
     discount: '0',
+    saleType: 'جملة',
   });
 
   const [supplierId, setSupplierId] = useState<string>('');
@@ -65,7 +67,7 @@ const StockInComponent: React.FC = () => {
     const p = Number(formProduct.price || 0);
     const d = Number(formProduct.discount || 0);
     const tot = u * p * (1 - d / 100);
-    return isFinite(tot) ? tot.toFixed(2) + ' ' + t('currency_sr') : '0.00 ' + t('currency_sr');
+    return isFinite(tot) ? tot.toFixed(2) + ' ' : '0.00 ';
   }, [formProduct.units, formProduct.price, formProduct.discount, t]);
 
   // ===== handlers =====
@@ -74,7 +76,7 @@ const StockInComponent: React.FC = () => {
   };
 
   const handleResetForm = () => {
-    setFormProduct({ name: '', inventory: '', code: '96060', units: '0', price: '0', discount: '0' });
+    setFormProduct({ name: '', inventory: '', code: '96060', units: '0', price: '0', discount: '0', saleType: 'جملة' });
     setSelectedProductId('');
     setSelectedInventoryId('');
   };
@@ -142,6 +144,7 @@ const StockInComponent: React.FC = () => {
       price,
       discount,
       total: Math.round((tot + Number.EPSILON) * 100) / 100,
+      saleType: formProduct.saleType || 'جملة',
     };
 
     setProducts((prev) => [...prev, newProduct]);
@@ -165,6 +168,7 @@ const StockInComponent: React.FC = () => {
       quantity: prod.units,
       price: prod.price,
       discount: prod.discount,
+      saleType: prod.saleType,
     }));
   }
 
@@ -210,7 +214,7 @@ const StockInComponent: React.FC = () => {
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">{t('inventory_management')}</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">{t('request_order')}</h1>
         <p className="text-sm text-gray-500">{t('dashboard')} &gt; {t('inventory')} &gt; {t('stock_in')}</p>
       </div>
 
@@ -285,7 +289,7 @@ const StockInComponent: React.FC = () => {
         <div className="mb-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">{t('add_products')}</h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 items-end">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-8 gap-3 items-end">
             <div className="relative">
               <label className="block text-xs text-gray-600 mb-1">{t('product_label')}</label>
               <select
@@ -355,6 +359,22 @@ const StockInComponent: React.FC = () => {
             </div>
 
             <div>
+              <label className="block text-xs text-gray-600 mb-1">{t('sale_type') || 'نوع البيع'}</label>
+              <div className="relative">
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
+                  value={formProduct.saleType}
+                  onChange={(e) => handleFormChange('saleType', e.target.value)}
+                >
+                 <option value="جملة">{t('Sentence')}</option>
+<option value="قطاعي">{t('Sectoral')}</option>
+
+                </select>
+                <ChevronDown className="absolute right-2 top-3 w-4 h-4 text-gray-400" />
+              </div>
+            </div>
+
+            <div>
               <label className="block text-xs text-gray-600 mb-1">{t('discount_label')}</label>
               <input
                 type="number"
@@ -406,6 +426,7 @@ const StockInComponent: React.FC = () => {
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('code_col')}</th>
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('units_col')}</th>
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('price_col')}</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">نوع البيع</th>
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('discount_col')}</th>
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('total_col')}</th>
                   <th className="w-8"></th>
@@ -432,8 +453,9 @@ const StockInComponent: React.FC = () => {
                       </div>
                     </td>
                     <td className="py-3 text-sm text-gray-600">{product.price.toFixed(2)}</td>
+                    <td className="py-3 text-sm text-gray-600">{product.saleType}</td>
                     <td className="py-3 text-sm text-gray-600">{product.discount}%</td>
-                    <td className="py-3 text-sm text-gray-900">{product.total.toFixed(2)} {currency}</td>
+                    <td className="py-3 text-sm text-gray-900">{product.total.toFixed(2)}</td>
                     <td className="py-3">
                       <button
                         onClick={() => handleDeleteProduct(product.id)}

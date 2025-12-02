@@ -321,12 +321,15 @@ const AddEmployeeScreen: React.FC = () => {
 
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">{t('date_of_birth')}</label>
-              <input
-                type="date"
-                value={formData.dateOfBirth}
-                onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
-              />
+<input
+type="text"
+value={formData.dateOfBirth}
+placeholder="YYYY-MM-DD"
+onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
+/>
+
+
             </div>
 
             <div>
@@ -468,12 +471,14 @@ const AddEmployeeScreen: React.FC = () => {
 
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">{t('date_of_employment')}</label>
-              <input
-                type="date"
-                value={formData.dateOfEmployment}
-                onChange={(e) => setFormData({ ...formData, dateOfEmployment: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
-              />
+        <input
+type="text"
+value={formData.dateOfEmployment}
+placeholder="YYYY-MM-DD"
+onChange={(e) => setFormData({ ...formData, dateOfEmployment: e.target.value })}
+className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
+/>
+
             </div>
           </div>
 

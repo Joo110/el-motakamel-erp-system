@@ -33,7 +33,11 @@ const PayrollScreen: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState('November');
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [selectedDepartment, setSelectedDepartment] = useState('All Departments');
+
+  // pagination states
   const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
   const [showModifyModal, setShowModifyModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<PayrollItem | null>(null);
 
@@ -176,9 +180,41 @@ const PayrollScreen: React.FC = () => {
     });
   }, [mappedPayrolls, searchTerm, selectedMonth, selectedStatus, selectedDepartment]);
 
+  // ---------- pagination calculations ----------
+  const totalItems = filteredPayroll.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / entriesPerPage));
+
+  useEffect(() => {
+    // ensure currentPage within bounds when data or pageSize changes
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+    if (currentPage < 1) setCurrentPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalPages]);
+
+  useEffect(() => {
+    // reset to page 1 when entriesPerPage changes
+    setCurrentPage(1);
+  }, [entriesPerPage]);
+
+  const startEntry = totalItems === 0 ? 0 : (currentPage - 1) * entriesPerPage + 1;
+  const endEntry = Math.min(currentPage * entriesPerPage, totalItems);
+
   const displayed = useMemo(() => {
-    return filteredPayroll.slice(0, entriesPerPage);
-  }, [filteredPayroll, entriesPerPage]);
+    const start = (currentPage - 1) * entriesPerPage;
+    return filteredPayroll.slice(start, start + entriesPerPage);
+  }, [filteredPayroll, currentPage, entriesPerPage]);
+
+  const getPageNumbers = (maxVisible = 5) => {
+    const pages: number[] = [];
+    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    const end = Math.min(totalPages, start + maxVisible - 1);
+    if (end - start < maxVisible - 1) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
+  };
+  // --------------------------------------------
 
   // Handlers using hook.updatePayroll
   const handlePaySalary = async (id: string) => {
@@ -365,7 +401,7 @@ const PayrollScreen: React.FC = () => {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold text-gray-900">{t(selectedMonth)} {t('payroll')}</h3>
               <span className="text-sm text-gray-500">
-                {t('showing')} {Math.min(1, displayed.length)}-{displayed.length} {t('of')} {filteredPayroll.length} {t('employees')}
+                {t('showing')} {startEntry}-{endEntry} {t('of')} {totalItems} {t('employees')}
               </span>
             </div>
 
@@ -441,13 +477,29 @@ const PayrollScreen: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                <button className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   {t('previous')}
                 </button>
-                <button className="px-4 py-2 text-sm bg-slate-700 text-white rounded-xl">1</button>
-                <button className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">2</button>
-                <button className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">3</button>
-                <button className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">
+
+                {getPageNumbers().map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setCurrentPage(p)}
+                    className={`px-4 py-2 text-sm ${currentPage === p ? 'bg-slate-700 text-white' : 'text-gray-700 bg-white border border-gray-300'} rounded-xl ${currentPage === p ? '' : 'hover:bg-gray-50'}`}
+                  >
+                    {p}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                  className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   {t('next')}
                 </button>
               </div>

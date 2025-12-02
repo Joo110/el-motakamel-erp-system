@@ -1,3 +1,4 @@
+// src/mycomponents/inventory/InventoryDetailsView.tsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { Edit2, Trash2 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -124,6 +125,31 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
       image,
     };
   }, [inventory, t]);
+
+  // --- NEW: compute numeric capacity (if possible) and total units and residual
+  const capacityValue = useMemo<number | null>(() => {
+    if (!inventory) return null;
+    const inv = inventory as any;
+    const cap = inv?.capacity;
+    if (cap === undefined || cap === null) return null;
+    if (typeof cap === 'number') return cap;
+    if (typeof cap === 'string') {
+      // try to extract numeric part (allow commas, decimals)
+      const parsed = Number(cap.replace(/,/g, '').replace(/[^\d.-]/g, ''));
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  }, [inventory]);
+
+  const totalUnits = useMemo(() => {
+    return products.reduce((sum, p) => sum + (Number(p.unitCount) || 0), 0);
+  }, [products]);
+
+  const residualValue = useMemo<number | null>(() => {
+    if (capacityValue === null) return null;
+    return capacityValue - totalUnits;
+  }, [capacityValue, totalUnits]);
+  // ---------------------------------------------------------------------
 
   const totalProducts = products.length;
   const startEntry = totalProducts === 0 ? 0 : (currentPage - 1) * entriesPerPage + 1;
@@ -269,6 +295,14 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
                   <span className="text-gray-600">{t('capacity_label')}</span>
                   <span className="ml-2">{inventoryData.capacity}</span>
                 </div>
+
+                <div>
+                  <span className="text-gray-600">{/* show both key and Arabic */}{t('residual') }</span>
+                  <span className="ml-1 font-medium">
+                    {residualValue === null ? t('n_a') : residualValue}
+                  </span>
+                </div>
+                {/* end residual */}
               </div>
             </div>
 

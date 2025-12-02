@@ -373,12 +373,6 @@ const AttendanceScreen: React.FC = () => {
             >
               {t('special_day_button')}
             </button>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="px-6 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 text-sm flex items-center gap-2"
-            >
-              + {t('add_attendance_button')}
-            </button>
           </div>
         </div>
 

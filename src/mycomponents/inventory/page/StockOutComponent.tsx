@@ -18,6 +18,7 @@ interface ProductRow {
   price: number;
   discount: number;
   total: number;
+  saleType?: string; // إضافة حقل نوع البيع
 }
 
 const truncate = (s: string | undefined, n = 30) => {
@@ -38,6 +39,7 @@ const StockOutComponent: React.FC = () => {
     units: '0',
     price: '0',
     discount: '0',
+    saleType: 'جملة', // القيمة الافتراضية لنوع البيع
   });
 
   const [customerId, setCustomerId] = useState<string>('');
@@ -65,7 +67,7 @@ const StockOutComponent: React.FC = () => {
     const p = Number(formProduct.price || 0);
     const d = Number(formProduct.discount || 0);
     const tot = u * p * (1 - d / 100);
-    return isFinite(tot) ? tot.toFixed(2) + ' ' + t('currency_sr') : '0.00 ' + t('currency_sr');
+    return isFinite(tot) ? tot.toFixed(2) + ' ' : '0.00 ';
   }, [formProduct.units, formProduct.price, formProduct.discount, t]);
 
   const handleFormChange = (key: keyof typeof formProduct, value: string) => {
@@ -73,7 +75,7 @@ const StockOutComponent: React.FC = () => {
   };
 
   const handleResetForm = () => {
-    setFormProduct({ name: '', inventory: '', code: '96269', units: '0', price: '0', discount: '0' });
+    setFormProduct({ name: '', inventory: '', code: '96269', units: '0', price: '0', discount: '0', saleType: 'جملة' });
     setSelectedProductId('');
     setSelectedInventoryId('');
   };
@@ -141,6 +143,7 @@ const StockOutComponent: React.FC = () => {
       price,
       discount,
       total: Math.round((tot + Number.EPSILON) * 100) / 100,
+      saleType: formProduct.saleType || 'جملة', // حفظ نوع البيع مع المنتج
     };
 
     setProducts((prev) => [...prev, newProduct]);
@@ -160,7 +163,7 @@ const StockOutComponent: React.FC = () => {
     console.groupCollapsed('[StockOut] mapProductsForApi');
     console.log('Input products array:', p);
     const mapped = p.map((prod) => {
-      const mappedItem = {
+      const mappedItem: any = {
         productId: prod.productId,
         inventoryId: prod.inventoryId,
         name: prod.name,
@@ -168,6 +171,8 @@ const StockOutComponent: React.FC = () => {
         price: prod.price,
         discount: prod.discount,
       };
+      // أضفنا نوع البيع إن وُجد
+      if (prod.saleType) mappedItem.saleType = prod.saleType;
       if (!mappedItem.productId) console.warn('[StockOut] missing productId for', prod);
       if (!mappedItem.inventoryId) console.warn('[StockOut] missing inventoryId for', prod);
       if (typeof mappedItem.quantity !== 'number' || Number.isNaN(mappedItem.quantity)) console.warn('[StockOut] quantity is not a number for', prod);
@@ -417,6 +422,23 @@ const StockOutComponent: React.FC = () => {
                 min={0}
                 step="0.01"
               />
+            </div>
+
+            {/* الدروب داون بعد السعر */}
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">{t('sale_type') || 'نوع البيع'}</label>
+              <div className="relative">
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
+                  value={formProduct.saleType}
+                  onChange={(e) => handleFormChange('saleType', e.target.value)}
+                >
+                 <option value="جملة">{t('Sentence')}</option>
+<option value="قطاعي">{t('Sectoral')}</option>
+
+                </select>
+                <ChevronDown className="absolute right-2 top-3 w-4 h-4 text-gray-400" />
+              </div>
             </div>
 
             <div>

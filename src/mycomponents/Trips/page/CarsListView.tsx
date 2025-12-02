@@ -1,17 +1,19 @@
-import React, { useState, useMemo } from 'react'; 
-import { Search, RotateCcw, MapPin, Calendar, Edit2 } from 'lucide-react';
+// src/mycomponents/Trips/components/CarsListView.tsx
+import React, { useEffect, useMemo, useState } from 'react';
+import { Search, RotateCcw, MapPin, Calendar, Edit2, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'react-hot-toast';
+import useMobileStocks from '../hooks/useMobileStocks';
 
-// ==================== Types ====================
 interface Car {
   id: string;
   name: string;
   location: string;
-  capacity: string;
+  capacity?: string;
   avatar?: string;
-  lastUpdate: string;
-  image: string;
+  lastUpdate?: string;
+  image?: string;
 }
 
 interface CarsListViewProps {
@@ -20,7 +22,6 @@ interface CarsListViewProps {
   onEditCar?: (id: string) => void;
 }
 
-// ==================== Component ====================
 const CarsListView: React.FC<CarsListViewProps> = ({
   onAddCar,
   onCarClick,
@@ -28,53 +29,44 @@ const CarsListView: React.FC<CarsListViewProps> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+
+  const {
+    mobileStocks,
+    loading: carsLoading,
+    fetch: fetchCars,
+    deleteItem,
+  } = useMobileStocks();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(6);
 
-  // Sample cars data (replace with API hook if needed)
-  const rawCars: Car[] = [
-    { id: 'CAR001', name: 'Toyota Corolla', location: 'Alex Road', capacity: '5', lastUpdate: '12 Nov 2025', image: '' },
-    { id: 'CAR002', name: 'Nissan Patrol', location: 'Cairo', capacity: '7', lastUpdate: '10 Nov 2025', image: '' },
-    { id: 'CAR003', name: 'Ford Ranger', location: 'Giza', capacity: '2', lastUpdate: '3 Oct 2025', image: '' },
-  ];
+  useEffect(() => {
+    void fetchCars();
+  }, [fetchCars]);
 
   const mappedCars: Car[] = useMemo(() => {
-    return rawCars.map((car, idx) => ({
-      ...car,
-      id: car.id ?? `car-${idx}`,
-      name: car.name ?? t('Unnamed_Car'),
-      location: car.location ?? '',
-      capacity: car.capacity ?? '',
-      lastUpdate: car.lastUpdate ?? '',
-      image: car.image ?? '',
+    if (!Array.isArray(mobileStocks) || mobileStocks.length === 0) return [];
+    return mobileStocks.map((m: any, idx: number) => ({
+      id: (m._id ?? m.id ?? `car-${idx}`).toString(),
+      name: (m.name ?? m.title ?? m.vehicleName ?? m.model ?? 'Unnamed Car').toString(),
+      location: (m.location ?? m.inventory ?? m.branch ?? m.place ?? '').toString(),
+      capacity: (m.capacity ?? m.seats ?? '').toString(),
+      lastUpdate: (m.updatedAt ?? m.lastUpdate ?? m.modifiedAt ?? '').toString(),
+      image: (m.image ?? m.photo ?? m.avatar ?? ''),
     }));
-  }, [rawCars, t]);
+  }, [mobileStocks]);
 
   const filteredCars = useMemo(() => {
     if (!searchQuery.trim()) return mappedCars;
-    const query = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase();
     return mappedCars.filter(
-      (car) =>
-        car.name.toLowerCase().includes(query) ||
-        car.location.toLowerCase().includes(query) ||
-        car.id.toLowerCase().includes(query)
+      (c) =>
+        (c.name ?? '').toLowerCase().includes(q) ||
+        (c.location ?? '').toLowerCase().includes(q) ||
+        (c.id ?? '').toLowerCase().includes(q)
     );
   }, [mappedCars, searchQuery]);
-
-  const handleSearch = () => setCurrentPage(1);
-  const handleReset = () => {
-    setSearchQuery('');
-    setCurrentPage(1);
-  };
-
-  const handleAddCar = () => {
-    if (onAddCar) {
-      onAddCar();
-    } else {
-      navigate('/dashboard/Trips/AddCarForm'); // Add car page
-    }
-  };
 
   const totalCars = filteredCars.length;
   const maxPages = Math.max(1, Math.ceil(totalCars / entriesPerPage));
@@ -85,15 +77,45 @@ const CarsListView: React.FC<CarsListViewProps> = ({
     currentPage * entriesPerPage
   );
 
+  useEffect(() => {
+    if (currentPage > maxPages) setCurrentPage(maxPages || 1);
+  }, [maxPages, currentPage]);
+
+  const handleSearch = () => setCurrentPage(1);
+  const handleReset = () => {
+    setSearchQuery('');
+    setCurrentPage(1);
+  };
+
+  const handleAddCar = () => {
+    if (onAddCar) onAddCar();
+    else navigate('/dashboard/Trips/AddCarForm');
+  };
+
   const handleCarClick = (id: string) => {
     if (onCarClick) onCarClick(id);
-    else navigate(`/dashboard/Trips/CarDetailsView`);
+    else navigate(`/dashboard/Trips/CarDetailsView/${id}`);
   };
 
   const handleEditClick = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (onEditCar) onEditCar(id);
-    else navigate(`/dashboard/Trips/AddCarForm`);
+    else navigate(`/dashboard/Trips/AddCarForm?edit=${id}`);
+  };
+
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const ok = window.confirm(t('Are you sure you want to delete this car?'));
+    if (!ok) return;
+    try {
+      await deleteItem(id);
+      toast.success(t('Car deleted successfully'));
+      void fetchCars();
+    } catch (err: any) {
+      console.error('delete car failed', err);
+      const msg = err?.response?.data?.message ?? err?.message ?? t('Delete failed');
+      toast.error(msg);
+    }
   };
 
   const getPageNumbers = () => {
@@ -101,17 +123,14 @@ const CarsListView: React.FC<CarsListViewProps> = ({
     const pages: number[] = [];
     const maxVisiblePages = 5;
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    const endPage = Math.min(maxPages, startPage + maxVisiblePages - 1);
+    let endPage = Math.min(maxPages, startPage + maxVisiblePages - 1);
     if (endPage - startPage < maxVisiblePages - 1) {
       startPage = Math.max(1, endPage - maxVisiblePages + 1);
+      endPage = Math.min(maxPages, startPage + maxVisiblePages - 1);
     }
     for (let i = startPage; i <= endPage; i++) pages.push(i);
     return pages;
   };
-
-  React.useEffect(() => {
-    if (currentPage > maxPages) setCurrentPage(maxPages || 1);
-  }, [maxPages]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
@@ -177,11 +196,17 @@ const CarsListView: React.FC<CarsListViewProps> = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-          {paginated.length === 0 ? (
+          {carsLoading && (
+            <div className="col-span-full text-center py-12 text-gray-500">
+              {t('Loading...')}
+            </div>
+          )}
+          {!carsLoading && paginated.length === 0 && (
             <div className="col-span-full text-center py-12 text-gray-500">
               {t('no_cars_found')}
             </div>
-          ) : (
+          )}
+          {!carsLoading &&
             paginated.map((car, index) => (
               <div
                 key={`${car.id}-${index}`}
@@ -194,14 +219,26 @@ const CarsListView: React.FC<CarsListViewProps> = ({
                   ) : (
                     <div className="w-full h-full bg-amber-100"></div>
                   )}
-                  <button
-                    onClick={(e) => handleEditClick(e, car.id)}
-                    className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-all opacity-0 group-hover:opacity-100"
-                    aria-label="Edit car"
-                  >
-                    <Edit2 size={16} className="text-slate-700" />
-                  </button>
+
+                  <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => handleEditClick(e, car.id)}
+                      className="p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-all"
+                      aria-label="Edit car"
+                    >
+                      <Edit2 size={16} className="text-slate-700" />
+                    </button>
+
+                    <button
+                      onClick={(e) => handleDelete(e, car.id)}
+                      className="p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-all"
+                      aria-label="Delete car"
+                    >
+                      <Trash2 size={16} className="text-red-600" />
+                    </button>
+                  </div>
                 </div>
+
                 <div className="p-4">
                   <div className="flex justify-between items-start mb-3">
                     <h3 className="font-semibold text-lg">{car.name}</h3>
@@ -229,8 +266,7 @@ const CarsListView: React.FC<CarsListViewProps> = ({
                   </div>
                 </div>
               </div>
-            ))
-          )}
+            ))}
         </div>
 
         {/* Pagination */}
