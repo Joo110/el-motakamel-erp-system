@@ -3,17 +3,25 @@
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
-import useEmployees from '../../HR/hooks/useEmployees'; // عدّل المسار لو لازم
-import useMobileStocks from '../hooks/useMobileStocks'; // عدّل المسار لو لازم
-import useTrips from '../hooks/useTrips'; // عدّل المسار لو لازم
+import useEmployees from '../../HR/hooks/useEmployees';
+import useMobileStocks from '../hooks/useMobileStocks';
+import useTrips from '../hooks/useTrips';
 
 interface TripFormData {
   Location: string;
-  agent: string;  // سيتم تخزين id
-  driver: string; // كتابة نصية
-  car: string;    // سيتم تخزين id
+  agent: string;
+  driver: string;
+  car: string;
   area: string;
   date: string;
+}
+interface TripPayload {
+  location: string;
+  representative: string;
+  driver: string;
+  car: string;
+  area?: string;
+  date?: string;
 }
 
 const NewTrip: React.FC = () => {
@@ -22,7 +30,7 @@ const NewTrip: React.FC = () => {
   // hooks
   const { employees, loading: employeesLoading, refresh: refreshEmployees } = useEmployees();
   const { mobileStocks: carsList, loading: carsLoading, fetch: fetchCars } = useMobileStocks();
-  const { createTrip } = useTrips(); // <-- استخدمنا createTrip من الـ hook
+  const { createTrip } = useTrips();
 
   const [formData, setFormData] = useState<TripFormData>({
     Location: '',
@@ -36,8 +44,7 @@ const NewTrip: React.FC = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    // جلب بيانات الموظفين والسيارات عند المونت
-    void refreshEmployees(); // useEmployees يوفّر refresh
+    void refreshEmployees();
     void fetchCars();
   }, [refreshEmployees, fetchCars]);
 
@@ -60,27 +67,24 @@ const NewTrip: React.FC = () => {
     try {
       setSaving(true);
 
-      // validation بسيط — تطلب agent و driver و location
       if (!formData.Location || !formData.agent || !formData.driver) {
         toast.error(`❌ ${t('Please fill in all required fields!')}`);
         setSaving(false);
         return;
       }
 
-      // payload: أرسل الأسماء/الـ ids بحسب ما يتطلب الـ backend
-      const payload: Record<string, any> = {
-        location: formData.Location,
-  representative: formData.agent, // بدل agentId
-        driver: formData.driver, // driver text
-  car: formData.car || "690b83336f579083d52617a4", // أو اجعل اختيار السيارة إلزامي
-        area: formData.area || undefined,
-        date: formData.date || undefined,
-      };
+const payload: TripPayload = {
+  location: formData.Location,
+  representative: formData.agent,
+  driver: formData.driver,
+  car: formData.car || "690b83336f579083d52617a4",
+  area: formData.area || "",
+  date: formData.date || "",
+};
 
-      // استعمل createTrip من الـ hook
-      await createTrip(payload);
 
-      // hook نفسه بيعمل fetch بعد الإنشاء، لذلك هنا نكتفي بإظهار رسالة و reset
+      await createTrip(payload as any);
+
       toast.success(`✅ ${t('Trip created successfully!')}`);
       handleCancel();
     } catch (error: any) {

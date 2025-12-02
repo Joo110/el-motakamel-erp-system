@@ -108,6 +108,20 @@ const AccountingTree: React.FC = () => {
     { name: t('Gross profit'), value: stats.totalGrosProfit },
   ];
 
+
+const MyLegend = () => (
+  <div className="flex items-center gap-4">
+    <div className="flex items-center gap-2">
+      <div className="w-3 h-3 rounded bg-[#5A6B7E]" />
+      <span className="text-sm text-gray-700">{t('Net profit')}</span>
+    </div>
+    <div className="flex items-center gap-2">
+      <div className="w-3 h-3 rounded bg-[#C4A580]" />
+      <span className="text-sm text-gray-700">{t('Gross profit')}</span>
+    </div>
+  </div>
+);
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       {/* Header */}
@@ -166,7 +180,7 @@ const AccountingTree: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="text-xs text-gray-500">{t('Net & Gross Profit')}</div>
-            <Legend payload={[{ value: t('Net profit'), type: 'square', color: '#5A6B7E' }, { value: t('Gross profit'), type: 'square', color: '#C4A580' }]} />
+<Legend content={<MyLegend />} />
           </div>
           <ResponsiveContainer width="100%" height={84}>
             <BarChart data={profitData} layout="vertical" margin={{ left: 0 }}>
