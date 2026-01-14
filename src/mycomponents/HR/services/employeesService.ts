@@ -54,7 +54,7 @@ export const createEmployeeService = async (payload: FormData) => {
   try {
     const response = await axiosClient.post('/employees', payload, {
       headers: {
-        'Content-Type': 'multipart/form-data', // مهم لرفع الملفات
+        'Content-Type': 'multipart/form-data',
       },
     });
     return response.data;

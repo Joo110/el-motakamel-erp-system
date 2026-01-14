@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useStockTransfer } from '../hooks/useStockTransfer';
 import axiosClient from "@/lib/axiosClient";
+import { useTranslation } from "react-i18next";
 
 type StatusType = "draft" | "shipping" | "delivered";
 
 const TransferManagement = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<StatusType>('draft');
   const [currentPage, setCurrentPage] = useState(1);
@@ -47,17 +49,13 @@ const TransferManagement = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
-  // NEW: helper to locate transfers array inside the response
   const findTransfersArray = (result: any): any[] => {
     if (!result) return [];
 
-    // 1) if the result itself is an array
     if (Array.isArray(result)) return result;
 
-    // 2) sometimes API uses "statsu" typo - let's normalize root
     const root = { ...(result?.data ? result.data : result), ...(result || {}) };
 
-    // 3) prefer common names if present
     const candidates = [
       result?.data,
       result?.data?.allTransfers,
@@ -73,17 +71,14 @@ const TransferManagement = () => {
       root,
     ];
 
-    // scan each candidate: if it's an array return it; if it's an object look for array valued props
     for (const cand of candidates) {
       if (!cand) continue;
       if (Array.isArray(cand)) return cand;
       if (typeof cand === 'object') {
-        // prefer known property names
         const preferKeys = ['allShipped','allShipping','allDelivered','allTransfers','stockTransfers','stockTransfer','result','data'];
         for (const k of preferKeys) {
           if (Array.isArray((cand as any)[k])) return (cand as any)[k];
         }
-        // otherwise take first array property that looks like transfers (has _id or reference or status)
         for (const key of Object.keys(cand)) {
           const val = (cand as any)[key];
           if (Array.isArray(val) && val.length > 0) {
@@ -117,7 +112,6 @@ const TransferManagement = () => {
 
       console.log('🔍 raw extracted transfers:', transfers);
 
-      // normalize status and lowercase it
       const normalized = transfers.map((t: any) => ({
         ...t,
         status: (t?.status ?? '').toString().toLowerCase()
@@ -133,7 +127,6 @@ const TransferManagement = () => {
 
       setTransfersData(filtered);
 
-      // only fetch inventory names for visible transfers (to avoid extra requests)
       filtered.forEach((transfer: any) => {
         if (transfer.from) fetchInventoryName(transfer.from);
         if (transfer.to) fetchInventoryName(transfer.to);
@@ -141,7 +134,7 @@ const TransferManagement = () => {
 
     } catch (err) {
       console.error('❌ Error fetching transfers:', err);
-      toast.error('Failed to load transfers');
+      toast.error(t("failed_load_transfer"));
       setTransfersData([]);
     }
   };
@@ -149,7 +142,7 @@ const TransferManagement = () => {
   const handleApprove = async (id: string) => {
     try {
       await markAsShipping(id);
-      toast.success('✅ Transfer marked as shipping');
+      toast.success(t("order_approved_successfully"));
       fetchData();
     } catch {
       // nothing
@@ -159,11 +152,11 @@ const TransferManagement = () => {
   const handleDeliver = async (id: string) => {
     try {
       await markAsDelivered(id);
-      toast.success('✅ Transfer marked as delivered');
+      toast.success(t("order_delivered_successfully"));
       fetchData();
     } catch (err) {
       console.error("❌ Failed to mark delivered:", err);
-      toast.error('Failed to mark as delivered');
+      toast.error(t("failed"));
     }
   };
 
@@ -191,8 +184,10 @@ const TransferManagement = () => {
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">Inventory Management</h1>
-        <div className="text-sm text-gray-500">Dashboard {'>'} Inventory {'>'} Transfer Management</div>
+        <h1 className="text-2xl font-bold mb-2">{t("inventory_management")}</h1>
+        <div className="text-sm text-gray-500">
+          {t("dashboard")} {'>'} {t("inventory_management")} {'>'} {t("transfer_management")}
+        </div>
       </div>
 
       {/* Tabs */}
@@ -208,7 +203,7 @@ const TransferManagement = () => {
               : 'bg-white text-gray-600 hover:bg-gray-100'
           }`}
         >
-          Draft
+          {t("status_draft")}
         </button>
         <button
           onClick={() => {
@@ -221,7 +216,7 @@ const TransferManagement = () => {
               : 'bg-white text-gray-600 hover:bg-gray-100'
           }`}
         >
-          Shipping
+          {t("status_shipping")}
         </button>
         <button
           onClick={() => {
@@ -234,14 +229,14 @@ const TransferManagement = () => {
               : 'bg-white text-gray-600 hover:bg-gray-100'
           }`}
         >
-          Delivered
+          {t("status_delivered")}
         </button>
       </div>
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         {loading ? (
-          <div className="text-center py-10 text-gray-500">⏳ Loading transfers...</div>
+          <div className="text-center py-10 text-gray-500">{t("loading_transfer_data")}</div>
         ) : error ? (
           <div className="text-center py-10 text-red-500">❌ {error}</div>
         ) : (
@@ -250,19 +245,19 @@ const TransferManagement = () => {
               <table className="w-full">
                 <thead className="border-b">
                   <tr className="text-left text-sm text-gray-600">
-                    <th className="pb-3 font-medium">Transfer number</th>
-                    <th className="pb-3 font-medium">Time</th>
-                    <th className="pb-3 font-medium">Units</th>
-                    <th className="pb-3 font-medium">From</th>
-                    <th className="pb-3 font-medium">To</th>
-                    <th className="pb-3 font-medium">Action</th>
+                    <th className="pb-3 font-medium">{t("reference_label")}</th>
+                    <th className="pb-3 font-medium">{t("time_date")}</th>
+                    <th className="pb-3 font-medium">{t("units_label")}</th>
+                    <th className="pb-3 font-medium">{t("from_label")}</th>
+                    <th className="pb-3 font-medium">{t("to_label")}</th>
+                    <th className="pb-3 font-medium">{t("actions_col")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {currentData.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="text-center py-10 text-gray-400">
-                        No transfers found
+                        {t("no_products_transferred")}
                       </td>
                     </tr>
                   ) : (
@@ -286,7 +281,7 @@ const TransferManagement = () => {
                                 onClick={() => handleApprove(item._id || item.id)}
                                 className="px-4 py-1.5 text-sm text-white bg-slate-700 rounded-full hover:bg-slate-800 transition-colors"
                               >
-                                Approve
+                                {t("approve")}
                               </button>
                             )}
                             
@@ -295,7 +290,7 @@ const TransferManagement = () => {
                                 onClick={() => handleDeliver(item._id || item.id)}
                                 className="px-4 py-1.5 text-sm text-white bg-green-600 rounded-full hover:bg-green-700 transition-colors"
                               >
-                                Mark Delivered
+                                {t("deliver")}
                               </button>
                             )}
                             
@@ -304,7 +299,7 @@ const TransferManagement = () => {
                                  onClick={() => handleView(item._id || item.id, activeTab)}
                                 className="px-4 py-1.5 text-sm text-white bg-blue-600 rounded-full hover:bg-blue-700 transition-colors"
                               >
-                                Print
+                                {t("invoice_btn")}
                               </button>
                             )}
 
@@ -313,7 +308,7 @@ const TransferManagement = () => {
                                 onClick={() => handleView(item._id || item.id, activeTab)}
                                 className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
                               >
-                                View
+                                {t("view_all")}
                               </button>
                             )}
 
@@ -322,14 +317,13 @@ const TransferManagement = () => {
                                 onClick={() => {
                                   const id = item._id || item.id;
                                   console.log('🚚 Go to Shipping page for ID:', id);
-                                 navigate(`/dashboard/Shipping/${id}`, {
-  state: { orderId: id },
-});
-
+                                  navigate(`/dashboard/Shipping/${id}`, {
+                                    state: { orderId: id },
+                                  });
                                 }}
                                 className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
                               >
-                                Add shipping cost
+                                {t("shipping_cost")}
                               </button>
                             )}
                           </div>
@@ -345,7 +339,7 @@ const TransferManagement = () => {
             {safeTransfersData.length > 0 && (
               <div className="flex items-center justify-between mt-6">
                 <div className="flex items-center gap-2 text-sm">
-                  <span>Show</span>
+                  <span>{t("show")}</span>
                   <select
                     value={itemsPerPage}
                     onChange={(e) => {
@@ -358,7 +352,7 @@ const TransferManagement = () => {
                     <option>20</option>
                     <option>50</option>
                   </select>
-                  <span>entries</span>
+                  <span>{t("entries")}</span>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -367,7 +361,7 @@ const TransferManagement = () => {
                     disabled={currentPage === 1}
                     className="px-3 py-1.5 border border-gray-300 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Previous
+                    {t("previous")}
                   </button>
                   
                   {[...Array(Math.min(totalPages, 3))].map((_, idx) => {
@@ -392,7 +386,7 @@ const TransferManagement = () => {
                     disabled={currentPage === totalPages}
                     className="px-3 py-1.5 border border-gray-300 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Next
+                    {t("next")}
                   </button>
                 </div>
               </div>

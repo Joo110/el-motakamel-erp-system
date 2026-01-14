@@ -1,11 +1,14 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, Package, DollarSign, TrendingUp, ShoppingCart, Activity, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const DashboardHome = () => {
+  const { t } = useTranslation();
+
   const stats = [
     {
-      title: "Total Revenue",
+      title: t("total_revenue"),
       value: "$45,231",
       change: "+20.1%",
       trend: "up",
@@ -15,7 +18,7 @@ const DashboardHome = () => {
       iconColor: "text-blue-600"
     },
     {
-      title: "Total Users",
+      title: t("total_users"),
       value: "1,240",
       change: "+12.5%",
       trend: "up",
@@ -25,7 +28,7 @@ const DashboardHome = () => {
       iconColor: "text-purple-600"
     },
     {
-      title: "Total Products",
+      title: t("total_products"),
       value: "325",
       change: "+8.2%",
       trend: "up",
@@ -35,7 +38,7 @@ const DashboardHome = () => {
       iconColor: "text-green-600"
     },
     {
-      title: "Monthly Sales",
+      title: t("monthly_sales"),
       value: "$12,540",
       change: "-3.4%",
       trend: "down",
@@ -47,21 +50,22 @@ const DashboardHome = () => {
   ];
 
   const recentActivity = [
-    { id: 1, action: "New order received", time: "2 minutes ago", type: "order" },
-    { id: 2, action: "Product stock updated", time: "15 minutes ago", type: "update" },
-    { id: 3, action: "New user registered", time: "1 hour ago", type: "user" },
-    { id: 4, action: "Payment received", time: "2 hours ago", type: "payment" }
+    { id: 1, action: t("new_order_received"), time: "2 minutes ago", type: "order" },
+    { id: 2, action: t("product_stock_updated"), time: "15 minutes ago", type: "update" },
+    { id: 3, action: t("new_user_registered"), time: "1 hour ago", type: "user" },
+    { id: 4, action: t("payment_received"), time: "2 hours ago", type: "payment" }
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/20">
       <div className="p-8 space-y-8">
+        
         {/* Header */}
         <div className="space-y-2">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-[#334155] via-[#334155] to-[#334155] bg-clip-text text-transparent">
-            Dashboard Overview
+            {t("dashboard_overview")}
           </h1>
-          <p className="text-gray-600">Welcome back! Here's what's happening with your store today.</p>
+          <p className="text-gray-600">{t("dashboard_welcome")}</p>
         </div>
 
         {/* Stats Grid */}
@@ -70,10 +74,11 @@ const DashboardHome = () => {
             const Icon = stat.icon;
             return (
               <Card 
-                key={index} 
+                key={index}
                 className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group"
               >
                 <CardContent className="p-6">
+                  
                   {/* Icon Circle */}
                   <div className={`w-14 h-14 ${stat.lightBg} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
                     <Icon className={`w-7 h-7 ${stat.iconColor}`} />
@@ -99,6 +104,7 @@ const DashboardHome = () => {
 
                   {/* Decorative gradient */}
                   <div className={`absolute -right-6 -bottom-6 w-24 h-24 ${stat.color} rounded-full opacity-10 group-hover:opacity-20 transition-opacity duration-300`}></div>
+                
                 </CardContent>
               </Card>
             );
@@ -107,6 +113,7 @@ const DashboardHome = () => {
 
         {/* Bottom Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
           {/* Recent Activity */}
           <Card className="lg:col-span-2 border-0 shadow-lg">
             <CardContent className="p-6">
@@ -115,17 +122,17 @@ const DashboardHome = () => {
                   <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                     <Activity className="w-5 h-5 text-white" />
                   </div>
-                  <h2 className="text-xl font-bold text-gray-900">Recent Activity</h2>
+                  <h2 className="text-xl font-bold text-gray-900">{t("recent_activity")}</h2>
                 </div>
                 <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                  View All
+                  {t("view_all")}
                 </button>
               </div>
 
               <div className="space-y-4">
                 {recentActivity.map((activity) => (
                   <div 
-                    key={activity.id} 
+                    key={activity.id}
                     className="flex items-center gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors duration-200 cursor-pointer group"
                   >
                     <div className="w-2 h-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full group-hover:scale-150 transition-transform duration-200"></div>
@@ -147,28 +154,29 @@ const DashboardHome = () => {
                   <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
                     <TrendingUp className="w-5 h-5 text-white" />
                   </div>
-                  <h2 className="text-xl font-bold">Quick Insights</h2>
+                  <h2 className="text-xl font-bold">{t("quick_insights")}</h2>
                 </div>
 
                 <div className="space-y-4">
                   <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/20 transition-colors duration-200">
-                    <p className="text-sm text-white/80 mb-1">Conversion Rate</p>
+                    <p className="text-sm text-white/80 mb-1">{t("conversion_rate")}</p>
                     <p className="text-2xl font-bold">3.24%</p>
                   </div>
 
                   <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/20 transition-colors duration-200">
-                    <p className="text-sm text-white/80 mb-1">Avg. Order Value</p>
+                    <p className="text-sm text-white/80 mb-1">{t("avg_order_value")}</p>
                     <p className="text-2xl font-bold">$142.50</p>
                   </div>
 
                   <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/20 transition-colors duration-200">
-                    <p className="text-sm text-white/80 mb-1">Active Sessions</p>
+                    <p className="text-sm text-white/80 mb-1">{t("active_sessions")}</p>
                     <p className="text-2xl font-bold">1,429</p>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
+
         </div>
       </div>
     </div>

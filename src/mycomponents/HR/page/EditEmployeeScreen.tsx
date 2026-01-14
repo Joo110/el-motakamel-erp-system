@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import axiosClient from "@/lib/axiosClient";
+// استيراد دالة الترجمة
+import { useTranslation } from "react-i18next"; 
 
 type EmployeeFormData = {
   name: string;
@@ -26,13 +28,14 @@ type EmployeeFormData = {
 const EditEmployeeScreen: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation(); // استخدام hook الترجمة
 
   const [formData, setFormData] = useState<EmployeeFormData | null>(null);
   const [loading, setLoading] = useState(true);
 
   // الصورة الحالية / المرفوعة
   const [image, setImage] = useState<string | null>(null);
-  const [imageFile] = useState<File | null>(null);
+  const [imageFile] = useState<File | null>(null); // تركها كما هي لتبسيط عملية التعديل (لكن يفضل استخدامها في حالة التغيير)
 
   const fetchEmployee = async () => {
     try {
@@ -71,7 +74,8 @@ const EditEmployeeScreen: React.FC = () => {
       }
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load employee data");
+      // ترجمة رسالة الخطأ
+      toast.error(t("loadEmployeeDataFailed")); 
     } finally {
       setLoading(false);
     }
@@ -137,30 +141,31 @@ const EditEmployeeScreen: React.FC = () => {
         await axiosClient.patch(`/employees/${id}`, payload);
       }
 
-      toast.success("Employee updated successfully!");
+      // ترجمة رسالة النجاح
+      toast.success(t("updateSuccess")); 
       navigate(-1);
     } catch (err: any) {
-  console.error("Update failed", err);
+      console.error("Update failed", err);
 
-  const message =
-    err?.response?.data?.message ||
-    err?.message ||
-    "Failed to update employee";
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        t("updateFailedGeneric"); // رسالة فشل عامة مترجمة
 
-  if (message.includes("E11000 duplicate key error")) {
-    if (message.includes("email")) {
-      toast.error("❌ This email is already registered!");
-    } else if (message.includes("phone")) {
-      toast.error("❌ This phone number is already registered!");
-    } else if (message.includes("alternativePhone")) {
-      toast.error("❌ This alternative phone is already registered!");
-    } else {
-      toast.error("❌ Duplicate field value detected.");
+      if (message.includes("E11000 duplicate key error")) {
+        if (message.includes("email")) {
+          toast.error(t("duplicateEmail"));
+        } else if (message.includes("phone")) {
+          toast.error(t("duplicatePhone"));
+        } else if (message.includes("alternativePhone")) {
+          toast.error(t("duplicateAlternatePhone"));
+        } else {
+          toast.error(t("duplicateFieldDetected"));
+        }
+      } else {
+        toast.error(String(message));
+      }
     }
-  } else {
-    toast.error(String(message));
-  }
-}
   };
 
   const handleCancel = () => navigate(-1);
@@ -168,23 +173,24 @@ const EditEmployeeScreen: React.FC = () => {
   if (loading || !formData) {
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-500">
-        Loading employee data...
+        {t("loadingEmployeeData")}
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    // إضافة dir="rtl" لضبط الاتجاه
+    <div className="min-h-screen bg-gray-50" dir="rtl"> 
       {/* Header */}
       <div className="bg-white border-b px-6 py-3">
         <div className="max-w-6xl mx-auto px-6">
-          <h1 className="text-3xl font-bold text-gray-900">HR Management</h1>
+          <h1 className="text-3xl font-bold text-gray-900">{t("hrManagement")}</h1>
           <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-            <span>Dashboard</span>
-            <span>&gt;</span>
-            <span>HR</span>
-            <span>&gt;</span>
-            <span>{formData.name}.Edit</span>
+            <span>{t("dashboard")}</span>
+            <span>&lt;</span> {/* عكس اتجاه السهم لدعم RTL */}
+            <span>{t("hr")}</span>
+            <span>&lt;</span> {/* عكس اتجاه السهم لدعم RTL */}
+            <span>{formData.name}{t("editSuffix")}</span>
           </div>
         </div>
       </div>
@@ -193,7 +199,7 @@ const EditEmployeeScreen: React.FC = () => {
       <div className="max-w-5xl mx-auto px-6 py-6">
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <h2 className="text-base font-semibold text-gray-900 mb-5">
-            Personal Details
+            {t("personalDetails")}
           </h2>
 
           {/* Personal Details Grid */}
@@ -201,7 +207,7 @@ const EditEmployeeScreen: React.FC = () => {
             <div className="col-span-2 space-y-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Employee Name
+                  {t("employeeName")}
                 </label>
                 <input
                   type="text"
@@ -215,7 +221,7 @@ const EditEmployeeScreen: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Job Title
+                  {t("jobTitle")}
                 </label>
                 <input
                   type="text"
@@ -229,7 +235,7 @@ const EditEmployeeScreen: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">
-                  National Id
+                  {t("nationalId")}
                 </label>
                 <input
                   type="text"
@@ -242,28 +248,26 @@ const EditEmployeeScreen: React.FC = () => {
               </div>
             </div>
 
-            {/* Image Upload Section (ثابت في العمود الأيمن) */}
+            {/* Image Upload Section (ثابت في العمود الأيسر في RTL) */}
             <div>
               <div className="w-full h-36 bg-white rounded flex items-center justify-center text-gray-400 mb-2 text-xs overflow-hidden border border-gray-300">
                 {image ? (
                   <img
                     src={image}
-                    alt="Employee avatar preview"
+                    alt={t("imagePreview")}
                     className="w-full h-full object-contain object-center bg-white"
                   />
                 ) : (
-                  <span className="text-gray-400 text-sm">Image preview</span>
+                  <span className="text-gray-400 text-sm">{t("imagePreview")}</span>
                 )}
               </div>
-
-              
             </div>
           </div>
 
           {/* Contact Information */}
           <div className="grid grid-cols-2 gap-5 mb-5">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Address</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t("address")}</label>
               <input
                 type="text"
                 value={formData.address}
@@ -273,7 +277,7 @@ const EditEmployeeScreen: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Date of Birth</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t("dateOfBirth")}</label>
               <input
                 type="date"
                 value={formData.dateOfBirth}
@@ -283,7 +287,7 @@ const EditEmployeeScreen: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t("email")}</label>
               <input
                 type="email"
                 value={formData.email}
@@ -293,7 +297,7 @@ const EditEmployeeScreen: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Phone</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t("phone")}</label>
               <input
                 type="tel"
                 value={formData.phone}
@@ -303,7 +307,7 @@ const EditEmployeeScreen: React.FC = () => {
             </div>
 
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Alternate Phone</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t("alternatePhone")}</label>
               <input
                 type="tel"
                 value={formData.alternatePhone}
@@ -314,92 +318,93 @@ const EditEmployeeScreen: React.FC = () => {
           </div>
 
           {/* Job Details Section */}
-          <h2 className="text-base font-semibold text-gray-900 mb-5 mt-6">Job Details</h2>
+          <h2 className="text-base font-semibold text-gray-900 mb-5 mt-6">{t("jobDetails")}</h2>
 
           <div className="grid grid-cols-3 gap-5 mb-5">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Department</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t("department")}</label>
               <select
                 value={formData.department}
                 onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
               >
-                <option value="Sales">Sales</option>
-                <option value="Technical Support">Technical Support</option>
-                <option value="HR">HR</option>
-                <option value="Software">Software</option>
+                {/* قيمة الخيار (Value) تبقى بالإنجليزية، لكن النص (Content) يتم ترجمته */}
+                <option value="Sales">{t("dept_sales")}</option>
+                <option value="Technical Support">{t("dept_techSupport")}</option>
+                <option value="HR">{t("dept_hr")}</option>
+                <option value="Software">{t("dept_software")}</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Work Location</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t("workLocation")}</label>
               <select
                 value={formData.workLocation}
                 onChange={(e) => setFormData({ ...formData, workLocation: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
               >
-                <option value="Cairo office">Cairo office</option>
-                <option value="Alex Branch">Alex Branch</option>
-                <option value="Capital office">Capital office</option>
-                <option value="Mansoura office">Mansoura office</option>
+                <option value="Cairo office">{t("loc_cairoOffice")}</option>
+                <option value="Alex Branch">{t("loc_alexBranch")}</option>
+                <option value="Capital office">{t("loc_capitalOffice")}</option>
+                <option value="Mansoura office">{t("loc_mansouraOffice")}</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Position</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t("position")}</label>
               <select
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
               >
-                <option value="Employee">Employee</option>
-                <option value="Manager">Manager</option>
-                <option value="Director">Director</option>
+                <option value="Employee">{t("pos_employee")}</option>
+                <option value="Manager">{t("pos_manager")}</option>
+                <option value="Director">{t("pos_director")}</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Level of Experience</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t("experienceLevel")}</label>
               <select
                 value={formData.level}
                 onChange={(e) => setFormData({ ...formData, level: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
               >
-                <option value="Junior">Junior</option>
-                <option value="Mid-Level">Mid-Level</option>
-                <option value="Senior">Senior</option>
-                <option value="Director">Director</option>
+                <option value="Junior">{t("lvl_junior")}</option>
+                <option value="Mid-Level">{t("lvl_midLevel")}</option>
+                <option value="Senior">{t("lvl_senior")}</option>
+                <option value="Director">{t("lvl_director")}</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Employment Type</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t("employmentType")}</label>
               <select
                 value={formData.employmentType}
                 onChange={(e) => setFormData({ ...formData, employmentType: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
               >
-                <option value="Full-Time">Full Time</option>
-                <option value="Part-Time">Part Time</option>
-                <option value="Project-Based">Project Based</option>
+                <option value="Full-Time">{t("type_fullTime")}</option>
+                <option value="Part-Time">{t("type_partTime")}</option>
+                <option value="Project-Based">{t("type_projectBased")}</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Manager</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t("manager")}</label>
               <select
                 value={formData.manager}
                 onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
               >
-                <option value="Ahmed Hassan">Ahmed Hassan</option>
-                <option value="Mohamed Ali">Mohamed Ali</option>
-                <option value="Aali Hassan">Aali Hassan</option>
+                <option value="Ahmed Hassan">{t("mgr_ahmedHassan")}</option>
+                <option value="Mohamed Ali">{t("mgr_mohamedAli")}</option>
+                <option value="Aali Hassan">{t("mgr_aaliHassan")}</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Salary</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t("salary")}</label>
               <input
                 type="text"
                 value={formData.salary}
@@ -409,7 +414,7 @@ const EditEmployeeScreen: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Date of Employment</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t("dateOfEmployment")}</label>
               <input
                 type="date"
                 value={formData.dateOfEmployment}
@@ -420,18 +425,18 @@ const EditEmployeeScreen: React.FC = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end gap-3 mt-6">
-            <button
-              onClick={handleCancel}
-              className="px-5 py-2 border border-gray-300 text-gray-700 rounded text-sm hover:bg-gray-50"
-            >
-              Cancel
-            </button>
+          <div className="flex justify-start gap-3 mt-6"> {/* عكس ترتيب الأزرار بـ justify-start في RTL */}
             <button
               onClick={handleSave}
               className="px-5 py-2 bg-slate-700 text-white rounded text-sm hover:bg-slate-800"
             >
-              Save Details
+              {t("saveDetails")}
+            </button>
+            <button
+              onClick={handleCancel}
+              className="px-5 py-2 border border-gray-300 text-gray-700 rounded text-sm hover:bg-gray-50"
+            >
+              {t("cancel")}
             </button>
           </div>
         </div>

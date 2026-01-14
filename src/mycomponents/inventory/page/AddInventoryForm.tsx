@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Upload } from 'lucide-react';
 import { useInventories } from '@/mycomponents/inventory/hooks/useInventories';
 import { toast } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 interface AddInventoryFormProps {
   onSave?: (data: InventoryFormData) => void;
@@ -17,6 +18,7 @@ interface InventoryFormData {
 }
 
 const AddInventoryForm: React.FC<AddInventoryFormProps> = ({ onSave, onCancel }) => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<InventoryFormData>({
     id: '#1346HC',
     inventoryName: '',
@@ -54,15 +56,15 @@ const AddInventoryForm: React.FC<AddInventoryFormProps> = ({ onSave, onCancel })
     let valid = true;
 
     if (!formData.inventoryName.trim()) {
-      newErrors.inventoryName = 'Inventory Name is required';
+      newErrors.inventoryName = t('inventory_name_required');
       valid = false;
     }
     if (!formData.location.trim()) {
-      newErrors.location = 'Location is required';
+      newErrors.location = t('location_required');
       valid = false;
     }
     if (!formData.capacity.trim()) {
-      newErrors.capacity = 'Capacity is required';
+      newErrors.capacity = t('capacity_required');
       valid = false;
     }
 
@@ -101,13 +103,13 @@ const AddInventoryForm: React.FC<AddInventoryFormProps> = ({ onSave, onCancel })
         });
       }
 
-      toast.success('Inventory added successfully!');
+      toast.success(t('inventory_added_success'));
     } catch (error: any) {
       console.error('❌ Create inventory failed', error);
       if (error?.response?.data) {
         console.error('Server response:', error.response.data);
       }
-      toast.error('Something went wrong');
+      toast.error(t('something_went_wrong'));
     }
   };
 
@@ -116,20 +118,20 @@ const AddInventoryForm: React.FC<AddInventoryFormProps> = ({ onSave, onCancel })
       <div className="max-w-5xl mx-auto">
         <div className="mb-6">
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-            <span>Dashboard</span>
+            <span>{t('dashboard')}</span>
             <span>›</span>
-            <span>Inventories</span>
+            <span>{t('inventories')}</span>
             <span>›</span>
-            <span className="text-gray-700">Add Inventory</span>
+            <span className="text-gray-700">{t('add_inventory')}</span>
           </div>
-          <h1 className="text-2xl font-bold">Inventory Management</h1>
+          <h1 className="text-2xl font-bold">{t('inventory_management')}</h1>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-semibold">Add inventory</h2>
+            <h2 className="text-lg font-semibold">{t('add_inventory_title')}</h2>
             <div className="text-sm">
-              <span className="text-gray-600">Id:</span>
+              <span className="text-gray-600">{t('id')}</span>
               <span className="ml-2 font-medium">{formData.id}</span>
             </div>
           </div>
@@ -137,7 +139,7 @@ const AddInventoryForm: React.FC<AddInventoryFormProps> = ({ onSave, onCancel })
           <div className="grid grid-cols-2 gap-8">
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium mb-2">Inventory Name:</label>
+                <label className="block text-sm font-medium mb-2">{t('inventory_name')}:</label>
                 <input
                   type="text"
                   value={formData.inventoryName}
@@ -148,7 +150,7 @@ const AddInventoryForm: React.FC<AddInventoryFormProps> = ({ onSave, onCancel })
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Location:</label>
+                <label className="block text-sm font-medium mb-2">{t('location')}:</label>
                 <input
                   type="text"
                   value={formData.location}
@@ -159,7 +161,7 @@ const AddInventoryForm: React.FC<AddInventoryFormProps> = ({ onSave, onCancel })
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Capacity:</label>
+                <label className="block text-sm font-medium mb-2">{t('capacity')}:</label>
                 <input
                   type="text"
                   value={formData.capacity}
@@ -173,10 +175,10 @@ const AddInventoryForm: React.FC<AddInventoryFormProps> = ({ onSave, onCancel })
             <div className="flex flex-col items-center">
               <div className="border-2 border-dashed border-gray-300 rounded-lg h-80 w-full flex items-center justify-center bg-gray-50 mb-4 overflow-hidden">
                 {formData.image ? (
-                  <img src={formData.image} alt="Warehouse preview" 
+                  <img src={formData.image} alt="Warehouse preview"
                   className="w-full h-full object-contain object-center bg-gray-100" />
                 ) : (
-                  <span className="text-gray-400 text-sm">image preview</span>
+                  <span className="text-gray-400 text-sm">{t('image_preview')}</span>
                 )}
               </div>
 
@@ -184,7 +186,7 @@ const AddInventoryForm: React.FC<AddInventoryFormProps> = ({ onSave, onCancel })
                 <label className="flex-1 cursor-pointer">
                   <div className="flex items-center justify-center gap-2 px-4 py-3 bg-[#1f334d] text-white rounded-xl shadow-sm hover:bg-gray-900 transition-all font-medium">
                     <Upload size={18} />
-                    <span>{formData.image ? 'Edit image' : 'Upload image'}</span>
+                    <span>{formData.image ? t('edit_image') : t('upload_image')}</span>
                   </div>
                   <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                 </label>
@@ -194,7 +196,7 @@ const AddInventoryForm: React.FC<AddInventoryFormProps> = ({ onSave, onCancel })
                     onClick={() => { setFormData(prev => ({ ...prev, image: '' })); setImageFile(null); }}
                     className="flex-1 px-4 py-3 bg-red-500 text-white rounded-xl shadow-sm hover:bg-red-600 transition-all font-medium"
                   >
-                    Remove
+                    {t('remove')}
                   </button>
                 )}
               </div>
@@ -206,13 +208,13 @@ const AddInventoryForm: React.FC<AddInventoryFormProps> = ({ onSave, onCancel })
               onClick={onCancel}
               className="px-6 py-2 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               onClick={handleSave}
               className="px-6 py-2.5 rounded-full bg-slate-700 hover:bg-slate-800 text-white font-medium shadow-sm transition-all flex items-center gap-2"
             >
-              Save Inventory
+              {t('save_inventory')}
             </button>
           </div>
         </div>

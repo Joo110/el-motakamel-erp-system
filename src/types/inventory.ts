@@ -22,6 +22,13 @@ inventories: Inventory[];
 };
 }
 
+export interface UpdateInventoryResponse {
+  status: string;
+  data: {
+    updatedInventory: Inventory;
+  };
+}
+
 
 export interface SingleInventoryResponse {
 status: string;

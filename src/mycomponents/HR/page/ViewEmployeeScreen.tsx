@@ -6,6 +6,8 @@ import axiosClient from "@/lib/axiosClient";
 import { useDepartments } from "../../Department/hooks/useDepartments";
 import { useRoles } from "../../Roles/hooks/useRoles";
 import { useEmployees } from "../../HR/hooks/useEmployees";
+// استيراد دالة الترجمة
+import { useTranslation } from "react-i18next"; 
 
 type Employee = {
   _id: string;
@@ -31,6 +33,8 @@ type Employee = {
 const ViewEmployeeScreen: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation(); // استخدام hook الترجمة
+
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -40,7 +44,8 @@ const ViewEmployeeScreen: React.FC = () => {
       const res = await axiosClient.get(`/employees/${id}`);
       const emp = res.data.data.employee;
       if (!emp) {
-        toast.error("Employee not found");
+        // رسالة خطأ مترجمة
+        toast.error(t("employeeNotFound")); 
         navigate(-1);
         return;
       }
@@ -52,12 +57,15 @@ const ViewEmployeeScreen: React.FC = () => {
       });
     } catch (err) {
       console.error(err);
-      toast.error("Failed to fetch employee details");
+      // رسالة خطأ مترجمة
+      toast.error(t("loadEmployeeDataFailed")); 
     } finally {
       setLoading(false);
     }
   };
 
+  // افتراض أن هذه الدوال تعود بالبيانات المترجمة بالفعل أو يجب ترجمة القيم المعروضة يدويًا.
+  // سنقوم هنا بتركها كما هي وافتراض أن الـ hooks لا تدعم الترجمة للتبسيط.
   const { departments } = useDepartments();
   const { roles } = useRoles();
   const { employees: allEmployees } = useEmployees();
@@ -71,44 +79,58 @@ const ViewEmployeeScreen: React.FC = () => {
   if (loading)
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-500">
-        Loading employee details...
+        {t("loadingEmployeeData")}
       </div>
     );
 
   if (!employee)
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-500">
-        No employee found.
+        {t("noEmployeeFound")}
       </div>
     );
 
-  const departmentName =
-    departments.find((d) => d._id === employee.department)?.name ??
-    employee.department;
+  // منطق العرض لربط الـ IDs بالأسماء (مع افتراض أن الأسماء المحفوظة بالـ DB بالإنجليزية)
+  // يفضل استخدام دالة مساعدة هنا لترجمة القيم المعروفة (مثل Department و Role و Manager)
+  // سنقوم بتبسيط الترجمة هنا بالاعتماد على القيم المخزنة في الـ Dropdowns في ملف ar.ts
+const departmentName =
+  departments.find((d) => d._id === employee.department)?.name ??
+  (t(`dept_${employee.department.replace(/\s/g, "")}` as any) ||
+    employee.department);
 
-  const roleName =
-roles.find((r) => r._id === employee.role)?.role ?? employee.role;
+const roleName =
+  roles.find((r) => r._id === employee.role)?.role ??
+  (t(`pos_${employee.role.toLowerCase()}` as any) ||
+    employee.role);
 
-  const managerName =
-    allEmployees.find((m) => m._id === employee.manager)?.name ??
-    employee.manager;
+const managerName =
+  allEmployees.find((m) => m._id === employee.manager)?.name ??
+  (t(`mgr_${employee.manager.replace(/\s/g, "")}` as any) ||
+    employee.manager);
+
+    // ترجمة قيم الـ Dropdowns المعروضة مباشرة
+    const translatedWorkLocation = t(`loc_${employee.workLocation.replace(/\s/g, "").replace("-", "")}` as any) || employee.workLocation;
+    const translatedExperienceLevel = t(`lvl_${employee.experienceLevel.replace(/\s/g, "").replace("-", "").toLowerCase()}` as any) || employee.experienceLevel;
+    const translatedEmploymentType = t(`type_${employee.employmentType.replace(/-/g, "").toLowerCase()}` as any) || employee.employmentType;
+
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    // إضافة dir="rtl" لضبط الاتجاه
+    <div className="min-h-screen bg-gray-50" dir="rtl"> 
       {/* Header */}
       <div className="bg-white border-b px-6 py-3">
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-lg font-bold text-gray-900">HR Management</h1>
+              <h1 className="text-lg font-bold text-gray-900">{t("hrManagement")}</h1>
               <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
-                <span>Dashboard</span>
-                <span>&gt;</span>
-                <span>HR</span>
-                <span>&gt;</span>
+                <span>{t("dashboard")}</span>
+                <span>&lt;</span> {/* عكس اتجاه السهم لدعم RTL */}
+                <span>{t("hr")}</span>
+                <span>&lt;</span> {/* عكس اتجاه السهم لدعم RTL */}
                 <span>{employee.name}</span>
-                <span>&gt;</span>
-                <span>View</span>
+                <span>&lt;</span> {/* عكس اتجاه السهم لدعم RTL */}
+                <span>{t("view")}</span>
               </div>
             </div>
             <button
@@ -125,7 +147,7 @@ roles.find((r) => r._id === employee.role)?.role ?? employee.role;
       <div className="max-w-5xl mx-auto px-6 py-6">
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <h2 className="text-base font-semibold text-gray-900 mb-5">
-            Personal Details
+            {t("personalDetails")}
           </h2>
 
           {/* Personal Info */}
@@ -133,14 +155,14 @@ roles.find((r) => r._id === employee.role)?.role ?? employee.role;
             <div className="col-span-2 space-y-4">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">
-                  Employee Name
+                  {t("employeeName")}
                 </label>
                 <div className="text-sm text-gray-900 py-2">{employee.name}</div>
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">
-                  Job Title
+                  {t("jobTitle")}
                 </label>
                 <div className="text-sm text-gray-900 py-2">
                   {employee.jobTitle}
@@ -149,7 +171,7 @@ roles.find((r) => r._id === employee.role)?.role ?? employee.role;
 
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">
-                  National ID
+                  {t("nationalId")}
                 </label>
                 <div className="text-sm text-gray-900 py-2">
                   {employee.nationalId}
@@ -163,11 +185,11 @@ roles.find((r) => r._id === employee.role)?.role ?? employee.role;
                 {employee.avatar ? (
                   <img
                     src={employee.avatar}
-                    alt="Employee Avatar"
+                    alt={t("employeeName")}
                     className="w-full h-full object-contain object-center bg-gray-100"
                   />
                 ) : (
-                  <span>No image</span>
+                  <span>{t("noImage")}</span>
                 )}
               </div>
             </div>
@@ -177,14 +199,14 @@ roles.find((r) => r._id === employee.role)?.role ?? employee.role;
           <div className="grid grid-cols-2 gap-5 mb-5">
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">
-                Address
+                {t("address")}
               </label>
               <div className="text-sm text-gray-900 py-2">{employee.address}</div>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">
-                Date of Birth
+                {t("dateOfBirth")}
               </label>
               <div className="text-sm text-gray-900 py-2">
                 {employee.birthDate}
@@ -193,21 +215,21 @@ roles.find((r) => r._id === employee.role)?.role ?? employee.role;
 
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">
-                Email
+                {t("email")}
               </label>
               <div className="text-sm text-gray-900 py-2">{employee.email}</div>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">
-                Phone
+                {t("phone")}
               </label>
               <div className="text-sm text-gray-900 py-2">{employee.phone}</div>
             </div>
 
             <div className="col-span-2">
               <label className="block text-xs font-medium text-gray-500 mb-1">
-                Alternate Phone
+                {t("alternatePhone")}
               </label>
               <div className="text-sm text-gray-900 py-2">
                 {employee.alternativePhone}
@@ -217,76 +239,76 @@ roles.find((r) => r._id === employee.role)?.role ?? employee.role;
 
           {/* Job Details */}
           <h2 className="text-base font-semibold text-gray-900 mb-5 mt-6">
-            Job Details
+            {t("jobDetails")}
           </h2>
 
           <div className="grid grid-cols-3 gap-5 mb-5">
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">
-                Department
+                {t("department")}
               </label>
               <div className="text-sm text-gray-900 py-2">{departmentName}</div>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">
-                Work Location
+                {t("workLocation")}
               </label>
               <div className="text-sm text-gray-900 py-2">
-                {employee.workLocation}
+                {translatedWorkLocation}
               </div>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">
-                Position (Role)
+                {t("positionRole")}
               </label>
               <div className="text-sm text-gray-900 py-2">{roleName}</div>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">
-                Level of Experience
+                {t("experienceLevel")}
               </label>
               <div className="text-sm text-gray-900 py-2">
-                {employee.experienceLevel}
+                {translatedExperienceLevel}
               </div>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">
-                Employment Type
+                {t("employmentType")}
               </label>
               <div className="text-sm text-gray-900 py-2">
-                {employee.employmentType}
+                {translatedEmploymentType}
               </div>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">
-                Manager
+                {t("manager")}
               </label>
               <div className="text-sm text-gray-900 py-2">{managerName}</div>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">
-                Salary
+                {t("salary")}
               </label>
               <div className="text-sm text-gray-900 py-2">
-                {employee.salary} EGP
+                {employee.salary} {t("currencyEGP")}
               </div>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">
-                Date of Employment
+                {t("dateOfEmployment")}
               </label>
               <div className="text-sm text-gray-900 py-2">
                 {employee.employmentDate}
               </div>
             </div>
-          </div>    
+          </div>
         </div>
       </div>
     </div>

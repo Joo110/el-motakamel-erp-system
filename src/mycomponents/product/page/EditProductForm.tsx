@@ -3,9 +3,12 @@ import { useParams } from "react-router-dom";
 import { ChevronRight, ChevronDown, Upload } from "lucide-react";
 import { useProducts } from "../hooks/useProducts";
 import { useCategories } from "@/mycomponents/category/hooks/useCategories";
-import { toast } from 'react-hot-toast';
+import { toast } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 
 const EditProductForm: React.FC = () => {
+  const { t } = useTranslation();
+
   const { id } = useParams<{ id: string }>();
   const productId = id!;
 
@@ -96,7 +99,7 @@ const EditProductForm: React.FC = () => {
 
       // ===== validation =====
       if (!productId) {
-        toast.error("Product ID missing. Cannot save.");
+        toast.error(t("product_id_missing") || "Product ID missing. Cannot save.");
         setSaving(false);
         return;
       }
@@ -106,13 +109,13 @@ const EditProductForm: React.FC = () => {
       const priceNum = parseFloat(normalizedPriceStr);
 
       if (isNaN(priceNum)) {
-        toast.error("Please enter a valid price (numbers only).");
+        toast.error(t("invalid_price") || "Please enter a valid price (numbers only).");
         setSaving(false);
         return;
       }
 
       if (priceNum < 0) {
-        toast.error("Price cannot be negative.");
+        toast.error(t("negative_price") || "Price cannot be negative.");
         setSaving(false);
         return;
       }
@@ -120,7 +123,7 @@ const EditProductForm: React.FC = () => {
       // units validation: if empty, fallback to 1 for calculations and payload
       let unitsNum = parseFloat((units || "").toString().replace(",", ".")) || 1;
       if (isNaN(unitsNum) || unitsNum <= 0) {
-        // use fallback 1 but warn user
+        // use fallback 1 but warn user (no blocking)
         unitsNum = 1;
       }
 
@@ -128,7 +131,7 @@ const EditProductForm: React.FC = () => {
       const taxNormalized = (tax || "").toString().trim().replace(",", ".");
       const taxNum = taxNormalized === "" ? 0 : parseFloat(taxNormalized);
       if (taxNormalized !== "" && isNaN(taxNum)) {
-        toast.error("Invalid tax value.");
+        toast.error(t("invalid_tax") || "Invalid tax value.");
         setSaving(false);
         return;
       }
@@ -149,42 +152,42 @@ const EditProductForm: React.FC = () => {
       console.log("📦 Payload to send:", payload);
 
       await updateProduct(productId, payload);
-      toast.success("✅ Product updated successfully!");
+      toast.success(t("product_updated") || "✅ Product updated successfully!");
     } catch (error) {
       console.error("❌ Failed to update product:", error);
-      toast.error("Error updating product. Check console.");
+      toast.error(t("error_updating") || "Error updating product. Check console.");
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
-    return <div className="p-10 text-center text-gray-500">Loading product...</div>;
+    return <div className="p-10 text-center text-gray-500">{t("loading_product") || "Loading product..."}</div>;
   }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Products Management</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">{t("products_management")}</h1>
         <div className="flex items-center gap-2 text-sm text-gray-500">
-          <span>Dashboard</span>
+          <span>{t("dashboard")}</span>
           <ChevronRight className="w-4 h-4" />
-          <span>Products</span>
+          <span>{t("products")}</span>
           <ChevronRight className="w-4 h-4" />
-          <span>Edit Product</span>
+          <span>{t("edit_product")}</span>
         </div>
       </div>
 
       {/* Form */}
       <div className="bg-white rounded-2xl shadow-sm p-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-8">Edit Product</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-8">{t("edit_product")}</h2>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left */}
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">Product Name</label>
+              <label className="block text-sm font-medium text-gray-900 mb-2">{t("product_name") || t("product")}</label>
               <input
                 type="text"
                 value={productName}
@@ -195,7 +198,7 @@ const EditProductForm: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">Category</label>
+              <label className="block text-sm font-medium text-gray-900 mb-2">{t("category")}</label>
               <div className="relative">
                 <select
                   value={category}
@@ -217,7 +220,7 @@ const EditProductForm: React.FC = () => {
                     })
                   ) : (
                     // fallback: show current category as single option if we have its id
-                    category ? <option value={category}>{category}</option> : <option value="">No categories</option>
+                    category ? <option value={category}>{category}</option> : <option value="">{t("no_categories") || "No categories"}</option>
                   )}
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
@@ -225,7 +228,7 @@ const EditProductForm: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">Description</label>
+              <label className="block text-sm font-medium text-gray-900 mb-2">{t("description")}</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -236,7 +239,7 @@ const EditProductForm: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">Code</label>
+              <label className="block text-sm font-medium text-gray-900 mb-2">{t("code")}</label>
               <input
                 type="text"
                 value={code}
@@ -248,7 +251,7 @@ const EditProductForm: React.FC = () => {
 
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">Price</label>
+                <label className="block text-sm font-medium text-gray-900 mb-2">{t("price")}</label>
                 <input
                   type="text"
                   value={price}
@@ -257,7 +260,7 @@ const EditProductForm: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">Tax</label>
+                <label className="block text-sm font-medium text-gray-900 mb-2">{t("tax")}</label>
                 <input
                   type="text"
                   value={tax}
@@ -267,7 +270,7 @@ const EditProductForm: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">Units</label>
+                <label className="block text-sm font-medium text-gray-900 mb-2">{t("units")}</label>
                 <input
                   type="text"
                   value={units}
@@ -279,7 +282,7 @@ const EditProductForm: React.FC = () => {
             </div>
 
             <div className="pt-2">
-              <span className="text-sm font-medium text-gray-900">Total: </span>
+              <span className="text-sm font-medium text-gray-900">{t("total_label") || t("total")}: </span>
               <span className="text-lg font-bold text-gray-900">{calculateTotal()} SR</span>
             </div>
           </div>
@@ -290,7 +293,7 @@ const EditProductForm: React.FC = () => {
               <div className="bg-gray-50 rounded-2xl p-8 flex flex-col items-center justify-center mb-6">
                 <img
                   src={image || "https://via.placeholder.com/200"}
-                  alt="Product"
+                  alt={t("product_image_alt") || "Product"}
                   className="w-64 h-64 object-contain mb-6"
                 />
               </div>
@@ -299,14 +302,14 @@ const EditProductForm: React.FC = () => {
                   onClick={() => {}}
                   className="flex-1 px-6 py-2.5 rounded-xl bg-white border border-gray-300 shadow-sm text-gray-700 font-medium hover:bg-gray-100 transition-all"
                 >
-                  Edit Image
+                  {t("edit_image") || "Edit Image"}
                 </button>
                 <button
                   onClick={() => {}}
                   className="flex-1 px-6 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-800 text-white font-medium shadow-sm flex items-center justify-center gap-2 transition-all"
                 >
                   <Upload className="w-5 h-5" />
-                  Upload
+                  {t("upload") || "Upload"}
                 </button>
               </div>
             </div>
@@ -319,7 +322,7 @@ const EditProductForm: React.FC = () => {
             onClick={() => window.history.back()}
             className="px-6 py-2.5 rounded-xl bg-white border border-gray-300 shadow-sm text-gray-700 font-medium hover:bg-gray-100 transition-all"
           >
-            Cancel
+            {t("cancel") || "Cancel"}
           </button>
           <button
             onClick={handleSave}
@@ -328,7 +331,7 @@ const EditProductForm: React.FC = () => {
               saving ? "bg-gray-400" : "bg-slate-700 hover:bg-slate-800"
             }`}
           >
-            {saving ? "Saving..." : "Save Product"}
+            {saving ? (t("saving") || "Saving...") : (t("save_product") || "Save Product")}
           </button>
         </div>
       </div>

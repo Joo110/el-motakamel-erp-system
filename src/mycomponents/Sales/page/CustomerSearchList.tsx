@@ -4,46 +4,47 @@ import { Search, Edit2, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCustomers } from '../../Sales/hooks/useCustomers';
 import { toast } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 const CustomerSearchList: React.FC = () => {
+  const { t } = useTranslation();
   const { customers, loading, error, fetchCustomers, removeCustomer } = useCustomers(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
     if (!customers || customers.length === 0) void fetchCustomers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-const handleDelete = async (id?: string) => {
-  if (!id) return;
-  if (!window.confirm('Are you sure you want to delete this customer?')) return;
+  const handleDelete = async (id?: string) => {
+    if (!id) return;
+    if (!window.confirm(t('confirm_delete_customer', 'Are you sure you want to delete this customer?'))) return;
 
-  try {
-    console.log('🗑️ Trying to delete customer:', id);
-    const res = await removeCustomer(id);
+    try {
+      console.log('🗑️ Trying to delete customer:', id);
+      const res = await removeCustomer(id);
+      const isDeleted =
+        !res ||
+        res.success === true ||
+        (res as any)?.status === 204 ||
+        (res as any)?.status === 'success' ||
+        (typeof (res as any)?.message === 'string' &&
+          (res as any).message.toLowerCase().includes('deleted'));
 
-    console.log('🧩 Delete response:', res);
-
-    const isDeleted =
-      !res ||
-      res.success === true ||
-      (res as any)?.status === 204 ||
-      (res as any)?.status === 'success' ||
-      (typeof (res as any)?.message === 'string' &&
-        (res as any).message.toLowerCase().includes('deleted'));
-
-    if (isDeleted) {
-      console.log('✅ Customer deleted successfully');
-      await fetchCustomers(); 
-    } else {
-      console.warn('⚠️ Unexpected delete response:', res);
-      toast('Customer may not have been deleted. Check console for details.');
+      if (isDeleted) {
+        toast.success(t('customer_deleted', 'Customer deleted successfully'));
+        await fetchCustomers(); 
+      } else {
+        console.warn('⚠️ Unexpected delete response:', res);
+        toast(t('customer_may_not_deleted', 'Customer may not have been deleted. Check console for details.'));
+      }
+    } catch (err) {
+      console.error('❌ Delete failed:', err);
+      toast(t('delete_failed', 'Delete failed. Check console.'));
     }
-  } catch (err) {
-    console.error('❌ Delete failed:', err);
-    toast('Delete failed. Check console.');
-  }
-};
+  };
 
   const filtered = useMemo(() => {
     const term = (searchTerm || '').toLowerCase().trim();
@@ -56,27 +57,37 @@ const handleDelete = async (id?: string) => {
     );
   }, [customers, searchTerm]);
 
+  const totalPages = Math.ceil((filtered.length || 0) / rowsPerPage);
+
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * rowsPerPage;
+    return filtered.slice(start, start + rowsPerPage);
+  }, [filtered, currentPage, rowsPerPage]);
+
+  const handlePrev = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
+  const handleNext = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Sales Management</h1>
-            <p className="text-sm text-gray-500">Dashboard &gt; Customer Search</p>
+            <h1 className="text-2xl font-bold text-gray-900">{t('sales_management', 'Sales Management')}</h1>
+            <p className="text-sm text-gray-500">{t('dashboard')} &gt; {t('Customer_Search', 'Customer Search')}</p>
           </div>
           <Link
             to="/dashboard/sales/customer/new"
             className="bg-gray-800 hover:bg-blue-800 text-white px-4 py-2 rounded-full flex items-center gap-2"
           >
-            <span className="text-lg">+</span> Add Customer
+            <span className="text-lg">+</span> {t('add_customer', 'Add Customer')}
           </Link>
         </div>
 
         {/* Customer Search */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Customer Search</h2>
+            <h2 className="text-lg font-semibold text-gray-900">{t('Customer_Search', 'Customer Search')}</h2>
             <button className="text-gray-400">▼</button>
           </div>
           <div className="flex gap-3">
@@ -84,9 +95,12 @@ const handleDelete = async (id?: string) => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
-                placeholder="Search products by name, phone, or email..."
+                placeholder={t('search_placeholder', 'Search products by name, phone, or email...')}
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -95,7 +109,7 @@ const handleDelete = async (id?: string) => {
               className="bg-gray-800 hover:bg-blue-800 text-white px-6 py-2 rounded-full flex items-center gap-2"
             >
               <Search className="w-4 h-4" />
-              Search
+              {t('search', 'Search')}
             </button>
           </div>
         </div>
@@ -104,31 +118,30 @@ const handleDelete = async (id?: string) => {
         <div className="bg-white rounded-lg shadow">
           <div className="p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Customer</h2>
+              <h2 className="text-lg font-semibold text-gray-900">{t('customer', 'Customer')}</h2>
               <p className="text-sm text-gray-500">
-                Showing {filtered.length > 0 ? `1-${Math.min(filtered.length, 10)}` : 0} of {filtered.length} Supplier
+                {t('showing', 'Showing')} {paginatedData.length > 0 ? `${(currentPage - 1) * rowsPerPage + 1}-${Math.min(currentPage * rowsPerPage, filtered.length)}` : 0} {t('of', 'of')} {filtered.length} {t('customer_plural', 'Customer')}
               </p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Name</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Address</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Email</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Phone</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Actions</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">{t('name', 'Name')}</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">{t('address', 'Address')}</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">{t('email', 'Email')}</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">{t('phone', 'Phone')}</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">{t('actions', 'Actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((customer, idx) => (
+                  {paginatedData.map((customer, idx) => (
                     <tr key={customer._id ?? idx} className="border-b hover:bg-gray-50">
                       <td className="py-4 px-4">
                         <Link
                           to={`/dashboard/sales/customer/${customer._id}`}
                           className="flex items-center gap-3"
                         >
-                          <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
                           <span className="font-medium text-gray-900">{customer.name}</span>
                         </Link>
                       </td>
@@ -153,38 +166,66 @@ const handleDelete = async (id?: string) => {
                       </td>
                     </tr>
                   ))}
-                  {filtered.length === 0 && (
+                  {paginatedData.length === 0 && (
                     <tr>
                       <td colSpan={5} className="text-center py-6 text-gray-500">
-                        {loading ? 'Loading customers...' : error ?? 'No customers found.'}
+                        {loading ? t('loading_customers', 'Loading customers...') : error ?? t('no_customers_found', 'No customers found.')}
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination */}
             <div className="flex justify-between items-center mt-4">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Show</span>
-                <select className="border border-gray-300 rounded-full px-2 py-1 text-sm">
+                <span className="text-sm text-gray-600">{t('show', 'Show')}</span>
+                <select
+                  className="border border-gray-300 rounded-full px-2 py-1 text-sm"
+                  value={rowsPerPage}
+                  onChange={(e) => {
+                    setRowsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                >
                   <option>10</option>
                   <option>25</option>
                   <option>50</option>
                 </select>
-                <span className="text-sm text-gray-600">entries</span>
+                <span className="text-sm text-gray-600">{t('entries', 'entries')}</span>
               </div>
               <div className="flex gap-2">
-                <button className="px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-600 hover:bg-gray-50">
-                  Previous
+                <button
+                  onClick={handlePrev}
+                  className="px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-600 hover:bg-gray-50"
+                  disabled={currentPage === 1}
+                >
+                  {t('previous', 'Previous')}
                 </button>
-                <button className="px-3 py-1 bg-gray-800 text-white rounded-full text-sm">1</button>
-                <button className="px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-600 hover:bg-gray-50">2</button>
-                <button className="px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-600 hover:bg-gray-50">3</button>
-                <button className="px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-600 hover:bg-gray-50">
-                  Next
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <button
+                    key={i + 1}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={`px-3 py-1 rounded-full text-sm ${
+                      currentPage === i + 1
+                        ? 'bg-gray-800 text-white'
+                        : 'border border-gray-300 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+                <button
+                  onClick={handleNext}
+                  className="px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-600 hover:bg-gray-50"
+                  disabled={currentPage === totalPages}
+                >
+                  {t('next', 'Next')}
                 </button>
               </div>
             </div>
+
           </div>
         </div>
       </div>
