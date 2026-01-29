@@ -8,7 +8,14 @@ const AccountingDashboard: React.FC = () => {
   const { accounts, loading, refresh, createAccount, deleteAccount } = useAccounts();
 
   const [showModal, setShowModal] = useState(false);
-  const [newAccount, setNewAccount] = useState({ name: '', code: '' });
+const [newAccount, setNewAccount] = useState({
+  name: '',
+  code: '',
+  type: 'asset',
+  amount: 0,
+  currency: 'EGP',
+  description: ''
+});
   const [entries, setEntries] = useState<number>(6);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const { t } = useTranslation();
@@ -51,20 +58,37 @@ const AccountingDashboard: React.FC = () => {
     return pages;
   };
 
-  const handleAddAccount = async () => {
-    if (!newAccount.name || !newAccount.code) return;
-    try {
-      const created = await createAccount({ name: newAccount.name.trim(), code: newAccount.code.trim() });
-      if (created) {
-        await refresh();
-      }
-      setNewAccount({ name: '', code: '' });
-      setShowModal(false);
-      setCurrentPage(1);
-    } catch (err) {
-      console.error('Failed to create account', err);
-    }
-  };
+const handleAddAccount = async () => {
+  if (!newAccount.name || !newAccount.code) return;
+
+  try {
+    const created = await createAccount({
+      name: newAccount.name.trim(),
+      code: newAccount.code.trim(),
+      type: newAccount.type,
+      amount: newAccount.amount,
+      currency: newAccount.currency,
+      description: newAccount.description
+    });
+
+    if (created) await refresh();
+
+    setNewAccount({
+      name: '',
+      code: '',
+      type: 'asset',
+      amount: 0,
+      currency: 'EGP',
+      description: ''
+    });
+
+    setShowModal(false);
+    setCurrentPage(1);
+  } catch (err) {
+    console.error('Failed to create account', err);
+  }
+};
+
 
   const handleDeleteAccount = async (id?: string) => {
     if (!id) return;
@@ -220,33 +244,77 @@ const AccountingDashboard: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('Name')}
-                </label>
-                <input
-                  type="text"
-                  value={newAccount.name}
-                  onChange={(e) => setNewAccount({ ...newAccount, name: e.target.value })}
-                  placeholder="e.g. expenses"
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+          <div className="p-6 space-y-4">
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">{t('Name')}</label>
+    <input
+      type="text"
+      value={newAccount.name}
+      onChange={(e) => setNewAccount({ ...newAccount, name: e.target.value })}
+      placeholder="e.g. Cash Account"
+      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+    />
+  </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('Code')}
-                </label>
-                <input
-                  type="text"
-                  value={newAccount.code}
-                  onChange={(e) => setNewAccount({ ...newAccount, code: e.target.value })}
-                  placeholder="e.g. 59000"
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">{t('Code')}</label>
+    <input
+      type="text"
+      value={newAccount.code}
+      onChange={(e) => setNewAccount({ ...newAccount, code: e.target.value })}
+      placeholder="e.g. CA001"
+      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+    />
+  </div>
+
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">{t('Type')}</label>
+    <select
+      value={newAccount.type}
+      onChange={(e) => setNewAccount({ ...newAccount, type: e.target.value })}
+      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+    >
+      <option value="asset">{t('Asset')}</option>
+      <option value="liability">{t('Liability')}</option>
+      <option value="equity">{t('Equity')}</option>
+      <option value="income">{t('Income')}</option>
+      <option value="expense">{t('Expense')}</option>
+    </select>
+  </div>
+
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">{t('Amount')}</label>
+    <input
+      type="number"
+      value={newAccount.amount}
+      onChange={(e) => setNewAccount({ ...newAccount, amount: Number(e.target.value) })}
+      placeholder="e.g. 100000"
+      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+    />
+  </div>
+
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">{t('Currency')}</label>
+    <input
+      type="text"
+      value={newAccount.currency}
+      onChange={(e) => setNewAccount({ ...newAccount, currency: e.target.value })}
+      placeholder="e.g. EGP"
+      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+    />
+  </div>
+
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">{t('Description')}</label>
+    <textarea
+      value={newAccount.description}
+      onChange={(e) => setNewAccount({ ...newAccount, description: e.target.value })}
+      placeholder="e.g. Main cash account"
+      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+    />
+  </div>
+</div>
+
 
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200">
               <button

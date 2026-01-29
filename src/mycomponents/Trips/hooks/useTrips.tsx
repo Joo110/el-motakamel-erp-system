@@ -6,7 +6,7 @@ import {
   getTripByIdService,
   type Trip,
   type TripPayload,
-  createTripService,     // ← تمت إضافته
+  createTripService,
 } from "../services/tripsService";
 import { toast } from "react-hot-toast";
 
@@ -22,7 +22,7 @@ export function useTrips(initialParams?: Record<string, any>) {
       setError(null);
       try {
         const list = await getTripsService(p ?? params);
-        setTrips(list);
+        setTrips(list ?? []);
         return list;
       } catch (err) {
         console.error("fetch trips error", err);
@@ -140,7 +140,7 @@ export function useTrips(initialParams?: Record<string, any>) {
     patchTrips,
     completeTrip,
     getTrip,
-    createTrip, // ← تمت إضافته هنا
+    createTrip,
   };
 }
 

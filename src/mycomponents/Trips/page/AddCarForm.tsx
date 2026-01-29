@@ -1,14 +1,12 @@
-// src/mycomponents/Trips/components/AddCarForm.tsx
 import React, { useEffect, useState } from 'react';
-import { Upload, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
-import useMobileStocks from '../hooks/useMobileStocks'; // عدّل المسار لو لازم
+import useMobileStocks from '../hooks/useMobileStocks';
 
 interface AddCarFormProps {
   onSave?: (data: CarFormData) => void;
   onCancel?: () => void;
-  /** لو بعت editingId الكمبوننت هتشتغل في وضع التعديل وتجيب الداتا من الهُوك */
   editingId?: string | null;
 }
 
@@ -16,8 +14,12 @@ export interface CarFormData {
   id: string;
   carName: string;
   brand: string;
-  year: string;
-  image: string | null;
+  year: string; // kept for UI compatibility
+  // removed image
+  // hidden/internal fields to satisfy API
+  representative?: string;
+  capacity?: string; // string to keep compatibility with input handlers
+  // goods removed
 }
 
 const AddCarForm: React.FC<AddCarFormProps> = ({ onSave, onCancel, editingId = null }) => {
@@ -29,7 +31,8 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onSave, onCancel, editingId = n
     carName: '',
     brand: '',
     year: '',
-    image: ''
+    representative: '',
+    capacity: '',
   });
 
   const [errors, setErrors] = useState({
@@ -42,7 +45,6 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onSave, onCancel, editingId = n
   const [saving, setSaving] = useState<boolean>(false);
   const [deleting, setDeleting] = useState<boolean>(false);
 
-  // لو فيه editingId → جلب الداتا من الهُوك وعبي الفورم
   useEffect(() => {
     let mounted = true;
     const load = async () => {
@@ -52,13 +54,13 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onSave, onCancel, editingId = n
         const res: any = await getById(editingId);
         if (!mounted) return;
         if (res) {
-          // حاول نطابق الحقول اللي ممكن يردها السيرفر
           setFormData({
             id: res._id ?? res.id ?? String(editingId),
             carName: (res.name ?? res.carName ?? res.model ?? '') as string,
             brand: (res.brand ?? res.make ?? '') as string,
-            year: (res.year ?? res.productionYear ?? '') as string,
-            image: (res.image ?? res.photo ?? res.avatar ?? '') as string | null
+            year: String(res.year ?? res.capacity ?? ''),
+            representative: res.representative ?? '',
+            capacity: String(res.capacity ?? ''),
           });
         }
       } catch (err) {
@@ -74,14 +76,7 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onSave, onCancel, editingId = n
 
   const handleInputChange = (field: keyof CarFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    setErrors(prev => ({ ...prev, [field]: '' }));
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    // لو تحب تبعت FormData للـ API غيّر هنا، الآن بنعرض preview فقط
-    setFormData(prev => ({ ...prev, image: URL.createObjectURL(file) }));
+    setErrors(prev => ({ ...prev, [field as keyof typeof errors]: '' }));
   };
 
   const validate = () => {
@@ -109,12 +104,21 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onSave, onCancel, editingId = n
     if (!validate()) return;
     setSaving(true);
     try {
-      // جهّز الـ payload على حسب الـ API المتوقع
-      const payload: Record<string, any> = {
+      // representative: if provided and length looks like ObjectId keep it, else fallback to placeholder
+      const repCandidate = formData.representative && formData.representative.length === 24
+        ? formData.representative
+        : (formData.representative || '000000000000000000000000');
+
+      // capacity: prefer capacity field, fallback to year, ensure number >= 1
+      let capacityNum = Number(formData.capacity ?? formData.year ?? 0);
+      if (Number.isNaN(capacityNum) || capacityNum < 1) capacityNum = 1;
+
+      const payload = {
         name: formData.carName,
         brand: formData.brand,
-        year: formData.year,
-        image: formData.image ?? '',
+        year: Number(formData.year) || undefined,
+        representative: repCandidate,
+        capacity: capacityNum,
       };
 
       if (editingId) {
@@ -125,12 +129,12 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onSave, onCancel, editingId = n
         toast.success(t('carAddedSuccess'));
       }
 
-      // callback للمستخدم إذا عايز يتعامل مع النتيجة
       if (onSave) onSave(formData);
     } catch (err: any) {
       console.error('save car failed', err);
       const msg = err?.response?.data?.message ?? err?.message ?? t('Save failed');
       toast.error(msg);
+      throw err;
     } finally {
       setSaving(false);
     }
@@ -176,7 +180,6 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onSave, onCancel, editingId = n
                 <span className="text-gray-600">{t('id')}:</span>
                 <span className="ml-2 font-medium">{formData.id}</span>
               </div>
-              {/* مؤشر تحميل بسيط */}
               {loading && <div className="text-xs sm:text-sm text-gray-400">{t('Loading...')}</div>}
             </div>
           </div>
@@ -217,35 +220,30 @@ const AddCarForm: React.FC<AddCarFormProps> = ({ onSave, onCancel, editingId = n
               </div>
             </div>
 
-            <div className="flex flex-col items-center order-1 lg:order-2">
-              <div className="border-2 border-dashed border-gray-300 rounded-lg h-64 sm:h-72 md:h-80 w-full flex items-center justify-center bg-gray-50 mb-4 overflow-hidden">
-                {formData.image ? (
-                  <img src={formData.image} alt="Car preview"
-                    className="w-full h-full object-contain object-center bg-gray-100" />
-                ) : (
-                  <span className="text-gray-400 text-xs sm:text-sm text-center px-4">{t('imagePreview')}</span>
-                )}
-              </div>
+            <div className="flex flex-col items-stretch order-1 lg:order-2">
+              {/* Replaced image area with representative & capacity inputs to keep layout similar */}
+              <div className="rounded-lg h-full w-full flex flex-col justify-center bg-gray-50 p-4 mb-4">
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-2">{t('representative')}:</label>
+                  <input
+                    type="text"
+                    value={formData.representative}
+                    onChange={(e) => handleInputChange('representative', e.target.value)}
+                    placeholder= {t('name')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                  />
+                </div>
 
-              <div className="flex flex-col sm:flex-row gap-3 w-full">
-                <label className="flex-1 cursor-pointer">
-                  <div className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-[#1f334d] text-white rounded-xl shadow-sm hover:bg-gray-900 transition-all font-medium text-sm">
-                    <Upload size={16} className="sm:w-[18px] sm:h-[18px]" />
-                    <span>{formData.image ? t('changeImage') : t('uploadImage')}</span>
-                  </div>
-                  <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                </label>
-
-                {formData.image && (
-                  <button
-                    onClick={() => {
-                      setFormData(prev => ({ ...prev, image: '' }));
-                    }}
-                    className="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 bg-red-500 text-white rounded-xl shadow-sm hover:bg-red-600 transition-all font-medium text-sm"
-                  >
-                    {t('remove')}
-                  </button>
-                )}
+                <div>
+                  <label className="block text-sm font-medium mb-2">{t('capacity')}:</label>
+                  <input
+                    type="number"
+                    value={formData.capacity}
+                    onChange={(e) => handleInputChange('capacity', e.target.value)}
+                    placeholder="500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                  />
+                </div>
               </div>
             </div>
           </div>

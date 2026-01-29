@@ -16,9 +16,10 @@ interface ProductRow {
   code: string;
   units: number;
   price: number;
+  wholesalePrice?: number;
+  retailPrice?: number;
   discount: number;
   total: number;
-  saleType?: string; // إضافة حقل نوع البيع
 }
 
 const truncate = (s: string | undefined, n = 30) => {
@@ -38,8 +39,8 @@ const StockOutComponent: React.FC = () => {
     code: '96269',
     units: '0',
     price: '0',
+    wholesalePrice: '0',
     discount: '0',
-    saleType: 'جملة', // القيمة الافتراضية لنوع البيع
   });
 
   const [customerId, setCustomerId] = useState<string>('');
@@ -52,7 +53,7 @@ const StockOutComponent: React.FC = () => {
   const [notes, setNotes] = useState<string>('');
   const [shippingCost, setShippingCost] = useState<string>('');
   
-  const [organizationId] = useState<string>('68c2d89e2ee5fae98d57bef1');
+  const [organizationId] = useState<string>('6963ef29d4010f957c2de3f6');
   const [createdBy] = useState<string>('68c699af13bdca2885ed4d27');
 
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
@@ -64,34 +65,37 @@ const StockOutComponent: React.FC = () => {
 
   const computedFormTotal = useMemo(() => {
     const u = Number(formProduct.units || 0);
-    const p = Number(formProduct.price || 0);
+    const p = Number(formProduct.price);
     const d = Number(formProduct.discount || 0);
     const tot = u * p * (1 - d / 100);
     return isFinite(tot) ? tot.toFixed(2) + ' ' : '0.00 ';
-  }, [formProduct.units, formProduct.price, formProduct.discount, t]);
+  }, [formProduct.units, formProduct.price, formProduct.discount]);
 
   const handleFormChange = (key: keyof typeof formProduct, value: string) => {
     setFormProduct((s) => ({ ...s, [key]: value }));
   };
 
   const handleResetForm = () => {
-    setFormProduct({ name: '', inventory: '', code: '96269', units: '0', price: '0', discount: '0', saleType: 'جملة' });
+    setFormProduct({ name: '', inventory: '', code: '96269', units: '0', price: '0', wholesalePrice: '0', discount: '0' });
     setSelectedProductId('');
     setSelectedInventoryId('');
   };
 
-  const handleCustomerSelect = (id: string) => {
-    setCustomerId(id);
-    const c = customers.find((x: any) => x._id === id);
-    setFormProduct((f) => ({ ...f, name: c?.name ?? '' }));
-  };
+const handleCustomerSelect = (id: string) => {
+  setCustomerId(id);
+};
 
   const handleProductSelect = (productId: string) => {
     setSelectedProductId(productId);
     const p = productsFromHook.find((x: any) => x._id === productId || x.id === productId);
     setFormProduct((f) => ({ ...f, name: p?.name ?? '' }));
-    if (p && (p.price || p.code)) {
-      if (p.price) setFormProduct((f) => ({ ...f, price: String(p.price) }));
+    if (p) {
+      if (p.wholesalePrice !== undefined || p.retailPrice !== undefined) {
+        if (p.wholesalePrice !== undefined) setFormProduct((f) => ({ ...f, wholesalePrice: String(p.wholesalePrice) }));
+        if (p.retailPrice !== undefined) setFormProduct((f) => ({ ...f, price: String(p.retailPrice) }));
+      } else if (p.price) {
+        setFormProduct((f) => ({ ...f, price: String(p.price), wholesalePrice: String(p.price) }));
+      }
       if (p.code) setFormProduct((f) => ({ ...f, code: String(p.code) }));
     }
   };
@@ -115,15 +119,17 @@ const StockOutComponent: React.FC = () => {
       toast.error(t('units_must_greater_zero'));
       return;
     }
-    if (!formProduct.price || Number(formProduct.price) <= 0) {
+    
+    const retailPrice = Number(formProduct.price);
+    if (!retailPrice || retailPrice <= 0) {
       toast.error(t('price_must_greater_zero'));
       return;
     }
 
     const units = Number(formProduct.units);
-    const price = Number(formProduct.price);
+    const wholesalePriceVal = Number(formProduct.wholesalePrice || 0);
     const discount = Number(formProduct.discount || 0);
-    const tot = units * price * (1 - discount / 100);
+    const tot = units * retailPrice * (1 - discount / 100);
 
     const productName =
       productsFromHook.find((p: any) => p._id === selectedProductId || p.id === selectedProductId)?.name ??
@@ -133,17 +139,18 @@ const StockOutComponent: React.FC = () => {
       formProduct.inventory;
 
     const newProduct: ProductRow = {
-      id: Date.now().toString(),
+      id: `${selectedProductId}-${selectedInventoryId}-${Date.now()}`,
       productId: selectedProductId,
       inventoryId: selectedInventoryId,
       name: productName,
       inventoryName,
       code: formProduct.code || '96269',
       units,
-      price,
+      price: retailPrice,
+      wholesalePrice: wholesalePriceVal,
+      retailPrice: retailPrice,
       discount,
       total: Math.round((tot + Number.EPSILON) * 100) / 100,
-      saleType: formProduct.saleType || 'جملة', // حفظ نوع البيع مع المنتج
     };
 
     setProducts((prev) => [...prev, newProduct]);
@@ -168,11 +175,10 @@ const StockOutComponent: React.FC = () => {
         inventoryId: prod.inventoryId,
         name: prod.name,
         quantity: prod.units,
-        price: prod.price,
+        wholesalePrice: prod.wholesalePrice ?? prod.price,
+        retailPrice: prod.retailPrice ?? prod.price,
         discount: prod.discount,
       };
-      // أضفنا نوع البيع إن وُجد
-      if (prod.saleType) mappedItem.saleType = prod.saleType;
       if (!mappedItem.productId) console.warn('[StockOut] missing productId for', prod);
       if (!mappedItem.inventoryId) console.warn('[StockOut] missing inventoryId for', prod);
       if (typeof mappedItem.quantity !== 'number' || Number.isNaN(mappedItem.quantity)) console.warn('[StockOut] quantity is not a number for', prod);
@@ -190,11 +196,6 @@ const StockOutComponent: React.FC = () => {
       console.log('organizationId:', organizationId);
       console.log('createdBy:', createdBy);
       console.log('products (local):', products);
-      console.log('selectedProducts:', selectedProducts);
-      console.log('expectedDeliveryDate:', expectedDeliveryDate);
-      console.log('currency:', currency);
-      console.log('notes:', notes);
-      console.log('shippingCost (raw):', shippingCost);
 
       if (!customerId) {
         toast.error(t('please_select_customer_before_saving'));
@@ -234,7 +235,7 @@ const StockOutComponent: React.FC = () => {
       }
 
       const payload: any = {
-        customerId,
+        customerId: '6963ed57d4010f957c2de3ad',
         organizationId,
         products: mappedProducts,
         expectedDeliveryDate: expectedDeliveryDate || undefined,
@@ -424,21 +425,16 @@ const StockOutComponent: React.FC = () => {
               />
             </div>
 
-            {/* الدروب داون بعد السعر */}
             <div>
-              <label className="block text-xs text-gray-600 mb-1">{t('sale_type') || 'نوع البيع'}</label>
-              <div className="relative">
-                <select
-                  className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
-                  value={formProduct.saleType}
-                  onChange={(e) => handleFormChange('saleType', e.target.value)}
-                >
-                 <option value="جملة">{t('Sentence')}</option>
-<option value="قطاعي">{t('Sectoral')}</option>
-
-                </select>
-                <ChevronDown className="absolute right-2 top-3 w-4 h-4 text-gray-400" />
-              </div>
+              <label className="block text-xs text-gray-600 mb-1">{t('wholesale_price_label') || 'سعر الجملة'}</label>
+              <input
+                type="number"
+                className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
+                value={formProduct.wholesalePrice}
+                onChange={(e) => handleFormChange('wholesalePrice', e.target.value)}
+                min={0}
+                step="0.01"
+              />
             </div>
 
             <div>
@@ -492,7 +488,8 @@ const StockOutComponent: React.FC = () => {
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('inventory_col')}</th>
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('code_col')}</th>
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('units_col')}</th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('price_col')}</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('wholesale_price_col') || 'سعر الجملة'}</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('retail_price_col') || 'سعر التجزئة'}</th>
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('discount_col')}</th>
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('total_col')}</th>
                   <th className="w-8"></th>
@@ -518,7 +515,12 @@ const StockOutComponent: React.FC = () => {
                         <ChevronDown className="w-3 h-3 text-gray-400" />
                       </div>
                     </td>
-                    <td className="py-3 text-sm text-gray-600">{product.price.toFixed(2)}</td>
+                    <td className="py-3 text-sm text-gray-600">
+                      {product.wholesalePrice != null ? product.wholesalePrice.toFixed(2) : '-'}
+                    </td>
+                    <td className="py-3 text-sm text-gray-600">
+                      {product.retailPrice != null ? product.retailPrice.toFixed(2) : '-'}
+                    </td>
                     <td className="py-3 text-sm text-gray-600">{product.discount}%</td>
                     <td className="py-3 text-sm text-gray-900">{product.total.toFixed(2)} {currency}</td>
                     <td className="py-3">
@@ -533,7 +535,7 @@ const StockOutComponent: React.FC = () => {
                 ))}
                 {products.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="py-8 text-center text-gray-500">
+                    <td colSpan={10} className="py-8 text-center text-gray-500">
                       {t('no_products_added_yet')}
                     </td>
                   </tr>

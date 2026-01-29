@@ -26,6 +26,8 @@ interface RawInventory extends Inventory {
   avatar?: string;
   img?: string;
   image?: string;
+  _id?: string;
+  id?: string;
 }
 
 const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
@@ -66,7 +68,7 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
 
         setOriginal(inv);
 
-        const id = inv._id ?? inventoryId;
+        const idVal = inv._id ?? inv.id ?? inventoryId;
         const inventoryName = inv.name ?? "";
         const location = inv.location ?? "";
         const capacity =
@@ -77,7 +79,7 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
         const image = inv.image ?? inv.img ?? inv.avatar ?? "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=400&h=300&fit=crop";
 
         setFormData({
-          id,
+          id: idVal,
           inventoryName,
           location,
           capacity,
@@ -126,9 +128,17 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
       String(formData.capacity).trim() !==
       String(original.capacity ?? "").trim()
     )
-      changes.capacity = formData.capacity;
-    if (formData.image && formData.image !== (original.image ?? original.avatar))
-      changes.image = formData.image;
+      changes.capacity = Number(formData.capacity); // ✅ convert to number
+
+    // image change detection
+    if (imageFile) {
+      (changes as any).image = imageFile; // send as File
+    } else {
+      const originalImage = (original.image ?? original.img ?? original.avatar ?? "").toString();
+      if (formData.image && formData.image !== originalImage) {
+        (changes as any).image = formData.image; // send URL
+      }
+    }
 
     return changes;
   };
@@ -157,6 +167,11 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
   const handleSaveDetails = async () => {
     if (!validate()) return;
 
+    if (!original) {
+      toast.error(t('failed_load_inventory'));
+      return;
+    }
+
     const changes = getChangedFields();
     if (Object.keys(changes).length === 0) {
       toast.success(t('no_changes_detected'));
@@ -167,10 +182,11 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
     setError(null);
 
     try {
+      const idToSend = String(formData.id ?? inventoryId).replace(/^#/, "");
       const updated = await updateInventoryService(
-        formData.id.replace(/^#/, ""),
+        idToSend,
         changes,
-        imageFile // ✅ استخدم الملف من الـ state هنا
+        imageFile
       );
 
       toast.success(t('inventory_updated_success'));
@@ -178,14 +194,14 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
 
       if (onSave) {
         onSave({
-          id: updated._id ?? formData.id,
+          id: updated._id ?? updated._id ?? formData.id,
           inventoryName: updated.name ?? formData.inventoryName,
           location: updated.location ?? formData.location,
           capacity:
             typeof updated.capacity === "number"
               ? String(updated.capacity)
               : formData.capacity,
-          image: (updated as any).image ?? formData.image,
+          image: (updated as any).image ?? (updated as any).avatar ?? formData.image,
         });
       }
     } catch (err) {
@@ -309,7 +325,7 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
             </button>
             <button
               onClick={handleSaveDetails}
-              disabled={isSaving || isLoading}
+              disabled={isSaving || isLoading || !original}
               className="px-6 py-2 bg-slate-700 text-white rounded-full hover:bg-blue-800 transition-colors disabled:opacity-60"
             >
               {isSaving ? t('loading') : t('save_details')}

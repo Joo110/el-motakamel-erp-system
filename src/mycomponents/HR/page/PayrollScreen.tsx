@@ -1,4 +1,3 @@
-// src/mycomponents/payrolls/components/PayrollScreen.tsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Filter, X, Edit2 } from 'lucide-react';
 import usePayrolls from '../hooks/usePayrolls';
@@ -217,21 +216,6 @@ const PayrollScreen: React.FC = () => {
   // --------------------------------------------
 
   // Handlers using hook.updatePayroll
-  const handlePaySalary = async (id: string) => {
-    try {
-      // 1) استدعاء endpoint الدفع عبر usePayInvoice hook
-      await payPayroll(id); // <-- هنا استخدمنا payPayroll بدل pay
-
-      try {
-        await updatePayroll(id, { status: 'paid' });
-      } catch (updateErr) {
-        console.error('Failed to update payroll status after pay:', updateErr);
-      }
-
-    } catch (err) {
-      console.error('Pay failed', err);
-    }
-  };
 
   const handleModify = (employee: PayrollItem) => {
     setSelectedEmployee(employee);
@@ -436,18 +420,7 @@ const PayrollScreen: React.FC = () => {
                     <td className="px-6 py-4 text-sm text-gray-600">{item.total}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">{item.date}</td>
                     <td className="px-6 py-4 flex items-center gap-2">
-                      {item.status === 'Paid' ? (
-                        <>
-                          <span className="text-sm text-green-600">{t('Paid')}</span>
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => handlePaySalary(item.id)}
-                          className="px-4 py-1 bg-slate-700 text-white text-sm rounded-xl hover:bg-slate-800"
-                        >
-                          {t('pay')}
-                        </button>
-                      )}
+                  
                       <button
                         onClick={() => handleModify(item)}
                         className="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded-xl hover:bg-gray-300"

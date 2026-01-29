@@ -63,6 +63,7 @@ const NewJournal = () => {
         ...formData,
         date: new Date().toISOString(),
         description: "",
+        
       };
 
       const result = await createEntry(payload);

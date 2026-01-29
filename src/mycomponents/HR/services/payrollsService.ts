@@ -1,11 +1,11 @@
-// src/mycomponents/payrolls/services/payrollsService.ts
 import axiosClient from "@/lib/axiosClient";
 
 export interface Payroll {
-  _id: string;
-  employee: {
-    _id: string;
-    name: string;
+  id?: string;
+  _id?: string;
+  employee?: {
+    _id?: string;
+    name?: string;
     [key: string]: any;
   };
   salary?: number | string;
@@ -22,71 +22,50 @@ export interface Payroll {
 
 const BASE = "/payrolls";
 
-/**
- * normalize API response into array
- */
-function extractArrayFromResponse(resp: any): any[] {
-  console.log("extractArrayFromResponse -> raw:", resp);
 
-  try {
-    // axios response shape: resp.data
-    const outer = resp?.data ?? resp;
+function extractArrayFromResponse(resp: any): Payroll[] {
+  console.log("API RESPONSE:", resp);
 
-    // common shape in your example: { status: 'success', results: 2, data: { payrolls: [...] } }
-    if (Array.isArray(outer?.data?.payrolls)) return outer.data.payrolls;
-    if (Array.isArray(outer?.payrolls)) return outer.payrolls;
+  // axios response
+  const body = resp?.data ?? resp;
 
-    // sometimes resp is the axios response itself
-    if (Array.isArray(resp?.data?.data?.payrolls)) return resp.data.data.payrolls;
-    if (Array.isArray(resp?.data?.payrolls)) return resp.data.payrolls;
-    if (Array.isArray(resp?.data)) return resp.data;
+  if (Array.isArray(body?.data)) return body.data;
 
-    // fallback: scan object keys for first array
-    const dataLayer = resp?.data?.data ?? resp?.data ?? resp;
-    if (dataLayer && typeof dataLayer === "object") {
-      for (const k of Object.keys(dataLayer)) {
-        if (Array.isArray(dataLayer[k])) return dataLayer[k];
-      }
-    }
+  if (Array.isArray(body)) return body;
+  if (Array.isArray(body?.data?.payrolls)) return body.data.payrolls;
+  if (Array.isArray(body?.payrolls)) return body.payrolls;
 
-    console.warn("extractArrayFromResponse: no array found, returning []", { outer, dataLayer: resp?.data?.data ?? resp?.data ?? resp });
-    return [];
-  } catch (err) {
-    console.error("extractArrayFromResponse error", err);
-    return [];
-  }
+  console.warn("❌ No payroll array found in response:", body);
+  return [];
 }
 
 /**
  * Get all payrolls
  */
 export const getAllPayrollsService = async (params?: Record<string, any>) => {
-  const res = await axiosClient.get(BASE, { params, headers: { "Cache-Control": "no-cache" } });
+  const res = await axiosClient.get(BASE, {
+    params,
+    headers: { "Cache-Control": "no-cache" },
+  });
+
   return extractArrayFromResponse(res);
 };
 
 /**
- * Get a single payroll by ID
+ * Get payroll by ID
  */
 export const getPayrollByIdService = async (id: string): Promise<Payroll | null> => {
   const res = await axiosClient.get(`${BASE}/${id}`);
-  const d = res.data ?? res;
-  if (d?.data?.payroll) return d.data.payroll;
-  if (d?.payroll) return d.payroll;
-  if (d?.data) return d.data;
-  return d ?? null;
+  const body = res?.data ?? res;
+
+  if (body?.data) return body.data;
+  return body ?? null;
 };
 
 /**
- * Update payroll (PATCH /payrolls/:id)
+ * Update payroll
  */
 export const updatePayrollService = async (id: string, payload: Record<string, any>) => {
   const res = await axiosClient.patch(`${BASE}/${id}`, payload);
   return res.data ?? res;
-};
-
-export default {
-  getAllPayrollsService,
-  getPayrollByIdService,
-  updatePayrollService,
 };

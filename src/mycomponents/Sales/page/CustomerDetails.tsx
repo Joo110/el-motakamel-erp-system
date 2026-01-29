@@ -21,21 +21,25 @@ const CustomerDetails: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [entriesPerPage, setEntriesPerPage] = useState<number>(10);
 
-  useEffect(() => {
-    if (!id) return;
-    setLoading(true);
-    void (async () => {
-      try {
-        const c = await getCustomer(id);
-        setCustomer(c);
-        await Promise.all([fetchOrders(), refetchInventories(), refetchUsers()]);
-      } catch (err) {
-        console.error(t('failed_to_load_customer_data', 'Failed to load customer or related data'), err);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [id]);
+useEffect(() => {
+  if (!id) {
+    console.error('Customer ID is undefined!');
+    return; // ✅ أهم حاجة - اوقف لو مفيش ID
+  }
+  
+  setLoading(true);
+  void (async () => {
+    try {
+      const c = await getCustomer(id); // دلوقتي id موجود مضمون
+      setCustomer(c);
+      await Promise.all([fetchOrders(), refetchInventories(), refetchUsers()]);
+    } catch (err) {
+      console.error('Failed to load customer or related data', err);
+    } finally {
+      setLoading(false);
+    }
+  })();
+}, [id, getCustomer, fetchOrders, refetchInventories, refetchUsers]); // ✅ ضيف الـ dependencies
 
   const customerOrders = useMemo(() => {
     if (!orders || !id) return [];

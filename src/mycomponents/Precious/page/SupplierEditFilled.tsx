@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Suppliers } from "../hooks/Suppliers";
+import { useSuppliers } from "../hooks/Suppliers";
 import { toast } from "react-hot-toast";
 import { useTranslation } from 'react-i18next';
+import type { Supplier } from '../services/suppliersService';
 
 const SupplierEditFilled: React.FC = () => {
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
-  const { fetchSupplierById, editSupplier } = Suppliers(false);
+  const { fetchSupplierById, editSupplier } = useSuppliers(false);
   const [form, setForm] = useState({
     name: "",
     address: "",
@@ -18,7 +19,7 @@ const SupplierEditFilled: React.FC = () => {
 
   useEffect(() => {
     if (id) {
-      fetchSupplierById(id).then((data) => {
+      fetchSupplierById(id).then((data: Supplier | null) => {
         if (data) {
           setForm({
             name: data.name || "",

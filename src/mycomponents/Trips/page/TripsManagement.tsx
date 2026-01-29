@@ -1,11 +1,10 @@
-// src/mycomponents/Trips/TripsManagement.tsx
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
 import useTrips from "../hooks/useTrips";
 
 interface TripRow {
-  tripNumber: string;
+  tripNumber: string | number;
   agent: string;
   driver: string;
   expenses: string;
@@ -40,7 +39,7 @@ const TripsManagement: React.FC = () => {
     };
 
     return (apiTrips || []).map((t) => ({
-      tripNumber: t._id ?? "",
+      tripNumber: t.tripNumber ?? t._id ?? t.id ?? '-',
       agent:
         typeof t.representative === "string"
           ? t.representative
@@ -50,14 +49,14 @@ const TripsManagement: React.FC = () => {
       sales: (t as any).sales ? `${(t as any).sales}` : "-",
       area: t.location ?? "-",
       date: formatDate(t.date ?? t.createdAt ?? ""),
-      status: t.status ?? "In Progress",
+      status: (t.status ?? "inprogress") as string,
     }));
   }, [apiTrips]);
 
   const totalTrips = uiTrips.length;
 
   // ---------------------- NEW PAGINATION LOGIC ----------------------
-  const totalPages = Math.ceil(totalTrips / entriesPerPage);
+  const totalPages = Math.max(1, Math.ceil(totalTrips / entriesPerPage));
 
   const paginatedTrips = useMemo(() => {
     const start = (currentPage - 1) * entriesPerPage;
@@ -67,7 +66,9 @@ const TripsManagement: React.FC = () => {
   const pageNumbers = [...Array(totalPages)].map((_, i) => i + 1);
   // ------------------------------------------------------------------
 
-  const handleContinue = (tripNumber: string) => {
+  const handleContinue = (tripNumber: string | number) => {
+    // navigate by id if available; try to find underlying trip id
+    // if tripNumber is actually the trip id, fine; otherwise navigate with it
     navigate(`/dashboard/Trips/DelegatesManagement/${tripNumber}`);
   };
 
@@ -97,13 +98,6 @@ const TripsManagement: React.FC = () => {
       <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
         <div className="flex justify-between items-center px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
           <h2 className="text-xl font-bold text-gray-900">{t('Trips')}</h2>
-          <span className="text-sm text-gray-600 font-medium">
-            {t('Showing {from}-{to} of {total} Trips', {
-              from: (currentPage - 1) * entriesPerPage + 1,
-              to: Math.min(currentPage * entriesPerPage, totalTrips),
-              total: totalTrips
-            })}
-          </span>
         </div>
 
         {/* Table */}
@@ -144,7 +138,7 @@ const TripsManagement: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-100">
               {paginatedTrips.map((trip, index) => (
                 <tr
-                  key={trip.tripNumber || index}
+                  key={String(trip.tripNumber ?? index)}
                   className="hover:bg-blue-50 transition-all duration-200"
                 >
                   <td className="px-6 py-4 text-sm font-semibold text-gray-900">{trip.tripNumber}</td>

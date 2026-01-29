@@ -28,16 +28,16 @@ const JournalsList: React.FC = () => {
       toast.error(t('Failed to delete journal'));
     }
   };
+const filtered = useMemo(() => {
+  const term = searchTerm.toLowerCase().trim();
 
-  const filtered = useMemo(() => {
-    const term = searchTerm.toLowerCase().trim();
-    return entries.filter(
-      (j) =>
-        j.name.toLowerCase().includes(term) ||
-        j.jornalType.toLowerCase().includes(term) ||
-        j.code.toLowerCase().includes(term)
-    );
-  }, [entries, searchTerm]);
+  return entries.filter((j) =>
+    (j.name ?? '').toLowerCase().includes(term) ||
+    (j.jornalType ?? '').toLowerCase().includes(term) ||
+    (j.code ?? '').toLowerCase().includes(term)
+  );
+}, [entries, searchTerm]);
+
 
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
 
@@ -76,7 +76,7 @@ const JournalsList: React.FC = () => {
             <p className="text-sm text-gray-500">{t('Dashboard')} &gt; {t('Journals')}</p>
           </div>
           <Link
-            to="/dashboard/journals/new"
+            to="/dashboard/journal/NewJournal"
             className="bg-[#1f334d] hover:bg-gray-900 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-md transition-all font-medium"
           >
             <Plus className="w-4 h-4" />
@@ -130,7 +130,7 @@ const JournalsList: React.FC = () => {
                       <td className="py-4 px-4">{journal.name}</td>
 
                       <td className="py-4 px-4">
-                        {getJournalTypeBadge(journal.jornalType)}
+{getJournalTypeBadge(journal.jornalType ?? t('N/A'))}
                       </td>
 
                       <td className="py-4 px-4">{formatDate(journal.createdAt)}</td>
@@ -139,7 +139,9 @@ const JournalsList: React.FC = () => {
                         <div className="flex gap-2">
 
                           <button
-                            onClick={() => handleDelete(journal._id!, journal.name)}
+onClick={() =>
+  handleDelete(journal._id!, journal.name ?? t('N/A'))
+}
                             className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded-lg"
                           >
                             <Trash2 className="w-4 h-4" />

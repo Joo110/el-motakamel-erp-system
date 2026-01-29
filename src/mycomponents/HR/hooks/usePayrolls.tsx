@@ -1,4 +1,3 @@
-// src/mycomponents/payrolls/hooks/usePayrolls.tsx
 import { useCallback, useEffect, useState } from "react";
 import {
   getAllPayrollsService,
@@ -14,35 +13,39 @@ export function usePayrolls(initialParams?: Record<string, any>) {
   const [error, setError] = useState<any | null>(null);
   const [params, setParams] = useState<Record<string, any> | undefined>(initialParams);
 
-  const fetch = useCallback(async (p?: Record<string, any>) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const list = await getAllPayrollsService(p ?? params);
-      console.log("usePayrolls.fetch -> list:", list);
-      setPayrolls(Array.isArray(list) ? list : []);
-      return list;
-    } catch (err) {
-      console.error("usePayrolls: fetch error", err);
-      setError(err);
-      toast.error("Error fetching payrolls.");
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  }, [params]);
+  const fetch = useCallback(
+    async (p?: Record<string, any>) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const list = await getAllPayrollsService(p ?? params);
+        setPayrolls(Array.isArray(list) ? (list as Payroll[]) : []);
+        return list;
+      } catch (err) {
+        console.error("usePayrolls: fetch error", err);
+        setError(err);
+        toast.error("Error fetching payrolls.");
+        setPayrolls([]);
+        return [];
+      } finally {
+        setLoading(false);
+      }
+    },
+    [params]
+  );
 
   // initial load
   useEffect(() => {
     (async () => {
+      setLoading(true);
+      setError(null);
       try {
-        setLoading(true);
-        const list = await getAllPayrollsService();
-        console.log("usePayrolls initial load -> got:", list);
-        setPayrolls(Array.isArray(list) ? list : []);
+        const list = await getAllPayrollsService(params);
+        setPayrolls(Array.isArray(list) ? (list as Payroll[]) : []);
       } catch (err) {
         console.error("usePayrolls initial load failed", err);
         setPayrolls([]);
+        setError(err);
       } finally {
         setLoading(false);
       }
@@ -50,13 +53,17 @@ export function usePayrolls(initialParams?: Record<string, any>) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const refresh = useCallback(async (p?: Record<string, any>) => {
-    setParams(p ?? params);
-    return await fetch(p);
-  }, [fetch, params]);
+  const refresh = useCallback(
+    async (p?: Record<string, any>) => {
+      setParams(p ?? params);
+      return await fetch(p);
+    },
+    [fetch, params]
+  );
 
   const getPayroll = useCallback(async (id: string) => {
     setLoading(true);
+    setError(null);
     try {
       const payroll = await getPayrollByIdService(id);
       return payroll;
@@ -70,24 +77,28 @@ export function usePayrolls(initialParams?: Record<string, any>) {
     }
   }, []);
 
-  const updatePayroll = useCallback(async (id: string, payload: Record<string, any>) => {
-    setLoading(true);
-    try {
-      const res = await updatePayrollService(id, payload);
-      toast.success("✅ Payroll updated successfully");
-      // refresh local list after update
-      await fetch();
-      return res;
-    } catch (err: any) {
-      console.error("updatePayroll failed", err);
-      setError(err);
-      const msg = err?.response?.data?.message ?? err?.message ?? "Update failed";
-      toast.error(msg);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [fetch]);
+  const updatePayroll = useCallback(
+    async (id: string, payload: Record<string, any>) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await updatePayrollService(id, payload);
+        toast.success("✅ Payroll updated successfully");
+        // refresh local list after update
+        await fetch();
+        return res;
+      } catch (err: any) {
+        console.error("updatePayroll failed", err);
+        setError(err);
+        const msg = err?.response?.data?.message ?? err?.message ?? "Update failed";
+        toast.error(msg);
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [fetch]
+  );
 
   return {
     payrolls,

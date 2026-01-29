@@ -72,55 +72,60 @@ const AccountingTree: React.FC = () => {
   // support both shapes: { status, data: {...} } or direct data {...}
   const raw = (data && (data.data ?? data)) ?? {};
 
+  // pick values with many fallbacks to be resilient to backend naming
   const stats = {
-    totalRevenue: sanitizeNumber(raw.totalRevenue),
-    totalExpenses: sanitizeNumber(raw.totalExpenses),
-    profit: sanitizeNumber(raw.profit ?? raw.netProfit),
-    totalBank: sanitizeNumber(raw.totalBank),
-    accountReceivable: sanitizeNumber(raw.accountReceivable),
-    totalPayable: sanitizeNumber(raw.totalPayable),
-    totalGrosProfit: sanitizeNumber(raw.totalGrosProfit),
-    netProfit: sanitizeNumber(raw.netProfit),
-    monthly: Array.isArray(raw.monthly) ? raw.monthly : [],
+    totalRevenue: sanitizeNumber(raw.totalRevenue ?? raw.revenue ?? 0),
+    totalExpenses: sanitizeNumber(raw.totalExpenses ?? raw.expenses ?? 0),
+    // profit might be provided as profit, totalProfit, netProfit etc.
+    profit: sanitizeNumber(raw.profit ?? raw.totalProfit ?? raw.netProfit ?? 0),
+    totalBank: sanitizeNumber(raw.totalBank ?? raw.bank ?? 0),
+    // receivable keys
+    accountReceivable: sanitizeNumber(raw.accountReceivable ?? raw.totalReceivable ?? raw.receivable ?? 0),
+    totalReceivable: sanitizeNumber(raw.totalReceivable ?? raw.accountReceivable ?? 0),
+    totalPayable: sanitizeNumber(raw.totalPayable ?? raw.payable ?? 0),
+    // gross profit: accept either spelling
+    totalGrossProfit: sanitizeNumber(raw.totalGrossProfit ?? raw.totalGrosProfit ?? raw.grossProfit ?? 0),
+    totalGrosProfit: sanitizeNumber(raw.totalGrosProfit ?? raw.totalGrossProfit ?? 0),
+    netProfit: sanitizeNumber(raw.netProfit ?? raw.net ?? 0),
+    monthly: Array.isArray(raw.monthly) ? raw.monthly : Array.isArray(raw.months) ? raw.months : [],
   };
 
   // monthlyData: either map real months or provide a single fallback point
   const monthlyData = useMemo(() => {
     if (Array.isArray(stats.monthly) && stats.monthly.length > 0) {
       return stats.monthly.map((m: any, idx: number) => ({
-        month: m.month ?? m.label ?? `#${idx + 1}`,
-        gross: sanitizeNumber(m.gross ?? m.totalGrosProfit ?? 0),
-        net: sanitizeNumber(m.net ?? m.netProfit ?? 0),
+        month: m.month ?? m.label ?? m.name ?? `#${idx + 1}`,
+        gross: sanitizeNumber(m.gross ?? m.totalGrossProfit ?? m.totalGrosProfit ?? m.grossProfit ?? 0),
+        net: sanitizeNumber(m.net ?? m.netProfit ?? m.net_profit ?? 0),
       }));
     }
     // fallback single datum (so chart renders nicely)
     return [
       {
         month: t('Current') ?? 'Current',
-        gross: stats.totalGrosProfit,
+        gross: stats.totalGrossProfit,
         net: stats.netProfit,
       },
     ];
-  }, [stats.monthly, stats.totalGrosProfit, stats.netProfit, t]);
+  }, [stats.monthly, stats.totalGrossProfit, stats.netProfit, t]);
 
   const profitData = [
     { name: t('Net profit'), value: stats.netProfit },
-    { name: t('Gross profit'), value: stats.totalGrosProfit },
+    { name: t('Gross profit'), value: stats.totalGrossProfit },
   ];
 
-
-const MyLegend = () => (
-  <div className="flex items-center gap-4">
-    <div className="flex items-center gap-2">
-      <div className="w-3 h-3 rounded bg-[#5A6B7E]" />
-      <span className="text-sm text-gray-700">{t('Net profit')}</span>
+  const MyLegend = () => (
+    <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
+        <div className="w-3 h-3 rounded bg-[#5A6B7E]" />
+        <span className="text-sm text-gray-700">{t('Net profit')}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="w-3 h-3 rounded bg-[#C4A580]" />
+        <span className="text-sm text-gray-700">{t('Gross profit')}</span>
+      </div>
     </div>
-    <div className="flex items-center gap-2">
-      <div className="w-3 h-3 rounded bg-[#C4A580]" />
-      <span className="text-sm text-gray-700">{t('Gross profit')}</span>
-    </div>
-  </div>
-);
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -180,7 +185,7 @@ const MyLegend = () => (
         <div className="bg-white rounded-xl shadow-sm p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="text-xs text-gray-500">{t('Net & Gross Profit')}</div>
-<Legend content={<MyLegend />} />
+            <Legend content={<MyLegend />} />
           </div>
           <ResponsiveContainer width="100%" height={84}>
             <BarChart data={profitData} layout="vertical" margin={{ left: 0 }}>
@@ -189,7 +194,7 @@ const MyLegend = () => (
               <Bar dataKey="value" fill="#4F6F8F" radius={[6, 6, 6, 6]} />
             </BarChart>
           </ResponsiveContainer>
-          <div className="text-xs text-gray-400 mt-2">{t('Net')}: {formatCurrency(stats.netProfit)} SR — {t('Gross')}: {formatCurrency(stats.totalGrosProfit)} SR</div>
+          <div className="text-xs text-gray-400 mt-2">{t('Net')}: {formatCurrency(stats.netProfit)} SR — {t('Gross')}: {formatCurrency(stats.totalGrossProfit)} SR</div>
         </div>
       </div>
 

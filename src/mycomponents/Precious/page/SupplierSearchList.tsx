@@ -1,43 +1,34 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Search, Edit2, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Suppliers } from '../hooks/Suppliers';
+import { useSuppliers } from '../hooks/useSuppliers';
 import { toast } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 
 const SupplierSearchList: React.FC = () => {
   const { t } = useTranslation();
-  const { suppliers, loading, error, fetchSuppliers, removeSupplier } = Suppliers(true);
+  const { suppliers, loading, error, removeSupplier, fetchSuppliers } = useSuppliers(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  useEffect(() => {
-    if (!suppliers || suppliers.length === 0) {
-      fetchSuppliers?.();
-    }
-  }, [suppliers, fetchSuppliers]);
+  // Normalize suppliers: support either Supplier[] or { data: Supplier[] , ... }
+  const suppliersList = useMemo(() => {
+    if (Array.isArray(suppliers)) return suppliers;
+    const s: any = suppliers;
+    if (s && Array.isArray(s.data)) return s.data;
+    return [];
+  }, [suppliers]);
 
   const handleDelete = async (id?: string) => {
     if (!id) return;
     if (!window.confirm(t('confirm_delete_supplier'))) return;
 
     try {
-      console.log('🗑️ Trying to delete supplier:', id);
-      const res: any = await removeSupplier(id);
-      const isDeleted =
-        !res ||
-        res.success === true ||
-        res?.status === 204 ||
-        res?.status === 'success' ||
-        (typeof res?.message === 'string' && res.message.toLowerCase().includes('deleted'));
-
-      if (isDeleted) {
-        toast.success(t('supplier_deleted_success'));
-        await fetchSuppliers?.();
-      } else {
-        toast.error(t('supplier_delete_warning'));
-      }
+      await removeSupplier(id);
+      toast.success(t('supplier_deleted_success'));
+      // refresh from server to ensure state matches backend (handles id vs _id issues)
+      await fetchSuppliers?.();
     } catch (err) {
       console.error('❌ Delete failed:', err);
       toast.error(t('delete_failed'));
@@ -46,15 +37,15 @@ const SupplierSearchList: React.FC = () => {
 
   const filtered = useMemo(() => {
     const term = (searchTerm || '').toLowerCase().trim();
-    if (!term) return suppliers ?? [];
-    return (suppliers ?? []).filter(
-      (s) =>
-        (s.name ?? '').toLowerCase().includes(term) ||
-        (s.email ?? '').toLowerCase().includes(term) ||
-        (s.phone ?? '').toLowerCase().includes(term) ||
-        (s.address ?? '').toLowerCase().includes(term)
+    if (!term) return suppliersList ?? [];
+    return (suppliersList ?? []).filter(
+      (s: any) =>
+        (s.name ?? '').toString().toLowerCase().includes(term) ||
+        (s.email ?? '').toString().toLowerCase().includes(term) ||
+        (s.phone ?? '').toString().toLowerCase().includes(term) ||
+        (s.address ?? '').toString().toLowerCase().includes(term)
     );
-  }, [suppliers, searchTerm]);
+  }, [suppliersList, searchTerm]);
 
   const totalPages = Math.ceil((filtered.length || 0) / rowsPerPage);
 
@@ -66,6 +57,9 @@ const SupplierSearchList: React.FC = () => {
 
   const handlePrev = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
   const handleNext = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+
+  // helper to get id compat (supports either _id or id)
+  const getId = (supplier: any) => supplier?._id ?? supplier?.id ?? '';
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -105,11 +99,11 @@ const SupplierSearchList: React.FC = () => {
               />
             </div>
             <button
-              onClick={() => {}}
+              onClick={() => setSearchTerm('')}
               className="bg-gray-800 hover:bg-blue-800 text-white px-6 py-2 rounded-full flex items-center gap-2"
             >
               <Search className="w-4 h-4" />
-              {t('search')}
+              {t('clear')}
             </button>
           </div>
         </div>
@@ -120,7 +114,11 @@ const SupplierSearchList: React.FC = () => {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold text-gray-900">{t('suppliers')}</h2>
               <p className="text-sm text-gray-500">
-                {t('showing')} {paginatedData.length > 0 ? `${(currentPage - 1) * rowsPerPage + 1}-${Math.min(currentPage * rowsPerPage, filtered.length)}` : 0} {t('of')} {filtered.length} {t('suppliers')}
+                {t('showing')}{' '}
+                {paginatedData.length > 0
+                  ? `${(currentPage - 1) * rowsPerPage + 1}-${Math.min(currentPage * rowsPerPage, filtered.length)}`
+                  : 0}{' '}
+                {t('of')} {filtered.length} {t('suppliers')}
               </p>
             </div>
             <div className="overflow-x-auto">
@@ -135,11 +133,11 @@ const SupplierSearchList: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedData.map((supplier, idx) => (
-                    <tr key={supplier._id ?? idx} className="border-b hover:bg-gray-50">
+                  {paginatedData.map((supplier: any, idx: number) => (
+                    <tr key={getId(supplier) || idx} className="border-b hover:bg-gray-50">
                       <td className="py-4 px-4">
                         <Link
-                          to={`/dashboard/precious/supplier/${supplier._id}`}
+                          to={`/dashboard/precious/supplier/${getId(supplier)}`}
                           className="flex items-center gap-3"
                         >
                           <span className="font-medium text-gray-900">{supplier.name}</span>
@@ -151,13 +149,13 @@ const SupplierSearchList: React.FC = () => {
                       <td className="py-4 px-4">
                         <div className="flex gap-2">
                           <Link
-                            to={`/dashboard/precious/supplier/edit/${supplier._id}`}
+                            to={`/dashboard/precious/supplier/edit/${getId(supplier)}`}
                             className="text-blue-600 hover:text-blue-800 rounded-full p-2"
                           >
                             <Edit2 className="w-4 h-4" />
                           </Link>
                           <button
-                            onClick={() => handleDelete(supplier._id)}
+                            onClick={() => handleDelete(getId(supplier))}
                             className="text-red-600 hover:text-red-800 rounded-full p-2"
                           >
                             <Trash2 className="w-4 h-4" />

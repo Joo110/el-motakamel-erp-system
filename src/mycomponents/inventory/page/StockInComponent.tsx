@@ -15,7 +15,9 @@ interface ProductRow {
   inventoryName: string;
   code: string;
   units: number;
-  price: number;
+  price: number; // chosen price (depends on saleType)
+  wholesalePrice?: number;
+  retailPrice?: number;
   discount: number;
   total: number;
   saleType: string;
@@ -37,12 +39,13 @@ const StockInComponent: React.FC = () => {
     inventory: '',
     code: '96060',
     units: '0',
-    price: '0',
+    price: '0', // retail price input (default)
+    wholesalePrice: '0', // new input for wholesale
     discount: '0',
     saleType: 'جملة',
   });
 
-  const [supplierId, setSupplierId] = useState<string>('');
+  const [supplierId, setSupplierId] = useState<string>('696e9534a81dce22d907b0bc'); // <-- supplier id state
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [selectedInventoryId, setSelectedInventoryId] = useState<string>('');
 
@@ -51,7 +54,7 @@ const StockInComponent: React.FC = () => {
   const [currency, setCurrency] = useState<string>('SR');
   const [notes, setNotes] = useState<string>('');
 
-  const [organizationId] = useState<string>('68c2d89e2ee5fae98d57bef1');
+  const [organizationId] = useState<string>('6963ef29d4010f957c2de3f6');
   const [createdBy] = useState<string>('68c699af13bdca2885ed4d27');
 
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
@@ -64,11 +67,12 @@ const StockInComponent: React.FC = () => {
 
   const computedFormTotal = useMemo(() => {
     const u = Number(formProduct.units || 0);
-    const p = Number(formProduct.price || 0);
+    // choose price according to saleType: if جملة use wholesalePrice else use retail price (formProduct.price)
+    const p = Number(formProduct.saleType === 'جملة' ? formProduct.wholesalePrice : formProduct.price);
     const d = Number(formProduct.discount || 0);
     const tot = u * p * (1 - d / 100);
     return isFinite(tot) ? tot.toFixed(2) + ' ' : '0.00 ';
-  }, [formProduct.units, formProduct.price, formProduct.discount, t]);
+  }, [formProduct.units, formProduct.price, formProduct.wholesalePrice, formProduct.discount, formProduct.saleType, t]);
 
   // ===== handlers =====
   const handleFormChange = (key: keyof typeof formProduct, value: string) => {
@@ -76,14 +80,24 @@ const StockInComponent: React.FC = () => {
   };
 
   const handleResetForm = () => {
-    setFormProduct({ name: '', inventory: '', code: '96060', units: '0', price: '0', discount: '0', saleType: 'جملة' });
+    setFormProduct({
+      name: '',
+      inventory: '',
+      code: '96060',
+      units: '0',
+      price: '0',
+      wholesalePrice: '0',
+      discount: '0',
+      saleType: 'جملة'
+    });
     setSelectedProductId('');
     setSelectedInventoryId('');
   };
 
+  // NOTE: suppliers returned from API use `id` (not `_id`) — be tolerant and check both
   const handleSupplierSelect = (id: string) => {
     setSupplierId(id);
-    const s = suppliers.find((x: any) => x._id === id);
+    const s = suppliers.find((x: any) => x.id === id || x._id === id);
     setFormProduct((f) => ({ ...f, name: s?.name ?? '' }));
   };
 
@@ -91,8 +105,14 @@ const StockInComponent: React.FC = () => {
     setSelectedProductId(productId);
     const p = productsFromHook.find((x: any) => x._id === productId || x.id === productId);
     setFormProduct((f) => ({ ...f, name: p?.name ?? '' }));
-    if (p && (p.price || p.code)) {
-      if (p.price) setFormProduct((f) => ({ ...f, price: String(p.price) }));
+    // if product provides wholesalePrice/retailPrice, fill both inputs
+    if (p) {
+      if (p.wholesalePrice || p.retailPrice) {
+        if (p.wholesalePrice !== undefined) setFormProduct((f) => ({ ...f, wholesalePrice: String(p.wholesalePrice) }));
+        if (p.retailPrice !== undefined) setFormProduct((f) => ({ ...f, price: String(p.retailPrice) }));
+      } else if (p.price) {
+        setFormProduct((f) => ({ ...f, price: String(p.price), wholesalePrice: String(p.price) }));
+      }
       if (p.code) setFormProduct((f) => ({ ...f, code: String(p.code) }));
     }
   };
@@ -116,13 +136,17 @@ const StockInComponent: React.FC = () => {
       toast.error(t('units_must_greater_zero'));
       return;
     }
-    if (!formProduct.price || Number(formProduct.price) <= 0) {
+    // choose price according to saleType
+    const chosenPrice = Number(formProduct.saleType === 'جملة' ? formProduct.wholesalePrice : formProduct.price);
+    if (!chosenPrice || chosenPrice <= 0) {
       toast.error(t('price_must_greater_zero'));
       return;
     }
 
     const units = Number(formProduct.units);
-    const price = Number(formProduct.price);
+    const price = chosenPrice;
+    const wholesalePriceVal = Number(formProduct.wholesalePrice || 0);
+    const retailPriceVal = Number(formProduct.price || 0);
     const discount = Number(formProduct.discount || 0);
     const tot = units * price * (1 - discount / 100);
 
@@ -133,19 +157,21 @@ const StockInComponent: React.FC = () => {
       inventories.find((i: any) => i._id === selectedInventoryId || i.id === selectedInventoryId)?.name ??
       formProduct.inventory;
 
-    const newProduct: ProductRow = {
-      id: Date.now().toString(),
-      productId: selectedProductId,
-      inventoryId: selectedInventoryId,
-      name: productName,
-      inventoryName,
-      code: formProduct.code || '96060',
-      units,
-      price,
-      discount,
-      total: Math.round((tot + Number.EPSILON) * 100) / 100,
-      saleType: formProduct.saleType || 'جملة',
-    };
+   const newProduct: ProductRow = {
+  id: `${selectedProductId}-${selectedInventoryId}-${formProduct.saleType}`, // فريد لكل نوع بيع
+  productId: selectedProductId,
+  inventoryId: selectedInventoryId,
+  name: productName,
+  inventoryName,
+  code: formProduct.code || '96060',
+  units,
+  price,
+  wholesalePrice: wholesalePriceVal,
+  retailPrice: retailPriceVal,
+  discount,
+  total: Math.round((tot + Number.EPSILON) * 100) / 100,
+  saleType: formProduct.saleType || 'جملة',
+};
 
     setProducts((prev) => [...prev, newProduct]);
     handleResetForm();
@@ -166,9 +192,9 @@ const StockInComponent: React.FC = () => {
       inventoryId: prod.inventoryId,
       name: prod.name,
       quantity: prod.units,
-      price: prod.price,
+      wholesalePrice: prod.wholesalePrice ?? prod.price,
+      retailPrice: prod.retailPrice ?? prod.price,
       discount: prod.discount,
-      saleType: prod.saleType,
     }));
   }
 
@@ -185,7 +211,7 @@ const StockInComponent: React.FC = () => {
       }
 
       const payload: any = {
-        supplierId,
+        supplierId: supplierId,
         organizationId,
         products: mapProductsForApi(products),
         expectedDeliveryDate: expectedDeliveryDate || undefined,
@@ -194,7 +220,10 @@ const StockInComponent: React.FC = () => {
         createdBy,
       };
 
+      // debug log to confirm correct id is used
+      console.log('🧪 supplierId (to send):', supplierId);
       console.log('📤 Sending payload to API:', payload);
+
       await create(payload);
       toast.success(t('order_saved_successfully'));
 
@@ -232,7 +261,8 @@ const StockInComponent: React.FC = () => {
               >
                 <option value="">{suppliersLoading ? t('loading_suppliers') : t('select_supplier')}</option>
                 {suppliers.map((s: any) => (
-                  <option key={s._id ?? s.id ?? s.name} value={s._id}>
+                  // API returns suppliers with `id` (not always `_id`) so use whichever exists
+                  <option key={s.id ?? s._id ?? s.name} value={s.id ?? s._id ?? ''}>
                     {truncate(s.name, 36)}
                   </option>
                 ))}
@@ -346,8 +376,9 @@ const StockInComponent: React.FC = () => {
               <ChevronDown className="absolute right-2 top-8 sm:top-8 w-4 h-4 text-gray-400" />
             </div>
 
+            {/* Retail price input (existing) */}
             <div>
-              <label className="block text-xs text-gray-600 mb-1">{t('price_label')}</label>
+              <label className="block text-xs text-gray-600 mb-1">{t('retail_price_label') || t('price_label')}</label>
               <input
                 type="number"
                 className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
@@ -358,20 +389,17 @@ const StockInComponent: React.FC = () => {
               />
             </div>
 
+            {/* Wholesale price input (NEW) */}
             <div>
-              <label className="block text-xs text-gray-600 mb-1">{t('sale_type') || 'نوع البيع'}</label>
-              <div className="relative">
-                <select
-                  className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
-                  value={formProduct.saleType}
-                  onChange={(e) => handleFormChange('saleType', e.target.value)}
-                >
-                 <option value="جملة">{t('Sentence')}</option>
-<option value="قطاعي">{t('Sectoral')}</option>
-
-                </select>
-                <ChevronDown className="absolute right-2 top-3 w-4 h-4 text-gray-400" />
-              </div>
+              <label className="block text-xs text-gray-600 mb-1">{t('wholesale_price_label') || 'سعر الجملة'}</label>
+              <input
+                type="number"
+                className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
+                value={formProduct.wholesalePrice}
+                onChange={(e) => handleFormChange('wholesalePrice', e.target.value)}
+                min={0}
+                step="0.01"
+              />
             </div>
 
             <div>
@@ -426,7 +454,8 @@ const StockInComponent: React.FC = () => {
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('code_col')}</th>
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('units_col')}</th>
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('price_col')}</th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">نوع البيع</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('wholesale_price_col') || 'سعر الجملة'}</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('retail_price_col') || 'سعر التجزئة'}</th>
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('discount_col')}</th>
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('total_col')}</th>
                   <th className="w-8"></th>
@@ -453,7 +482,12 @@ const StockInComponent: React.FC = () => {
                       </div>
                     </td>
                     <td className="py-3 text-sm text-gray-600">{product.price.toFixed(2)}</td>
-                    <td className="py-3 text-sm text-gray-600">{product.saleType}</td>
+                    <td className="py-3 text-sm text-gray-600">
+                      {product.wholesalePrice != null ? product.wholesalePrice.toFixed(2) : '-'}
+                    </td>
+                    <td className="py-3 text-sm text-gray-600">
+                      {product.retailPrice != null ? product.retailPrice.toFixed(2) : '-'}
+                    </td>
                     <td className="py-3 text-sm text-gray-600">{product.discount}%</td>
                     <td className="py-3 text-sm text-gray-900">{product.total.toFixed(2)}</td>
                     <td className="py-3">

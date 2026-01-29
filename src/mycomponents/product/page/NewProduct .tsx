@@ -30,7 +30,7 @@ const NewProduct: React.FC = () => {
       const firstId = apiCategories[0]._id ?? apiCategories[0].id;
       setFormData((prev) => ({ ...prev, category: firstId }));
     }
-  }, [apiCategories]);
+  }, [apiCategories]); // keep same behavior
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -74,43 +74,37 @@ const NewProduct: React.FC = () => {
       const form = new FormData();
       form.append("name", formData.name);
       form.append("code", formData.code);
-      form.append("price", String(parseFloat(formData.price) || 0));
+
+      // backend expects retailPrice & wholesalePrice (we only have one input 'price' in UI)
+      // send both so endpoint accepts the payload
+      form.append("retailPrice", String(parseFloat(formData.price) || 0));
+      form.append("wholesalePrice", String(parseFloat(formData.price) || 0));
+
       form.append("tax", String(parseFloat(formData.tax) || 0));
       form.append("description", formData.description);
       form.append("category", String(selectedCategoryId));
       form.append("unit", String(parseInt(formData.unit) || 1));
 
       if (imageFile) {
-        form.append("img", imageFile); // تأكد أن الباكديند يتوقع الحقل "img"
+        form.append("img", imageFile);
       }
 
-      const result = await addProduct(form as unknown as any);
-
-      // Duplicate code
-      if (result?.err?.code === 11000 || result?.code === 11000) {
-        toast.error(t("duplicate_code_error"));
-        setSaving(false);
-        return;
-      }
-
-      // Image too large from backend
-      if (result?.err?.statusCode === 413 || result?.err?.status === 413 || result?.statusCode === 413) {
-        toast.error(t("image_too_large"));
-        setSaving(false);
-        return;
-      }
+      // call hook (which expects FormData)
+      await addProduct(form);
 
       toast.success(t("product_created_success"));
       handleCancel();
     } catch (error: any) {
       console.error("❌ Error creating product:", error);
 
+      // server duplicate key
       if (error?.response?.data?.err?.code === 11000 || error?.err?.code === 11000) {
         toast.error(t("duplicate_code_error"));
       } else if (
         error?.response?.data?.err?.statusCode === 413 ||
         error?.err?.statusCode === 413 ||
-        error?.statusCode === 413
+        error?.statusCode === 413 ||
+        error?.response?.status === 413
       ) {
         toast.error(t("image_too_large"));
       } else {
@@ -120,7 +114,6 @@ const NewProduct: React.FC = () => {
       setSaving(false);
     }
   };
-  // ======== نهاية التعديل ========
 
   const calculateTotal = () => {
     const price = parseFloat(formData.price) || 0;

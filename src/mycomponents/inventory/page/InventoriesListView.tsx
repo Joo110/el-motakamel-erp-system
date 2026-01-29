@@ -32,9 +32,10 @@ const InventoriesListView: React.FC<InventoriesListViewProps> = ({
   const [entriesPerPage, setEntriesPerPage] = useState(6);
 
   const { inventories: rawInventories, isLoading } = useInventories();
+
   const mappedInventories: Inventory[] = useMemo(() => {
     return (rawInventories || []).map((inv: any, idx: number) => {
-      const id = inv._id ?? `inv-${idx}`;
+const id = inv._id ?? inv.id ?? `inv-${idx}`;
       const name = inv.name ?? t('unnamed_inventory');
       const location = inv.location ?? '';
       const capacity =
@@ -66,7 +67,6 @@ const InventoriesListView: React.FC<InventoriesListViewProps> = ({
       };
     });
   }, [rawInventories, t]);
-
 
   const filteredInventories = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -157,7 +157,6 @@ const InventoriesListView: React.FC<InventoriesListViewProps> = ({
             <span className="text-gray-700">{t('inventories')}</span>
           </div>
 
-          {/* header: stack on small screens, row on larger */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between">
             <h1 className="text-2xl font-bold">{t('inventory_management')}</h1>
 
@@ -173,8 +172,6 @@ const InventoriesListView: React.FC<InventoriesListViewProps> = ({
 
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <h2 className="text-lg font-semibold mb-4">{t('inventory_search')}</h2>
-
-          {/* search: column on small screens, row on larger */}
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -297,7 +294,6 @@ const InventoriesListView: React.FC<InventoriesListViewProps> = ({
             <span>{t('entries')}</span>
           </div>
 
-          {/* pagination area: make it horizontally scrollable on small screens */}
           <div className="flex items-center gap-2 overflow-x-auto py-1">
             <button
               onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}

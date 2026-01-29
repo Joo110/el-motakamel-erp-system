@@ -1,132 +1,248 @@
+// src/mycomponents/Trips/components/CarDetailsView.tsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { Edit2, Trash2 } from 'lucide-react';
+import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-// import './i18n'; // تأكد من استدعاء ملف التهيئة هنا أو في ملف الجذر (App.tsx)
+import { useParams, useLocation } from 'react-router-dom';
+import axiosClient from '@/lib/axiosClient';
 
-// ==================== Types ====================
 interface CarItem {
   id: string;
+  stockId?: string;
   name: string;
   category: string;
   units: string;
   unitCount: number;
-  price: string;
-  priceValue: number;
-  total: string;
-  totalValue: number;
+  status?: string;
+  minQuantity?: number;
+  maxQuantity?: number;
+  lastUpdated?: string;
+  transactions?: any[];
+  raw?: any;
+}
+
+interface InventoryStatistics {
+  totalItems?: number;
+  totalQuantity?: number;
+  totalValue?: number;
+  lowStockCount?: number;
+  outOfStockCount?: number;
+  inStockCount?: number;
+  overstockCount?: number;
+  [key: string]: any;
+}
+
+interface CapacityInfo {
+  total?: number;
+  used?: number;
+  available?: number;
+  percentage?: number;
+  [key: string]: any;
 }
 
 interface CarDetailsViewProps {
   onEdit?: () => void;
+  id?: string;
+  data?: any; // accepts an already-fetched mobile-stock payload or full response
 }
 
-// ==================== Component ====================
-const CarDetailsView: React.FC<CarDetailsViewProps> = ({ onEdit }) => {
-  const { t } = useTranslation(); // تفعيل هوك الترجمة
+const CarDetailsView: React.FC<CarDetailsViewProps> = ({ id: propId, data: propData }) => {
+  const { t } = useTranslation();
+  const params = useParams<{ id?: string }>();
+  const location = useLocation();
 
   const [currentPage] = useState(1);
   const [entriesPerPage] = useState(10);
   const [cars, setCars] = useState<CarItem[]>([]);
   const [stocksLoading, setStocksLoading] = useState(false);
-  const [editingCar, setEditingCar] = useState<CarItem | null>(null);
-  const [editQty, setEditQty] = useState<number>(0);
-  const [editPrice, setEditPrice] = useState<number>(0);
 
-  // Dummy car data
-  const carData = {
-    id: '#CAR001',
-    name: 'Tesla Model S',
-    location: 'Alex Road',
-    capacity: '5 seats',
-    image: 'https://picsum.photos/seed/car1/400/300',
+  const [carData, setCarData] = useState({
+    id: '',
+    name: '',
+    location: '',
+    capacity: '',
+    year: '' as string | number,
+    brand: '',
+    representative: '',
+    createdAt: '',
+    updatedAt: '',
+  });
+
+  const [inventoryStats, setInventoryStats] = useState<InventoryStatistics | null>(null);
+  const [capacityInfo, setCapacityInfo] = useState<CapacityInfo | null>(null);
+
+  // which items' transactions are expanded
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  const routeId =
+    propId ??
+    params.id ??
+    (() => {
+      const segs = location.pathname.split('/').filter(Boolean);
+      return segs.length ? segs[segs.length - 1] : undefined;
+    })();
+
+  const toggleExpanded = (id: string) => {
+    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  // Dummy stock items
+  // helper to map payload -> state (used both for propData and fetched data)
+  const processPayload = (payloadRaw: any) => {
+    if (!payloadRaw) {
+      setCarData({
+        id: '',
+        name: '',
+        location: '',
+        capacity: '',
+        year: '',
+        brand: '',
+        representative: '',
+        createdAt: '',
+        updatedAt: '',
+      });
+      setCars([]);
+      setInventoryStats(null);
+      setCapacityInfo(null);
+      return;
+    }
+
+    let payload = payloadRaw;
+
+    // If the passed-in is a wrapper { message, data: { ... } }
+    if (payload?.data && Object.keys(payload).length > 1) {
+      // e.g. full response
+      payload = payload.data;
+    }
+
+    // if array, take first
+    if (Array.isArray(payload) && payload.length > 0) payload = payload[0];
+
+    // Basic header fields
+    const name = payload?.name ?? payload?.title ?? '';
+    const capacityVal = payload?.capacity ?? payload?.inventory?.capacity ?? payload?.inventory?.capacityInfo?.total ?? '';
+    const locationStr = payload?.location ?? payload?.name ?? '';
+
+    setCarData({
+      id: payload?.id ?? payload?._id ?? '',
+      name,
+      location: locationStr,
+      capacity: capacityVal !== '' ? String(capacityVal) : '',
+      year: payload?.year ?? '',
+      brand: payload?.brand ?? '',
+      representative: payload?.representative ?? '',
+      createdAt: payload?.createdAt ?? '',
+      updatedAt: payload?.updatedAt ?? '',
+    });
+
+    // Inventory: prefer payload.inventory.items (new format)
+    const inventory = payload?.inventory ?? {};
+    const items = Array.isArray(inventory?.items)
+      ? inventory.items
+      : Array.isArray(payload?.topProducts)
+      ? payload.topProducts
+      : [];
+
+    // statistics & capacity info
+    setInventoryStats(inventory?.statistics ?? null);
+    setCapacityInfo(inventory?.capacityInfo ?? {
+      total: payload?.capacity ?? payload?.capacityInfo?.total ?? undefined,
+      used: undefined,
+      available: undefined,
+      percentage: undefined,
+    });
+
+    const mapped: CarItem[] = Array.isArray(items)
+      ? items.map((it: any, index: number) => {
+          const product = it?.product ?? {};
+          const id = it?._id ?? product?.id ?? `item-${index}-${Math.random().toString(36).slice(2, 6)}`;
+          const qty = Number(it?.quantity ?? it?.qty ?? 0) || 0;
+          const unitLabel =
+            product?.unit ?? product?.units ?? product?.unitName ?? (typeof product?.unit === 'number' ? String(product.unit) : undefined) ?? 'pcs';
+
+          return {
+            id,
+            stockId: product?.id ?? product?._id,
+            name: product?.name ?? product?.title ?? `${t('tableItem')} ${index + 1}`,
+            category: product?.code ?? product?.category ?? '—',
+            units: String(unitLabel),
+            unitCount: qty,
+            status: it?.status ?? undefined,
+            minQuantity: it?.minQuantity ?? undefined,
+            maxQuantity: it?.maxQuantity ?? undefined,
+            lastUpdated: it?.lastUpdated ?? undefined,
+            transactions: Array.isArray(it?.transactions) ? it.transactions : [],
+            raw: it,
+          } as CarItem;
+        })
+      : [];
+
+    setCars(mapped);
+  };
+
   useEffect(() => {
-    setStocksLoading(true);
-    const dummyItems: CarItem[] = [
-      {
-        id: 'c1',
-        name: 'Engine Oil',
-        category: 'Fluids',
-        units: 'EO-1',
-        unitCount: 2,
-        price: '50.00 SR',
-        priceValue: 50,
-        total: '100.00 SR',
-        totalValue: 100,
-      },
-      {
-        id: 'c2',
-        name: 'Brake Pads',
-        category: 'Parts',
-        units: 'BP-1',
-        unitCount: 4,
-        price: '120.00 SR',
-        priceValue: 120,
-        total: '480.00 SR',
-        totalValue: 480,
-      },
-      {
-        id: 'c3',
-        name: 'Air Filter',
-        category: 'Filters',
-        units: 'AF-1',
-        unitCount: 1,
-        price: '80.00 SR',
-        priceValue: 80,
-        total: '80.00 SR',
-        totalValue: 80,
-      },
-    ];
-    setCars(dummyItems);
-    setStocksLoading(false);
-  }, []);
+    // if caller passed data prop, use it and skip fetch
+    if (propData) {
+      processPayload(propData);
+      return;
+    }
+
+    if (!routeId) return;
+
+    const fetchCar = async () => {
+      try {
+        setStocksLoading(true);
+        const token = (typeof window !== 'undefined' && localStorage.getItem('token')) || 'Token';
+        const res = await axiosClient.get(`/mobile-stocks/${routeId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const data = res?.data ?? res;
+        let payload = data?.data ?? data;
+
+        // if API returned array, take first
+        if (Array.isArray(payload) && payload.length > 0) {
+          payload = payload[0];
+        }
+
+        processPayload(payload);
+      } catch (err) {
+        // silent console for debug
+        // eslint-disable-next-line no-console
+        console.error('Failed to fetch mobile stock:', err);
+      } finally {
+        setStocksLoading(false);
+      }
+    };
+
+    void fetchCar();
+  }, [routeId, location.pathname, propId, params.id, propData]);
 
   const paginatedCars = useMemo(
     () => cars.slice((currentPage - 1) * entriesPerPage, currentPage * entriesPerPage),
     [cars, currentPage, entriesPerPage]
   );
 
-  const openEditModal = (car: CarItem) => {
-    setEditingCar(car);
-    setEditQty(car.unitCount);
-    setEditPrice(car.priceValue);
-  };
-  const closeEditModal = () => {
-    setEditingCar(null);
-    setEditQty(0);
-    setEditPrice(0);
-  };
-
-  const submitEdit = () => {
-    if (!editingCar) return;
-    setCars(prev =>
-      prev.map(p =>
-        p.id === editingCar.id
-          ? {
-              ...p,
-              unitCount: editQty,
-              priceValue: editPrice,
-              price: `${editPrice.toFixed(2)} SR`,
-              totalValue: editQty * editPrice,
-              total: `${(editQty * editPrice).toFixed(2)} SR`,
-            }
-          : p
-      )
-    );
-    closeEditModal();
-  };
-
   const handleDeleteCarItem = (id: string) => {
     if (!confirm(t('deleteItemConfirm'))) return;
     setCars(prev => prev.filter(x => x.id !== id));
   };
 
+  // small helper to format date strings (fallback safe)
+  const fmtDate = (d?: string) => {
+    if (!d) return '—';
+    try {
+      const dt = new Date(d);
+      if (Number.isNaN(dt.getTime())) return d;
+      return dt.toLocaleString();
+    } catch {
+      return d;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
             <span>{t('dashboard')}</span>
@@ -138,33 +254,93 @@ const CarDetailsView: React.FC<CarDetailsViewProps> = ({ onEdit }) => {
           <h1 className="text-2xl font-bold">{t('carManagement')}</h1>
         </div>
 
-        {/* Car Info */}
-        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6 flex justify-between items-center">
-          <div>
-            <h2 className="text-lg font-semibold">{carData.name}</h2>
-            <div className="space-y-1 text-sm mt-1">
-              <div>
-                <span className="text-gray-600">{t('location')}:</span> {carData.location}
-              </div>
-              <div>
-                <span className="text-gray-600">{t('capacity')}:</span> {carData.capacity}
+        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
+          <div className="flex justify-between items-start gap-6">
+            <div>
+              <h2 className="text-lg font-semibold">{carData.name}</h2>
+              <div className="space-y-1 text-sm mt-1">
+                <div>
+                  <span className="text-gray-600">{t('location')}:</span> {carData.location || '—'}
+                </div>
+                <div>
+                  <span className="text-gray-600">{t('capacity')}:</span> {carData.capacity || '—'}
+                </div>
+                <div>
+                  <span className="text-gray-600">{t('brand')}:</span> {carData.brand || '—'}
+                </div>
+                <div>
+                  <span className="text-gray-600">{t('year')}:</span> {carData.year || '—'}
+                </div>
               </div>
             </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={onEdit}
-              className="px-4 py-2 bg-slate-700 text-white rounded-full hover:bg-blue-800 text-sm"
-            >
-              {t('editDetails')}
-            </button>
-            <div className="w-32 h-20 overflow-hidden rounded-lg bg-gray-100">
-              <img src={carData.image} alt="Car" className="w-full h-full object-contain" />
+
+            <div className="text-sm space-y-1 text-right">
+              <div>
+                <span className="text-gray-600">{t('representative')}:</span> {carData.representative || '—'}
+              </div>
+              <div>
+                <span className="text-gray-600">{t('created')}:</span> {fmtDate(carData.createdAt)}
+              </div>
+              <div>
+                <span className="text-gray-600">{t('updated')}:</span> {fmtDate(carData.updatedAt)}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Car Items Table */}
+        {/* Inventory summary + capacity info */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="bg-white rounded-lg shadow-sm p-4">
+            <h3 className="font-semibold mb-3">{t('inventorySummary')}</h3>
+            {inventoryStats ? (
+              <ul className="text-sm space-y-1">
+                <li>
+                  <strong>{t('inventory.totalItems')}:</strong> {inventoryStats.totalItems ?? '—'}
+                </li>
+                <li>
+                  <strong>{t('inventory.totalQuantity')}:</strong> {inventoryStats.totalQuantity ?? '—'}
+                </li>
+                <li>
+                  <strong>{t('inventory.totalValue')}:</strong> {inventoryStats.totalValue ?? '—'}
+                </li>
+                <li>
+                  <strong>{t('inventory.inStockCount')}:</strong> {inventoryStats.inStockCount ?? '—'}
+                </li>
+                <li>
+                  <strong>{t('inventory.lowStockCount')}:</strong> {inventoryStats.lowStockCount ?? '—'}
+                </li>
+                <li>
+                  <strong>{t('inventory.outOfStockCount')}:</strong> {inventoryStats.outOfStockCount ?? '—'}
+                </li>
+              </ul>
+            ) : (
+              <div className="text-sm text-gray-500">{t('noItemsFound')}</div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm p-4">
+            <h3 className="font-semibold mb-3">{t('capacityInfo')}</h3>
+            {capacityInfo ? (
+              <ul className="text-sm space-y-1">
+                <li>
+                  <strong>{t('capacity.total')}:</strong> {capacityInfo.total ?? '—'}
+                </li>
+                <li>
+                  <strong>{t('capacity.used')}:</strong> {capacityInfo.used ?? '—'}
+                </li>
+                <li>
+                  <strong>{t('capacity.available')}:</strong> {capacityInfo.available ?? '—'}
+                </li>
+                <li>
+                  <strong>{t('capacity.percentage')}:</strong> {capacityInfo.percentage ?? '—'}
+                </li>
+              </ul>
+            ) : (
+              <div className="text-sm text-gray-500">{t('noItemsFound')}</div>
+            )}
+          </div>
+        </div>
+
         <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
           <h2 className="text-lg font-semibold mb-4">{t('carItemsTitle')}</h2>
           <div className="w-full overflow-x-auto">
@@ -174,39 +350,95 @@ const CarDetailsView: React.FC<CarDetailsViewProps> = ({ onEdit }) => {
                   <th className="pb-3 px-2">{t('tableItem')}</th>
                   <th className="pb-3 px-2">{t('tableCategory')}</th>
                   <th className="pb-3 px-2">{t('tableUnits')}</th>
-                  <th className="pb-3 px-2">{t('tablePrice')}</th>
-                  <th className="pb-3 px-2">{t('tableTotal')}</th>
-                  <th className="pb-3 px-2"></th>
+                  <th className="pb-3 px-2">{t('status')}</th>
+                  <th className="pb-3 px-2" />
                 </tr>
               </thead>
               <tbody>
                 {stocksLoading ? (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-gray-500">{t('loadingItems')}</td>
+                    <td colSpan={5} className="py-8 text-center text-gray-500">
+                      {t('loadingItems')}
+                    </td>
                   </tr>
                 ) : paginatedCars.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-gray-500">{t('noItemsFound')}</td>
+                    <td colSpan={5} className="py-8 text-center text-gray-500">
+                      {t('noItemsFound')}
+                    </td>
                   </tr>
                 ) : (
                   paginatedCars.map(item => (
-                    <tr key={item.id} className="border-b last:border-b-0 hover:bg-gray-50">
-                      <td className="py-3 px-2">{item.name}</td>
-                      <td className="py-3 px-2">{item.category}</td>
-                      <td className="py-3 px-2">{item.unitCount}</td>
-                      <td className="py-3 px-2">{item.price}</td>
-                      <td className="py-3 px-2">{item.total}</td>
-                      <td className="py-3 px-2">
-                        <div className="flex gap-1">
-                          <button onClick={() => openEditModal(item)} className="p-1 text-blue-600">
-                            <Edit2 size={16} />
-                          </button>
-                          <button onClick={() => handleDeleteCarItem(item.id)} className="p-1 text-red-600">
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                    <React.Fragment key={item.id}>
+                      <tr className="border-b last:border-b-0 hover:bg-gray-50">
+                        <td className="py-3 px-2">{item.name}</td>
+                        <td className="py-3 px-2">{item.category}</td>
+                        <td className="py-3 px-2">{item.unitCount} {item.units}</td>
+                        <td className="py-3 px-2">{item.status ?? '—'}</td>
+                        <td className="py-3 px-2">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleDeleteCarItem(item.id)}
+                              className="p-1 text-red-600"
+                              aria-label={t('deleteItemAria')}
+                              title={t('removeLocal')}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+
+                            <button
+                              onClick={() => toggleExpanded(item.id)}
+                              className="p-1 text-gray-600 flex items-center gap-1"
+                              aria-label={t('toggleTransactionsAria')}
+                              title={t('toggleTransactions')}
+                            >
+                              {expanded[item.id] ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+
+                      {/* transactions row (expandable) */}
+                      {expanded[item.id] && (
+                        <tr className="bg-gray-50">
+                          <td colSpan={5} className="py-2 px-4">
+                            <div className="text-sm">
+                              <div className="mb-2 font-medium">{t('transactions')}</div>
+                              {item.transactions && item.transactions.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                  <table className="min-w-full text-xs">
+                                    <thead className="text-left text-gray-600">
+                                      <tr>
+                                        <th className="pb-2 pr-4">{t('transactions.type')}</th>
+                                        <th className="pb-2 pr-4">{t('transactions.quantity')}</th>
+                                        <th className="pb-2 pr-4">{t('transactions.reference')}</th>
+                                        <th className="pb-2 pr-4">{t('transactions.notes')}</th>
+                                        <th className="pb-2 pr-4">{t('transactions.performedBy')}</th>
+                                        <th className="pb-2 pr-4">{t('transactions.date')}</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {item.transactions.map((tx: any, idx: number) => (
+                                        <tr key={idx} className="align-top">
+                                          <td className="py-1 pr-4">{tx.type ?? '—'}</td>
+                                          <td className="py-1 pr-4">{tx.quantity ?? '—'}</td>
+                                          <td className="py-1 pr-4">{tx.referenceId ?? '—'}</td>
+                                          <td className="py-1 pr-4">{tx.notes ?? '—'}</td>
+                                          <td className="py-1 pr-4">{tx.performedBy ?? '—'}</td>
+                                          <td className="py-1 pr-4">{fmtDate(tx.date)}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              ) : (
+                                <div className="text-gray-500">{t('noTransactions')}</div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   ))
                 )}
               </tbody>
@@ -214,47 +446,6 @@ const CarDetailsView: React.FC<CarDetailsViewProps> = ({ onEdit }) => {
           </div>
         </div>
       </div>
-
-      {/* Edit Modal */}
-      {editingCar && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-lg font-medium mb-4">{t('editCarItemTitle')}</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">{t('labelItem')}</label>
-                <div className="text-sm text-gray-900">{editingCar.name}</div>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">{t('labelQuantity')}</label>
-                <input
-                  type="number"
-                  value={editQty}
-                  onChange={e => setEditQty(Number(e.target.value))}
-                  className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">{t('labelPriceSR')}</label>
-                <input
-                  type="number"
-                  value={editPrice}
-                  onChange={e => setEditPrice(Number(e.target.value))}
-                  className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 mt-6">
-              <button onClick={closeEditModal} className="px-4 py-2 bg-gray-200 rounded-full text-sm">
-                {t('cancel')}
-              </button>
-              <button onClick={submitEdit} className="px-4 py-2 bg-slate-700 text-white rounded-full text-sm">
-                {t('save')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

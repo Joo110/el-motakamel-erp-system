@@ -1,4 +1,3 @@
-// src/mycomponents/inventory/InventoryDetailsView.tsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { Edit2, Trash2 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -32,6 +31,7 @@ interface RawStock {
   quantity?: number | string;
   inventoryId?: string;
   name?: string;
+  [k: string]: any;
 }
 
 const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) => {
@@ -51,82 +51,130 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
   const [editLoading, setEditLoading] = useState(false);
 
   const inventory = useMemo(() => {
-    return inventories.find((inv) => (inv as any)._id === id);
+    if (!inventories || !id) return undefined;
+
+    return (inventories as any).find((inv: any) =>
+      (inv && ((inv._id && String(inv._id) === String(id)) || (inv.id && String(inv.id) === String(id))))
+    );
   }, [inventories, id]);
 
+  // load stocks whenever id changes (don't depend on inventory presence)
   useEffect(() => {
-    if (id && inventory) {
+    if (id) {
       loadStocks();
     } else {
       setProducts([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, inventory, inventories, getStocks]);
+  }, [id]);
 
-  const loadStocks = async () => {
-    if (!id) return;
-    setStocksLoading(true);
-    try {
-      const stocksData = await getStocks(id);
+const loadStocks = async () => {
+  if (!id) return;
+  setStocksLoading(true);
 
-      const stocksArray: RawStock[] = (() => {
-        if (!stocksData) return [];
-        if (Array.isArray(stocksData)) return stocksData;
-        if (Array.isArray(stocksData.stocks)) return stocksData.stocks;
-        if (Array.isArray(stocksData.data)) return stocksData.data;
-        if (Array.isArray(stocksData.data?.stocks)) return stocksData.data.stocks;
-        if (Array.isArray(stocksData.result)) return stocksData.result;
-        if (Array.isArray(stocksData.data?.result)) return stocksData.data.result;
-        return [];
-      })();
+  try {
+    const stocksData = await getStocks(id);
+    console.debug("loadStocks - raw stocksData:", stocksData);
 
-      const mappedProducts: Product[] = stocksArray.map((stock, idx) => {
-        const prod = stock.product ?? stock.productId ?? {};
-        const priceVal = prod?.price ? Number(prod.price) : 0;
-        const qty = typeof stock.quantity === 'number' ? stock.quantity : Number(stock.quantity || 0);
+    // 1️⃣ Normalize response to array
+    const stocksArray: RawStock[] = (() => {
+      if (!stocksData) return [];
+      if (Array.isArray(stocksData)) return stocksData;
+      if (Array.isArray(stocksData.data)) return stocksData.data;
+      if (Array.isArray(stocksData.data?.stocks)) return stocksData.data.stocks;
+      if (Array.isArray(stocksData.stocks)) return stocksData.stocks;
+      return [];
+    })();
 
-        return {
-          id: stock._id || `prod-${idx}`,
-          name: prod?.name || stock.name || t('unknown_product'),
-          category: (prod?.category && typeof prod.category === 'object' ? prod.category.name : prod?.category) || t('n_a'),
-          units: prod?.sku || t('n_a'),
-          unitCount: qty,
-          price: `${priceVal.toFixed(2)} ${t('currency_sr')}`,
-          priceValue: priceVal,
-          total: `${(qty * priceVal).toFixed(2)} ${t('currency_sr')}`,
-          totalValue: qty * priceVal,
-          raw: stock,
-        };
-      });
+    console.log("🧪 FIRST STOCK SAMPLE:", stocksArray[0]);
 
-      setProducts(mappedProducts);
-    } catch (err) {
-      console.error(t('failed_load_stocks'), err);
-      setProducts([]);
-    } finally {
-      setStocksLoading(false);
-    }
+    // 2️⃣ Collect unique productIds
+    const productIds = Array.from(
+      new Set(stocksArray.map((s: any) => s.productId).filter(Boolean))
+    );
+
+    // 3️⃣ Fetch products details by productId
+    const productMap: Record<string, any> = {};
+
+    await Promise.all(
+      productIds.map(async (pid) => {
+        try {
+          const res = await axiosClient.get(`/products/${pid}`);
+          const body = res?.data ?? {};
+          const product = body?.data ?? body;
+          if (product) {
+            productMap[pid] = product;
+          }
+        } catch (err) {
+          console.warn(`⚠️ Failed to load product ${pid}`);
+        }
+      })
+    );
+
+    // 4️⃣ Map stocks to UI products
+    const mappedProducts: Product[] = stocksArray.map((stock: any, idx) => {
+  const prod = productMap[stock.productId];
+
+  const qty = Number(stock.quantity ?? 0);
+
+  const priceVal = Number(
+    prod?.retailPrice ??
+    prod?.wholesalePrice ??
+    0
+  );
+
+  return {
+    id: stock.id ?? stock._id ?? `stock-${idx}`,
+
+    name: prod?.name ?? t('unknown_product'),
+
+    category: prod?.category?.category ?? t('n_a'),
+
+    units: String(prod?.unit ?? t('n_a')),
+
+    unitCount: qty,
+
+    price: `${priceVal.toFixed(2)} ${t('currency_sr')}`,
+    priceValue: priceVal,
+
+    total: `${(priceVal * qty).toFixed(2)} ${t('currency_sr')}`,
+    totalValue: priceVal * qty,
+
+    raw: stock,
   };
+});
+
+
+    setProducts(mappedProducts);
+  } catch (err) {
+    console.error(t('failed_load_stocks'), err);
+    setProducts([]);
+  } finally {
+    setStocksLoading(false);
+  }
+};
+
+
 
   const inventoryData = useMemo(() => {
     if (!inventory) return null;
     const inv = inventory as any;
     const image =
+      inv.avatar ??
       inv.image ??
       inv.img ??
-      inv.avatar ??
-      `https://picsum.photos/seed/${encodeURIComponent(inv._id || 'default')}/400/300`;
+      `https://picsum.photos/seed/${encodeURIComponent(inv._id ?? inv.id ?? 'default')}/400/300`;
 
     return {
-      id: inv._id || t('n_a'),
-      name: inv.name || t('unnamed_inventory'),
-      location: inv.location || t('n_a'),
-      capacity: typeof inv.capacity === 'number' ? String(inv.capacity) : inv.capacity || t('n_a'),
+      id: inv._id ?? inv.id ?? t('n_a'),
+      name: inv.name ?? t('unnamed_inventory'),
+      location: inv.location ?? t('n_a'),
+      capacity: typeof inv.capacity === 'number' ? String(inv.capacity) : inv.capacity ?? t('n_a'),
       image,
     };
   }, [inventory, t]);
 
-  // --- NEW: compute numeric capacity (if possible) and total units and residual
+  // --- compute numeric capacity and totals
   const capacityValue = useMemo<number | null>(() => {
     if (!inventory) return null;
     const inv = inventory as any;
@@ -134,7 +182,6 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
     if (cap === undefined || cap === null) return null;
     if (typeof cap === 'number') return cap;
     if (typeof cap === 'string') {
-      // try to extract numeric part (allow commas, decimals)
       const parsed = Number(cap.replace(/,/g, '').replace(/[^\d.-]/g, ''));
       return Number.isFinite(parsed) ? parsed : null;
     }
@@ -297,7 +344,7 @@ const InventoryDetailsView: React.FC<InventoryDetailsViewProps> = ({ onEdit }) =
                 </div>
 
                 <div>
-                  <span className="text-gray-600">{/* show both key and Arabic */}{t('residual') }</span>
+                  <span className="text-gray-600">{t('residual')}</span>
                   <span className="ml-1 font-medium">
                     {residualValue === null ? t('n_a') : residualValue}
                   </span>

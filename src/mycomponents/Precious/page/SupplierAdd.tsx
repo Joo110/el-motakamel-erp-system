@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Suppliers } from "../hooks/Suppliers";
+import { useSuppliers } from "../hooks/Suppliers";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
 const SupplierAdd = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { addSupplier, loading } = Suppliers(false);
+  const { addSupplier, loading } = useSuppliers(false);
   const [form, setForm] = useState({
     name: "",
     address: "",

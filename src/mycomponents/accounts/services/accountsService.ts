@@ -6,26 +6,27 @@ export interface Account {
   id?: string;
   name?: string;
   code?: string;
+  type?: string;
+  amount?: number;
+  currency?: string;
+  description?: string;
   createdAt?: string;
   updatedAt?: string;
   [key: string]: any;
 }
 
+
 const BASE = "/accounts";
 
-
 export const getAccountsService = async (params?: Record<string, any>): Promise<Account[]> => {
-  const response = await axiosClient.get<{ status?: string; results?: number; data?: { accounts?: Account[] } }>(
-    BASE,
-    { params, headers: { "Cache-Control": "no-cache" } }
-  );
-
+  const response = await axiosClient.get(BASE, { params, headers: { "Cache-Control": "no-cache" } });
   const body = response.data as any;
+
   if (Array.isArray(body)) return body as Account[];
-  if (body?.data?.accounts && Array.isArray(body.data.accounts)) return body.data.accounts;
-  if (body?.accounts && Array.isArray(body.accounts)) return body.accounts;
+  if (body?.data && Array.isArray(body.data)) return body.data;
   return [];
 };
+
 
 
 export const createAccountService = async (data: Partial<Account>) => {

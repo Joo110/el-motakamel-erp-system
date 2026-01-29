@@ -40,7 +40,7 @@ const NewJournalEntry = () => {
         toast.error(`❌ ${t("Error fetching journals or accounts.")}`);
       }
     };
-    fetchData();
+    void fetchData();
   }, [refreshAccounts, refreshJournals, t]);
 
   const handleJournalChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -53,7 +53,7 @@ const NewJournalEntry = () => {
     value: string | number
   ) => {
     setLines(
-      lines.map((line) => (line.id === id ? { ...line, [field]: value } : line))
+      (prev) => prev.map((line) => (line.id === id ? { ...line, [field]: value } : line))
     );
   };
 
@@ -68,12 +68,40 @@ const NewJournalEntry = () => {
     return totalDebit === totalCredit && totalDebit > 0;
   };
 
-  const handleSubmit = async () => {
-    try {
-      setSaving(true);
+  // helper: validate ObjectId (24 hex chars)
+  const isValidObjectId = (v: any) => {
+    return typeof v === "string" && /^[a-fA-F0-9]{24}$/.test(v);
+  };
 
+  // try to map a display value to an account _id using accounts list
+const findAccountIdFromValue = (val: string): string | null => {
+  if (!val) return null;
+
+  const byId = accounts.find(
+    (a: any) => (a._id && a._id === val) || (a.id && a.id === val)
+  );
+  if (byId) return byId._id ?? byId.id ?? null;
+
+  const byCode = accounts.find((a: any) => String(a.code) === String(val));
+  if (byCode) return byCode._id ?? byCode.id ?? null;
+
+  const byName = accounts.find((a: any) => String(a.name) === String(val));
+  if (byName) return byName._id ?? byName.id ?? null;
+
+  const byLabel = accounts.find(
+    (a: any) => `${a.name} (${a.code})` === val
+  );
+  if (byLabel) return byLabel._id ?? byLabel.id ?? null;
+
+  return null;
+};
+
+  const handleSubmit = async () => {
+    setSaving(true);
+    try {
       if (!selectedJournal) {
         toast.error(`❌ ${t("Please select a journal!")}`);
+        setSaving(false);
         return;
       }
 
@@ -82,22 +110,62 @@ const NewJournalEntry = () => {
       );
       if (emptyLines.length > 0) {
         toast.error(`❌ ${t("Please fill all line details!")}`);
+        setSaving(false);
         return;
       }
 
       if (!isBalanced()) {
         toast.error(`❌ ${t("Entry is not balanced! Debit must equal Credit.")}`);
+        setSaving(false);
+        return;
+      }
+
+      // --- normalize & validate accountIds ---
+      const normalizedLines: Array<{ accountId: string; description: string; debit: number; credit: number }> = [];
+      const errors: string[] = [];
+
+      for (let i = 0; i < lines.length; i++) {
+        const ln = lines[i];
+        let accountVal = ln.accountId?.toString?.().trim() ?? "";
+
+        if (!accountVal) {
+          errors.push(`Line ${i + 1}: ${t("Account is required")}`);
+          continue;
+        }
+
+        if (!isValidObjectId(accountVal)) {
+          // try to auto-map using accounts list
+          const mapped = findAccountIdFromValue(accountVal);
+          if (mapped && isValidObjectId(mapped)) {
+            accountVal = mapped;
+          } else {
+            // not mappable -> collect error
+            errors.push(
+              `Line ${i + 1}: ${t('invalid account ID format')}: "${accountVal}". ${t('Please select the account from the dropdown (must be an internal ID).')}`
+            );
+            continue;
+          }
+        }
+
+        normalizedLines.push({
+          accountId: accountVal,
+          description: ln.description,
+          debit: Number(ln.debit) || 0,
+          credit: Number(ln.credit) || 0,
+        });
+      }
+
+      if (errors.length > 0) {
+        const message = errors.join(" — ");
+        toast.error(`❌ ${message}`);
+        console.warn("Validation errors before submit:", errors);
+        setSaving(false);
         return;
       }
 
       const payload = {
-        jornalId: selectedJournal,
-        lines: lines.map((line) => ({
-          accountId: line.accountId,
-          description: line.description,
-          debit: Number(line.debit) || 0,
-          credit: Number(line.credit) || 0,
-        })),
+        journalId: selectedJournal, // correct field expected by the API
+        lines: normalizedLines,
       };
 
       await createEntry(payload);
@@ -179,8 +247,8 @@ const NewJournalEntry = () => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                     >
                       <option value="">{t("Select account...")}</option>
-                      {accounts.map((account) => (
-                        <option key={account._id} value={account._id}>
+                      {accounts.map((account: any) => (
+                        <option key={account._id ?? account.id} value={account._id ?? account.id}>
                           {account.name} ({account.code})
                         </option>
                       ))}

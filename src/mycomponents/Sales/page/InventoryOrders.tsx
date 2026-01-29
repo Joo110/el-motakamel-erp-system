@@ -12,7 +12,29 @@ import { useUsers } from '../../user/hooks/useUsers';
 // i18next
 import { useTranslation } from 'react-i18next';
 
-type TabType = 'draft' | 'approved' | 'delivered';
+type TabType = 'draft' | 'approved' | 'shipped' | 'delivered';
+
+/** Helper: safely convert various shapes to a display string */
+function toDisplayString(v: any, fallback = '-') {
+  if (v === null || v === undefined) return fallback;
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return String(v);
+  if (typeof v === 'object') {
+    if (typeof v.name === 'string') return v.name;
+    if (typeof v.fullname === 'string') return v.fullname;
+    if (typeof v.fullName === 'string') return v.fullName;
+    if (typeof v.company === 'string') return v.company;
+    if (typeof v.email === 'string') return v.email;
+    if (typeof v.id === 'string') return v.id;
+    if (typeof v._id === 'string') return v._id;
+    try {
+      const json = JSON.stringify(v);
+      return json.length > 40 ? json.slice(0, 37) + '...' : json;
+    } catch {
+      return fallback;
+    }
+  }
+  return String(v);
+}
 
 const InventoryOrders: React.FC = () => {
   const { t } = useTranslation();
@@ -22,16 +44,19 @@ const InventoryOrders: React.FC = () => {
 
   const navigate = useNavigate();
 
-  const { items, loading, error, fetch, approve, markDelivered } = useSaleOrders(undefined, false);
+  // useSaleOrders should provide approve, ship, deliver
+  const { items, loading, error, fetch, approve, ship, deliver } = useSaleOrders(undefined, false);
   const { customers, fetchCustomers } = useCustomers(true) as any;
   const { inventories } = useInventories() as any;
   const { users, loading: usersLoading } = useUsers();
 
+  // build users map to display creator name (ensure value is string)
   const usersMap = useMemo(() => {
     const m = new Map<string, string>();
-    for (const u of users) {
-      const name = u.name ?? u.fullname ?? u.email ?? u._id;
-      m.set(u._id, name);
+    for (const u of (users ?? [])) {
+      const name = toDisplayString(u?.name ?? u?.fullname ?? u?.email ?? u?._id, u?._id ?? '-');
+      const id = u?._id ?? null;
+      if (id) m.set(id, name);
     }
     return m;
   }, [users]);
@@ -56,55 +81,91 @@ const InventoryOrders: React.FC = () => {
     [data, currentPage, itemsPerPage]
   );
 
-  const handleActionClick = async (orderId: string) => {
+  const handleActionClick = async (orderId?: string) => {
     try {
+      if (!orderId) {
+        console.error('handleActionClick called without orderId', { activeTab });
+        toast.error(t('invalid_order_id'));
+        return;
+      }
+
       if (activeTab === 'draft') {
         if (!approve) throw new Error('Approve function not available');
         await approve(orderId);
         toast.success(t('order_approved'));
-        await fetch(activeTab);
+        await fetch('draft');
       } else if (activeTab === 'approved') {
-        if (!markDelivered) throw new Error('markDelivered function not available');
-        await markDelivered(orderId);
+        if (!ship) throw new Error('Ship function not available');
+        await ship(orderId);
+        toast.success(t('order_shipped'));
+        await fetch('approved');
+      } else if (activeTab === 'shipped') {
+        if (!deliver) throw new Error('Deliver function not available');
+        await deliver(orderId);
         toast.success(t('order_delivered'));
-        await fetch(activeTab);
+        await fetch('shipped');
       } else {
         navigate(`/dashboard/stock-out-draft/${orderId}`, { state: { status: 'invoice' } });
       }
     } catch (err: any) {
-      toast.error(`${t('action_failed')}: ${err?.message || String(err)}`);
+      // show backend message if available
+      const msg = err?.response?.data?.message || err?.message || String(err);
+      toast.error(`${t('action_failed')}: ${msg}`);
     }
   };
 
   const rowFor = (order: any) => {
-    const orderNumber = order.invoiceNumber || order._id || '-';
-    const customer =
-      customers?.find((c: any) => c._id === order.customerId)?.name ||
-      order.customerId ||
-      '-';
+    const orderNumber = order.invoiceNumber ?? order._id ?? order.id ?? '-';
+
+    // ensure we always have the correct ObjectId for customer
+    let customerDisplay = '-';
+    let customerIdForRequest: string | null = null;
+    try {
+      const found = customers?.find((c: any) => (c?._id === order.customerId) || (c?.id === order.customerId));
+      if (found) {
+        customerDisplay = toDisplayString(found?.name ?? found);
+        customerIdForRequest = found._id ?? found.id ?? null;
+      } else {
+        customerDisplay = toDisplayString(order.customer ?? order.customerId ?? '-');
+        customerIdForRequest = order.customerId ?? null;
+      }
+    } catch {
+      customerDisplay = toDisplayString(order.customerId ?? '-');
+      customerIdForRequest = order.customerId ?? null;
+    }
 
     let inventory = '-';
     if (Array.isArray(order.products) && order.products.length > 0) {
-      const invId = order.products[0].inventoryId;
-      const invObj = inventories?.find((i: any) => i._id === invId || i.id === invId);
-      inventory = invObj?.name || invId || '-';
+      const invId = order.products[0]?.inventoryId ?? order.products[0]?.inventory;
+      const invObj = inventories?.find((i: any) => i?._id === invId || i?.id === invId);
+      inventory = invObj ? toDisplayString(invObj?.name ?? invObj) : toDisplayString(invId ?? '-');
     }
 
-    const totalPrice = (order.totalAmount ?? order.total ?? 0).toString();
+    const totalPrice = toDisplayString(order.totalAmount ?? order.total ?? 0);
     const createdByName =
-      usersMap.get(order.createdBy) || (usersLoading ? t('loading_user') : order.createdBy || '-');
-    const orderTime = order.createdAt
-      ? new Date(order.createdAt).toLocaleString()
-      : order.orderTime ?? '-';
+      usersMap.get(order.createdBy?._id ?? order.createdBy?.id ?? order.createdBy) ??
+      (usersLoading ? t('loading_user') : toDisplayString(order.createdBy ?? '-'));
+    const orderTime = order.createdAt ? new Date(order.createdAt).toLocaleString() : order.orderTime ?? '-';
 
     const action =
       activeTab === 'draft'
         ? t('approve')
         : activeTab === 'approved'
+        ? t('ship')
+        : activeTab === 'shipped'
         ? t('deliver')
         : t('invoice');
 
-    return { orderNumber, customer, inventory, totalPrice, createdByName, orderTime, action };
+    return {
+      orderNumber,
+      customer: customerDisplay,
+      inventory,
+      totalPrice,
+      createdByName,
+      orderTime,
+      action,
+      customerIdForRequest,
+    };
   };
 
   return (
@@ -116,9 +177,8 @@ const InventoryOrders: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-4 mb-6">
-        {(['draft', 'approved', 'delivered'] as TabType[]).map((tab) => (
+        {(['draft', 'approved', 'shipped', 'delivered'] as TabType[]).map((tab) => (
           <button
             key={tab}
             onClick={() => {
@@ -126,23 +186,25 @@ const InventoryOrders: React.FC = () => {
               setCurrentPage(1);
             }}
             className={`px-6 py-2 rounded-full transition-colors ${
-              activeTab === tab
-                ? 'bg-slate-700 text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-100'
+              activeTab === tab ? 'bg-slate-700 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'
             }`}
           >
-            {tab === 'draft' ? t('draft') : tab === 'approved' ? t('approved') : t('delivered')}
+            {tab === 'draft'
+              ? t('draft')
+              : tab === 'approved'
+              ? t('approved')
+              : tab === 'shipped'
+              ? t('shipped')
+              : t('delivered')}
           </button>
         ))}
       </div>
 
-      {/* Info */}
       <div className="text-right text-sm text-gray-500 mb-4">
         {t('showing')} {data.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-
         {Math.min(currentPage * itemsPerPage, data.length)} {t('of')} {data.length} {t('orders')}
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -160,8 +222,10 @@ const InventoryOrders: React.FC = () => {
             <tbody>
               {paginatedData.map((item, index) => {
                 const row = rowFor(item);
+                // prefer _id, fallback to id
+                const orderId = item._id ?? item.id;
                 return (
-                  <tr key={item._id ?? index} className="border-b last:border-0">
+                  <tr key={orderId ?? index} className="border-b last:border-0">
                     <td className="py-4 text-sm">{row.orderNumber}</td>
                     <td className="py-4 text-sm">{row.customer}</td>
                     <td className="py-4 text-sm text-blue-600">{row.inventory}</td>
@@ -172,14 +236,14 @@ const InventoryOrders: React.FC = () => {
                       <div className="flex gap-2">
                         <button
                           className="px-4 py-1.5 text-sm text-white bg-slate-700 rounded-full hover:bg-slate-800 transition-colors"
-                          onClick={() => handleActionClick(item._id)}
+                          onClick={() => handleActionClick(orderId)}
                         >
                           {row.action}
                         </button>
                         <button
                           className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
                           onClick={() => {
-                            navigate(`/dashboard/stock-out-draft/${item._id}`, {
+                            navigate(`/dashboard/stock-out-draft/${orderId}`, {
                               state: { status: activeTab },
                             });
                           }}

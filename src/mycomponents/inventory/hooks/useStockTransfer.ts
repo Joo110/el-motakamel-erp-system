@@ -1,23 +1,22 @@
+// src/mycomponents/stockTransfer/hooks/useStockTransfer.ts
 import { useState } from "react";
 import {
   createStockTransferService,
   getStockTransferByRefService,
-  getDraftStockTransfersService,
+  getTransfersByStatusService,
   markStockTransferAsShippingService,
-  getShippedStockTransfersService,
   markStockTransferAsDeliveredService,
-  getDeliveredStockTransfersService,
-  getDeliveredStockTransferByIdService,
+  getAllStockTransfersService,
   updateStockTransferShippingCostService,
-  type StockTransferRequest,
+  getTransferDocumentService,
 } from "../services/stockTransfer";
+import type { StockTransferRequest } from "../services/stockTransfer";
 
 export const useStockTransfer = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<any>(null);
 
-  // 🔹 إنشاء تحويل جديد
   const createStockTransfer = async (payload: StockTransferRequest) => {
     setLoading(true);
     setError(null);
@@ -26,15 +25,14 @@ export const useStockTransfer = () => {
       setData(res);
       return res;
     } catch (err: any) {
-      console.error("Stock transfer error:", err);
-      setError(err?.response?.data?.message || "Failed to create stock transfer");
+      console.error("Stock transfer create error:", err);
+      setError(err?.response?.data?.message ?? err.message ?? "Failed to create stock transfer");
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-    // 🔹 تحديث تكلفة الشحن (shippingCost)
   const updateShippingCost = async (id: string, shippingCost: number) => {
     setLoading(true);
     setError(null);
@@ -43,15 +41,14 @@ export const useStockTransfer = () => {
       setData(res);
       return res;
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Failed to update shipping cost");
+      console.error("Update shipping cost error:", err);
+      setError(err?.response?.data?.message ?? "Failed to update shipping cost");
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-
-  // 🔹 جلب تحويل بالمرجع
   const getStockTransferByRef = async (ref: string) => {
     setLoading(true);
     setError(null);
@@ -60,30 +57,30 @@ export const useStockTransfer = () => {
       setData(res);
       return res;
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Failed to fetch stock transfer");
+      console.error("Get stock transfer error:", err);
+      setError(err?.response?.data?.message ?? "Failed to fetch stock transfer");
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  // 🔹 جلب التحويلات بالحالة "Draft"
-  const getDraftTransfers = async () => {
+  const getTransfersByStatus = async (status: string) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await getDraftStockTransfersService();
+      const res = await getTransfersByStatusService(status);
       setData(res);
       return res;
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Failed to fetch draft transfers");
+      console.error("Get transfers by status error:", err);
+      setError(err?.response?.data?.message ?? "Failed to fetch transfers");
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  // 🔹 تحديث حالة التحويل إلى "Shipping"
   const markAsShipping = async (id: string) => {
     setLoading(true);
     setError(null);
@@ -92,30 +89,14 @@ export const useStockTransfer = () => {
       setData(res);
       return res;
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Failed to mark as shipping");
+      console.error("Mark as shipping error:", err);
+      setError(err?.response?.data?.message ?? "Failed to mark as shipping");
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  // 🔹 جلب التحويلات بالحالة "Shipped"
-  const getShippedTransfers = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await getShippedStockTransfersService();
-      setData(res);
-      return res;
-    } catch (err: any) {
-      setError(err?.response?.data?.message || "Failed to fetch shipped transfers");
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 🔹 تحديث حالة التحويل إلى "Delivered"
   const markAsDelivered = async (id: string) => {
     setLoading(true);
     setError(null);
@@ -124,39 +105,56 @@ export const useStockTransfer = () => {
       setData(res);
       return res;
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Failed to mark as delivered");
+      console.error("Mark as delivered error:", err);
+      setError(err?.response?.data?.message ?? "Failed to mark as delivered");
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  // 🔹 جلب التحويلات بالحالة "Delivered"
-  const getDeliveredTransfers = async () => {
+  const getAllTransfers = async (params?: Record<string, any>) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await getDeliveredStockTransfersService();
+      const res = await getAllStockTransfersService(params);
       setData(res);
       return res;
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Failed to fetch delivered transfers");
+      console.error("Get all transfers error:", err);
+      setError(err?.response?.data?.message ?? "Failed to fetch transfers");
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  // 🔹 جلب تحويل "Delivered" محدد بالـ ID
+  const getTransferDocument = async (id: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await getTransferDocumentService(id);
+      setData(res);
+      return res;
+    } catch (err: any) {
+      console.error("Get transfer document error:", err);
+      setError(err?.response?.data?.message ?? "Failed to fetch transfer document");
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getDeliveredTransferById = async (id: string) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await getDeliveredStockTransferByIdService(id);
+      const res = await getStockTransferByRefService(id);
       setData(res);
       return res;
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Failed to fetch delivered transfer by ID");
+      console.error("Get delivered transfer error:", err);
+      setError(err?.response?.data?.message ?? "Failed to fetch delivered transfer");
       throw err;
     } finally {
       setLoading(false);
@@ -165,16 +163,16 @@ export const useStockTransfer = () => {
 
   return {
     createStockTransfer,
-    getStockTransferByRef,
-    getDraftTransfers,
-    markAsShipping,
-    getShippedTransfers,
-    markAsDelivered,
-    getDeliveredTransfers,
-    getDeliveredTransferById,
     updateShippingCost,
+    getStockTransferByRef,
+    getTransfersByStatus,
+    markAsShipping,
+    markAsDelivered,
+    getAllTransfers,
+    getTransferDocument,
+    getDeliveredTransferById,
     data,
     loading,
     error,
-  };
+  } as const;
 };

@@ -14,7 +14,6 @@ const Topbar = () => {
   const [language, setLanguage] = useState(Cookies.get("language") || "ar");
   const [showLangMenu, setShowLangMenu] = useState(false);
 
-  // تطبيق اللغة المحفوظة عند تحميل الصفحة
   useEffect(() => {
     const savedLang = Cookies.get("language") || "ar";
     i18n.changeLanguage(savedLang);
@@ -22,7 +21,6 @@ const Topbar = () => {
     document.documentElement.lang = savedLang;
   }, [i18n]);
 
-  // إغلاق القائمة عند الضغط خارجها
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -52,7 +50,6 @@ const Topbar = () => {
     i18n.changeLanguage(lang);
     setShowLangMenu(false);
     
-    // تغيير الاتجاه
     document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
     document.documentElement.lang = lang;
     

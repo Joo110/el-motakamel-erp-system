@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ArrowRight } from 'lucide-react';
 import { useInventories } from '@/mycomponents/inventory/hooks/useInventories';
-import { useStockTransfer } from '../../inventory/hooks/useStockTransfer';
 import { toast } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
+import axiosClient from '@/lib/axiosClient';
+
+/* eslint-disable no-unused-vars */
+/* eslint-disable */
 
 interface TransferredProduct {
   id: string;
@@ -23,7 +26,6 @@ const TransferComponent: React.FC = () => {
 
   // hooks
   const { inventories, getStocks } = useInventories();
-  const { createStockTransfer, loading: creatingTransfer } = useStockTransfer();
 
   // local table state
   const [productsTable, setProductsTable] = useState<TransferredProduct[]>([]);
@@ -31,6 +33,7 @@ const TransferComponent: React.FC = () => {
   // form fields
   const [reference, setReference] = useState('');
   const [shippingCost, setShippingCost] = useState('');
+  const [notes, setNotes] = useState('');
 
   const [selectedFrom, setSelectedFrom] = useState<string>('');
   const [selectedTo, setSelectedTo] = useState<string>('');
@@ -42,8 +45,11 @@ const TransferComponent: React.FC = () => {
   const [selectedPrice, setSelectedPrice] = useState<number>(0);
 
   const [loadingProducts, setLoadingProducts] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [transferring, setTransferring] = useState(false);
+  const [creatingTransfer, setCreatingTransfer] = useState(false);
+
+  // mobile stocks (cars) for "To" dropdown
+  const [mobileStocks, setMobileStocks] = useState<any[]>([]);
+  const [loadingMobileStocks, setLoadingMobileStocks] = useState(false);
 
   // helper to extract stocks array from service response
   function extractStocksArray(stocksData: any): any[] {
@@ -54,12 +60,61 @@ const TransferComponent: React.FC = () => {
     if (Array.isArray(stocksData.data?.stocks)) return stocksData.data.stocks;
     if (Array.isArray(stocksData.result)) return stocksData.result;
     if (Array.isArray(stocksData.data?.result)) return stocksData.data.result;
+    if (Array.isArray(stocksData.data?.data)) return stocksData.data.data;
+    if (Array.isArray(stocksData.items)) return stocksData.items;
+    if (Array.isArray(stocksData.data?.items)) return stocksData.data.items;
+
+    const body = stocksData.data ?? stocksData;
+    if (body && typeof body === 'object') {
+      for (const k of Object.keys(body)) {
+        if (Array.isArray(body[k])) return body[k];
+      }
+    }
+
     return [];
+  }
+
+  // fetch product names for multiple productIds using axiosClient
+  async function fetchProductNamesMap(productIds: string[], signal?: AbortSignal) {
+    const map = new Map<string, string>();
+    if (!productIds || productIds.length === 0) return map;
+
+    const unique = Array.from(new Set(productIds.filter(Boolean).map(String)));
+
+    const promises = unique.map((id) =>
+      axiosClient
+        .get(`/products/${id}`, { signal })
+        .then((res: any) => ({ id, data: res?.data ?? res }))
+        .catch((err: any) => ({ id, error: err }))
+    );
+
+    const settled = await Promise.all(promises);
+
+    for (const item of settled) {
+      if (item && !('error' in item)) {
+        const payload = item.data;
+        const product =
+          payload?.data?.product ??
+          payload?.product ??
+          payload?.data ??
+          payload;
+        const name =
+          (product && (product.name ?? product.title ?? product.productName)) ??
+          undefined;
+        if (name) map.set(String(item.id), String(name));
+      } else {
+        // silent skip on failure
+      }
+    }
+
+    return map;
   }
 
   // load available products when From changes
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
+
     const load = async () => {
       setAvailableProducts([]);
       setSelectedProductStockId('');
@@ -67,26 +122,85 @@ const TransferComponent: React.FC = () => {
       setSelectedProductName('');
       setSelectedUnits(1);
       setSelectedPrice(0);
-      if (!selectedFrom) return;
+      if (!selectedFrom) {
+        setLoadingProducts(false);
+        return;
+      }
 
       setLoadingProducts(true);
       try {
-        const resp = await getStocks(selectedFrom);
-        const stocksArray = extractStocksArray(resp);
+        console.log('[TransferComponent] fetching stocks for inventory:', selectedFrom);
+
+        // use axiosClient to call your stocks endpoint
+        const response = await axiosClient.get(`/stocks/stocks/${selectedFrom}`, {
+          signal: controller.signal,
+        });
+
+        const raw = response?.data ?? response;
+        console.log('[TransferComponent] raw axios response:', raw);
+
+        const stocksArray = extractStocksArray(raw);
+        console.log('[TransferComponent] extracted stocks array:', stocksArray);
+
+        if (!Array.isArray(stocksArray) || stocksArray.length === 0) {
+          if (!cancelled) {
+            setAvailableProducts([]);
+            toast(t('no_products_available') || 'No products available in selected inventory');
+          }
+          return;
+        }
+
+        // gather productIds to fetch names
+        const productIds = stocksArray
+          .map((s: any) => {
+            const pid = s.productId ?? s.product?._id ?? s.product?.id;
+            return pid;
+          })
+          .filter(Boolean)
+          .map(String);
+
+        const namesMap = await fetchProductNamesMap(productIds, controller.signal);
 
         const mapped = stocksArray.map((s: any, idx: number) => {
-          const productObj = s.product ?? s.productId ?? {};
+          const productObj = s.product ?? {};
           const productId =
-            typeof productObj === 'object' ? productObj._id ?? productObj.id : productObj;
-          const name = productObj?.name ?? productObj?.productName ?? s.name ?? `Product ${idx + 1}`;
-          const code = productObj?.code ?? productObj?.sku ?? s.code ?? '';
-          const price = productObj?.price ? Number(productObj.price) : s.price ? Number(s.price) : 0;
-          const availableUnits = typeof s.quantity === 'number' ? s.quantity : Number(s.quantity ?? 0);
-          const stockId = s._id ?? s.id ?? `${productId ?? 'p'}-${idx}`;
+            typeof s.productId === 'string' ? s.productId : productObj?._id ?? productObj?.id ?? s.productId;
+          const pidStr = productId ? String(productId) : undefined;
+
+          const fetchedName = pidStr ? namesMap.get(pidStr) : undefined;
+
+          const name =
+            fetchedName ??
+            productObj?.name ??
+            productObj?.productName ??
+            s.name ??
+            s.productName ??
+            `Product ${idx + 1}`;
+
+          const code =
+            productObj?.code ?? productObj?.sku ?? s.code ?? s.sku ?? '';
+
+          const price =
+            productObj?.price !== undefined
+              ? Number(productObj.price)
+              : s.price !== undefined
+              ? Number(s.price)
+              : 0;
+
+          const availableUnits =
+            typeof s.availableQuantity === 'number'
+              ? s.availableQuantity
+              : typeof s.quantity === 'number'
+              ? s.quantity
+              : typeof s.availableUnits === 'number'
+              ? s.availableUnits
+              : Number(s.quantity ?? s.availableQuantity ?? s.availableUnits ?? s.qty ?? 0);
+
+          const stockId = s.id ?? s._id ?? s.stockId ?? `${productId ?? 'p'}-${idx}`;
 
           return {
             stockId,
-            productId,
+            productId: pidStr,
             name,
             code,
             price,
@@ -96,19 +210,64 @@ const TransferComponent: React.FC = () => {
         });
 
         if (!cancelled) setAvailableProducts(mapped);
-      } catch (err) {
-        console.error('Failed to load products for inventory', selectedFrom, err);
-        if (!cancelled) setAvailableProducts([]);
+      } catch (err: any) {
+        const isAbort = err?.name === 'CanceledError' || err?.name === 'AbortError' || err?.code === 'ERR_CANCELED';
+        if (isAbort) {
+          console.log('[TransferComponent] fetch aborted');
+        } else {
+          console.error('Failed to load products for inventory', selectedFrom, err);
+          if (!cancelled) setAvailableProducts([]);
+          toast.error(t('failed_load_products') || 'Failed to load products for selected inventory');
+        }
       } finally {
         if (!cancelled) setLoadingProducts(false);
       }
     };
 
     load();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFrom]); // intentionally not including getStocks to keep behavior consistent
+
+  // load mobile stocks (cars) for "To" dropdown on mount
+  useEffect(() => {
+    let cancelled = false;
+    const loadMobileStocks = async () => {
+      setLoadingMobileStocks(true);
+      try {
+        const token = (typeof window !== 'undefined' && localStorage.getItem('token')) || 'Token';
+        const res = await axiosClient.get('/mobile-stocks', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = res?.data ?? res;
+        const payload = data?.data ?? data;
+
+        let items: any[] = [];
+        if (Array.isArray(payload)) items = payload;
+        else if (Array.isArray(payload.mobileStocks)) items = payload.mobileStocks;
+        else if (Array.isArray(payload.docs)) items = payload.docs;
+        else if (Array.isArray(payload.items)) items = payload.items;
+        else if (Array.isArray(data?.mobileStocks)) items = data.mobileStocks;
+        else if (Array.isArray(data?.data)) items = data.data;
+
+        if (!cancelled) setMobileStocks(items);
+      } catch (err) {
+        console.error('Failed to load mobile stocks (cars):', err);
+        if (!cancelled) setMobileStocks([]);
+      } finally {
+        if (!cancelled) setLoadingMobileStocks(false);
+      }
+    };
+
+    void loadMobileStocks();
     return () => {
       cancelled = true;
     };
-  }, [selectedFrom, getStocks]);
+  }, []);
 
   // when selected product changes populate code/price/units
   useEffect(() => {
@@ -119,7 +278,7 @@ const TransferComponent: React.FC = () => {
       setSelectedPrice(0);
       return;
     }
-    const found = availableProducts.find((p) => p.stockId === selectedProductStockId);
+    const found = availableProducts.find((p) => String(p.stockId) === String(selectedProductStockId));
     if (found) {
       setSelectedProductCode(found.code ?? '');
       setSelectedProductName(found.name ?? '');
@@ -135,6 +294,13 @@ const TransferComponent: React.FC = () => {
       .sort((a: any, b: any) => (a.name ?? '').toString().toLowerCase().localeCompare((b.name ?? '').toString().toLowerCase()));
   }, [inventories]);
 
+  // sorted mobile stocks options
+  const mobileStockOptions = useMemo(() => {
+    return (mobileStocks || [])
+      .slice()
+      .sort((a: any, b: any) => (a.name ?? '').toString().toLowerCase().localeCompare((b.name ?? '').toString().toLowerCase()));
+  }, [mobileStocks]);
+
   // Transfer: add row to local table
   const handleTransfer = async () => {
     if (!selectedFrom) {
@@ -149,10 +315,6 @@ const TransferComponent: React.FC = () => {
       toast.error(t('select_to_inventory'));
       return;
     }
-    if (selectedFrom === selectedTo) {
-      toast.error(t('source_dest_different'));
-      return;
-    }
     if (!selectedUnits || selectedUnits <= 0) {
       toast.error(t('units_greater_zero'));
       return;
@@ -162,7 +324,10 @@ const TransferComponent: React.FC = () => {
       return;
     }
 
-    const selected = availableProducts.find((p) => p.stockId === selectedProductStockId);
+    const selected = availableProducts.find((p) => String(p.stockId) === String(selectedProductStockId));
+    const toName = mobileStockOptions.find((m: any) => String(m._id ?? m.id) === String(selectedTo))?.name ?? selectedTo;
+    const fromName = inventoryOptions.find((inv: any) => String(inv._id ?? inv.id) === String(selectedFrom))?.name ?? selectedFrom;
+
     const newRow: TransferredProduct = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       productId: selected?.productId ?? undefined,
@@ -170,8 +335,8 @@ const TransferComponent: React.FC = () => {
       code: selectedProductCode,
       units: selectedUnits,
       price: selectedPrice,
-      from: inventoryOptions.find((inv) => (inv._id ?? inv._id) === selectedFrom)?.name ?? selectedFrom,
-      to: inventoryOptions.find((inv) => (inv._id ?? inv._id) === selectedTo)?.name ?? selectedTo,
+      from: fromName,
+      to: toName,
       reference: reference || undefined,
       shippingCost: shippingCost || undefined,
     };
@@ -190,19 +355,19 @@ const TransferComponent: React.FC = () => {
 
   const handleSaveTransfer = async () => {
     if (!selectedFrom) {
-      toast(t('select_from_before_saving'));
+      toast.error(t('select_from_before_saving'));
       return;
     }
     if (!selectedTo) {
-      toast(t('select_to_before_saving'));
+      toast.error(t('select_to_before_saving'));
       return;
     }
     if (productsTable.length === 0) {
-      toast(t('no_products_to_save'));
+      toast.error(t('no_products_to_save'));
       return;
     }
 
-    const mergedProductsMap: Record<string, { productId: string; unit: number; price: number }> = {};
+    const mergedProductsMap: Record<string, { productId: string; unit: number; price: number; name?: string; code?: string }> = {};
 
     for (const row of productsTable) {
       if (!row.productId) continue;
@@ -211,6 +376,8 @@ const TransferComponent: React.FC = () => {
           productId: row.productId,
           unit: Number(row.units),
           price: Number(row.price),
+          name: row.name,
+          code: row.code,
         };
       } else {
         mergedProductsMap[row.productId].unit += Number(row.units);
@@ -220,36 +387,49 @@ const TransferComponent: React.FC = () => {
     const productsPayload = Object.values(mergedProductsMap);
 
     if (productsPayload.length === 0) {
-      toast(t('invalid_product_rows'));
+      toast.error(t('invalid_product_rows'));
       return;
     }
 
+    for (const row of productsTable) {
+      const productInStock = availableProducts.find((p) => p.productId === row.productId);
+      if (productInStock && row.units > productInStock.availableUnits) {
+        toast.error(
+          t('quantity_exceeds_available', {
+            requested: row.units,
+            available: productInStock.availableUnits,
+            name: row.name,
+          }) || `Requested ${row.units} > available ${productInStock.availableUnits} for ${row.name}`
+        );
+        return;
+      }
+    }
+
     const payload: any = {
-      status: 'draft',
-      reference: reference || `TRF-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       from: selectedFrom,
-      to: selectedTo,
-      products: productsPayload.map((p) => ({ productId: p.productId, unit: p.unit, price: p.price })),
+      toMobileStock: selectedTo,
+      products: productsPayload.map((p) => ({
+        productId: p.productId,
+        unit: p.unit,
+        name: p.name,
+        code: p.code,
+      })),
+      notes: notes || '',
       shippingCost: Number(shippingCost || 0),
     };
 
     try {
-      // check available stock
-      for (const row of productsTable) {
-        const productInStock = availableProducts.find((p) => p.productId === row.productId);
-        if (productInStock && row.units > productInStock.availableUnits) {
-          toast.error(t('quantity_exceeds_available', { 
-            requested: row.units, 
-            available: productInStock.availableUnits, 
-            name: row.name 
-          }));
-          return;
-        }
-      }
+      setCreatingTransfer(true);
+      const token = (typeof window !== 'undefined' && localStorage.getItem('token')) || 'Token';
+      const res = await axiosClient.post('/stock-transfers', payload, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-      const res = await createStockTransfer(payload);
-      console.log('✅ createStockTransfer success response:', res);
-      toast.success(t('transfer_created_success'));
+      console.log('✅ stock transfer created:', res?.data ?? res);
+      toast.success(t('transfer_created_success') || 'Transfer created');
 
       // reset all form
       setProductsTable([]);
@@ -261,9 +441,13 @@ const TransferComponent: React.FC = () => {
       setSelectedPrice(0);
       setReference('');
       setShippingCost('');
+      setNotes('');
     } catch (err: any) {
       console.error('Failed to create stock transfer:', err);
-      toast.error(`${t('failed_save_transfer')} ${err?.response?.status || err?.code || err?.message}`);
+      const status = err?.response?.status ?? err?.code ?? err?.message;
+      toast.error(`${t('failed_save_transfer') || 'Failed to save transfer'} ${status}`);
+    } finally {
+      setCreatingTransfer(false);
     }
   };
 
@@ -333,7 +517,7 @@ const TransferComponent: React.FC = () => {
             </div>
           </div>
 
-          {/* Step 3: To Inventory */}
+          {/* Step 3: To (mobile stocks / cars) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">{t('To')}</label>
             <div className="relative flex items-center gap-2">
@@ -345,11 +529,11 @@ const TransferComponent: React.FC = () => {
                   onChange={(e) => setSelectedTo(e.target.value)}
                 >
                   <option value="">
-                    {(inventories?.length ?? 0) === 0 ? t('Loading_car') : t('Select_car')}
+                    {loadingMobileStocks ? t('Loading_car') : t('Select_car')}
                   </option>
-                  {inventoryOptions.map((inv: any) => (
-                    <option key={inv._id ?? inv.id} value={inv._id ?? inv.id}>
-                      {inv.name}
+                  {mobileStockOptions.map((m: any) => (
+                    <option key={m._id ?? m.id} value={m._id ?? m.id}>
+                      {m.name}
                     </option>
                   ))}
                 </select>
@@ -424,10 +608,10 @@ const TransferComponent: React.FC = () => {
               </button>
               <button
                 onClick={handleTransfer}
-                disabled={transferring}
+                disabled={false}
                 className="w-full sm:w-auto px-4 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-blue-800"
               >
-                {transferring ? t('Transferring') : t('Transfer')}
+                {t('Transfer')}
               </button>
             </div>
           </div>
@@ -483,7 +667,12 @@ const TransferComponent: React.FC = () => {
         {/* Notes */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">{t('Notes')}</label>
-          <textarea className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" rows={4}></textarea>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            rows={4}
+          />
         </div>
 
         {/* Action Buttons */}

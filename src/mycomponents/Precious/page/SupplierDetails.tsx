@@ -1,18 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Suppliers } from "../hooks/Suppliers";
+import { useSuppliers } from "../hooks/Suppliers";
 import { useTranslation } from 'react-i18next';
+import type { Supplier } from '../services/suppliersService';
 
 const SupplierDetails = () => {
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
-  const { fetchSupplierById, removeSupplier } = Suppliers(false);
-  const [supplier, setSupplier] = useState<any>(null);
+  const { fetchSupplierById, removeSupplier } = useSuppliers(false);
+  const [supplier, setSupplier] = useState<Supplier | null>(null);
 
   useEffect(() => {
     if (id) {
-      fetchSupplierById(id).then((data) => setSupplier(data));
+      fetchSupplierById(id).then((data: Supplier | null) => setSupplier(data));
     }
   }, [id, fetchSupplierById]);
 

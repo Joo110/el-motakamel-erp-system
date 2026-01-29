@@ -4,7 +4,6 @@ import Cookies from "js-cookie";
 
 
 
-// ملفات الترجمة
 const resources = {
   en: {
 
@@ -23,7 +22,7 @@ const resources = {
       hr_management: "HR Management",
       accounts_management: "Accounts Management",
       delegates_management: "Delegates Management",
-position: "Position",
+      position: "Position",
       // Products Section
       products: "Products",
       add_product: "Add Product",
@@ -52,12 +51,12 @@ position: "Position",
       entries: "entries",
       previous: "Previous",
       next: "Next",
-Residual: "Residual",
-
-
-
-
-
+      Residual: "Residual",
+shipped: "shipped",
+retail_price_label: "Retail Price",
+wholesale_price_label: "Wholesale Price",
+wholesale_price_col	: "Wholesale Price",
+retail_price_col	: "Retail Price",
 
     title: "Accounting",
     breadcrumb: "Dashboard > Accounting > Journals",
@@ -71,16 +70,16 @@ Residual: "Residual",
     deleteConfirm: "Are you sure you want to delete this account?",
     deleteButton: "Delete account",
     loading: "Loading accounts...",
-
+Stock: "stocked",
     name: "Name",
     namePlaceholder: "e.g. expenses",
     codePlaceholder: "e.g. 59000",
     cancel: "Cancel",
     save: "Add Account",
-
-
-
-    
+Trans_Number: "Transaction Number",
+representative: "Representative",
+customer_created_successfully: "Customer created successfully!",
+    customer_saved_successfully: "Customer saved successfully!",
 
     revenue: "Revenue",
     expenses: "Expanses",
@@ -268,7 +267,7 @@ Dashboard: "Dashboard",
     inventory_name: "Inventory Name",
     upload_image: "Upload Image",
 sale_type: "sale type",
-
+   Car: "Car",
     status_draft: "Draft",
       status_shipping: "Shipping",
       status_delivered: "Invoice",
@@ -308,8 +307,8 @@ employeesSearch: "Employees Search",
       project_based: "Project Based",
       salary: "Salary",
       date_of_employment: "Date of Employment",
-  
-      
+  supplier_updated_success: "Supplier updated successfully!",
+      payment_processed_successfully: "Payment processed successfully!",
       // Validation Messages
       validation_name_required: "Name is required",
       validation_job_title_required: "Job Title is required",
@@ -664,6 +663,46 @@ SaveTrip: "Save Trip",
   "Loading...": "Loading...",
 
 
+// en.json
+
+  "cars": "Cars",
+  "carManagement": "Car Management",
+  "brand": "Brand",
+  "year": "Year",
+  "created": "Created",
+  "updated": "Updated",
+  "inventorySummary": "Inventory Summary",
+  "inventory.totalItems": "Total Items",
+  "inventory.totalQuantity": "Total Quantity",
+  "inventory.totalValue": "Total Value",
+  "inventory.inStockCount": "In Stock Count",
+  "inventory.lowStockCount": "Low Stock Count",
+  "inventory.outOfStockCount": "Out Of Stock",
+  "capacityInfo": "Capacity Info",
+  "capacity.total": "Total",
+  "capacity.used": "Used",
+  "capacity.available": "Available",
+  "capacity.percentage": "Usage %",
+  "carItemsTitle": "Car Items",
+  "tableItem": "Item",
+  "tableCategory": "Category",
+  "tableUnits": "Units",
+  "loadingItems": "Loading items...",
+  "noItemsFound": "No items found",
+  "deleteItemConfirm": "Are you sure you want to delete this item?",
+  "deleteItemAria": "Delete item",
+  "removeLocal": "Remove (local)",
+  "toggleTransactionsAria": "Toggle transactions",
+  "toggleTransactions": "Toggle transactions",
+  "transactions": "Transactions",
+  "transactions.type": "Type",
+  "transactions.quantity": "Quantity",
+  "transactions.reference": "Reference",
+  "transactions.notes": "Notes",
+  "transactions.performedBy": "Performed By",
+  "transactions.date": "Date",
+  "noTransactions": "No transactions",
+  
 
 
 
@@ -912,7 +951,6 @@ SaveTrip: "Save Trip",
       "sale_order_saved_successfully": "Sale order saved successfully",
       "failed_save_sale_order_check_console": "Failed to save sale order. Check console for details",
       "stock_out": "Stock Out",
-      "transactions": "Transactions",
 
 
 
@@ -1028,7 +1066,6 @@ SaveTrip: "Save Trip",
       "button": "Search",
  
  
-      "created": "Created",
       "noJournals": "No journals found",
  
       "delete": "Are you sure you want to delete \"{{name}}\"?",
@@ -1105,12 +1142,9 @@ SaveTrip: "Save Trip",
   "❌ Error refreshing entries": "❌ Error refreshing entries",
 
 
-"cars": "Cars",
   "addCarTitle": "Add Car",
-  "carManagement": "Car Management",
   "carName": "Car Name",
-  "brand": "Brand",
-  "year": "Year",
+ 
   "changeImage": "Change Image",
   "saveCar": "Save Car",
   "carNameRequired": "Car name is required",
@@ -1120,15 +1154,8 @@ SaveTrip: "Save Trip",
 
 
   "editDetails": "Edit Details",
-  "carItemsTitle": "Car Items",
-  "tableItem": "Item",
-  "tableCategory": "Category",
-  "tableUnits": "Units",
   "tablePrice": "Price",
   "tableTotal": "Total",
-  "loadingItems": "Loading items...",
-  "noItemsFound": "No items found",
-  "deleteItemConfirm": "Delete this item from the car?",
   "editCarItemTitle": "Edit Car Item",
   "labelItem": "Item",
   "labelQuantity": "Quantity",
@@ -1241,7 +1268,7 @@ Dashboard: "الرئيسية",
       allDepartments: "allDepartments",
 searchPlaceholder: "searchPlaceholder",
 showingEmployees: "showingEmployees",
-
+wholesale_price_col	: "سعر الجملة",
       // Products Section
       products: "المنتجات",
       add_product: "إضافة منتج",
@@ -1272,7 +1299,7 @@ showingEmployees: "showingEmployees",
       previous: "السابق",
       next: "التالي",
 
-
+retail_price_col	: "سعر التجزئة",
         // PreciousManagement
     purchase_orders_management: "إدارة طلبات الشراء",
     draft: "مسودة",
@@ -1358,7 +1385,7 @@ SaveTrip: "حفظ",
       status_late: "متأخر",
       Residual: "الباقي",
 sale_type: "نوع البيع",
-
+supplier_updated_successfully: "تم تحديث المورد بنجاح!",
     title: "المحاسبة",
     breadcrumb: "لوحة التحكم > المحاسبة > اليوميات",
     statistics: "لوحة التحكم › الإنتاج › الإحصائيات",
@@ -1398,10 +1425,12 @@ Add_Account: "أضافة",
 accounting: "المحاسبة",
  Sectoral: "قطاعي",
   Sentence: "جملة",
+customer_saved_successfully: "تم حفظ العميل بنجاح!",
+Stock: "المخزون",
 
+supplier_updated_success: "✅ تم تحديث المورد بنجاح!",
 
-
-
+Trans_Number: "رقم المعاملة",
     // SupplierDetails
     supplier_details: "إدارة الثمين",
     details: "التفاصيل",
@@ -1432,7 +1461,6 @@ table_header_name: "الاسم",
     invalid_email_format: "تنسيق البريد الإلكتروني غير صحيح.",
     please_enter_phone: "الرجاء إدخال رقم الهاتف.",
     invalid_phone_number: "رقم الهاتف غير صحيح. يُسمح بالأرقام فقط (6-15 حرفًا).",
-    supplier_updated_successfully: "تم تحديث المورد بنجاح!",
     failed_to_update_supplier: "فشل تحديث المورد. تحقق من الكونسول للتفاصيل.",
 addEmployee: "إضافة موظف",
     // SupplierSearchList
@@ -1469,13 +1497,14 @@ Customer_Search: "بحث العملاء",
       precious_orders: "الطلبات الثمينة",
       purchase_invoice: "فاتورة شراء",
       supplier_list: "قائمة الموردين",
-
-
+shipped: "تم الشحن",
+stocked: "تم التخزين",
 
             all_Departments: "كل التخصصات",
 search_Placeholder: "البحث عن العنصر",
 showing_Employees: "عرض الموظفين",
 
+   Car: "السيارات",
 
     
         overtime: "العمل الإضافي",
@@ -1504,7 +1533,7 @@ showing_Employees: "عرض الموظفين",
       customer: "العملاء",
       customer_list: "قائمة العملاء",
       add_customer: "إضافة عميل",
-
+representative: "المندوب",
       // HR Section
       employees: "الموظفين",
       add_employee: "إضافة موظف",
@@ -1524,7 +1553,7 @@ employeesSearch: "بحث الموظفين",
       cars_list_view: "عرض السيارات",
       add_car: "إضافة سيارة",
       transfer_car: "تحويل",
-
+customer_created_successfully: "تم إنشاء العميل بنجاح!",
       // Footer
       settings: "الإعدادات",
       privacy_policy: "سياسة الخصوصية",
@@ -1544,12 +1573,12 @@ employeesSearch: "بحث الموظفين",
 
       recent_activity: "النشاطات الأخيرة",
       view_all: "عرض الكل",
-
+wholesale_price_label: "سعر الجملة",
       quick_insights: "رؤى سريعة",
       conversion_rate: "معدل التحويل",
       avg_order_value: "متوسط قيمة الطلب",
       active_sessions: "الجلسات النشطة",
-
+retail_price_label: "سعر التجزئة",
       new_order_received: "تم استلام طلب جديد",
       product_stock_updated: "تم تحديث مخزون المنتج",
       new_user_registered: "تم تسجيل مستخدم جديد",
@@ -1571,7 +1600,7 @@ employeesSearch: "بحث الموظفين",
       invalid_tax: "قيمة الضريبة غير صحيحة.",
       product_updated: "تم تحديث المنتج بنجاح!",
       update_error: "حدث خطأ أثناء تحديث المنتج. راجع الكونسول.",
-
+payment_processed_successfully: "تمت معالجة الدفع بنجاح!",
       // NewProduct / EditProduct / Form specific keys
       new_product: "منتج جديد",
       products_management_header: "إدارة المنتجات",
@@ -1925,6 +1954,36 @@ inventory_search: "بحث عن مخزن",
 "added_success": "تم الحفظ بنجاح",
 
 
+// ar.json
+  "created": "تاريخ الإنشاء",
+  "updated": "آخر تحديث",
+  "inventorySummary": "ملخص المخزون",
+  "inventory.totalItems": "إجمالي الأصناف",
+  "inventory.totalQuantity": "إجمالي الكمية",
+  "inventory.totalValue": "إجمالي القيمة",
+  "inventory.inStockCount": "عدد الأصناف المتوفرة",
+  "inventory.lowStockCount": "عدد الأصناف منخفضة المخزون",
+  "inventory.outOfStockCount": "عدد الأصناف منتهية المخزون",
+  "capacityInfo": "معلومات السعة",
+  "capacity.total": "الإجمالي",
+  "capacity.used": "المستخدم",
+  "capacity.available": "المتاح",
+  "capacity.percentage": "نسبة الاستخدام",
+  "deleteItemAria": "حذف العنصر",
+  "removeLocal": "حذف (محلي)",
+  "toggleTransactionsAria": "تبديل عرض المعاملات",
+  "toggleTransactions": "تبديل المعاملات",
+  "transactions": "المعاملات",
+  "transactions.type": "النوع",
+  "transactions.quantity": "الكمية",
+  "transactions.reference": "المرجع",
+  "transactions.notes": "ملاحظات",
+  "transactions.performedBy": "نفّذ بواسطة",
+  "transactions.date": "التاريخ",
+  "noTransactions": "لا توجد معاملات",
+
+
+
 
 // Months
 
@@ -2093,7 +2152,6 @@ inventory_search: "بحث عن مخزن",
     "addJournal": "إضافة دفتر",
       "button": "بحث",
 
-      "created": "تاريخ الإنشاء",
       "noJournals": "لا توجد دفاتر",
  
       "delete": "هل أنت متأكد أنك تريد حذف \"{{name}}\"؟",
@@ -2224,7 +2282,6 @@ inventory_search: "بحث عن مخزن",
   "remaining": "المتبقي",
   "last_payment": "آخر دفعة",
 
-  "transactions": "التحويلات",
 
 
       "category_col": "الفئة",

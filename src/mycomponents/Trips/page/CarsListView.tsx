@@ -1,6 +1,6 @@
 // src/mycomponents/Trips/components/CarsListView.tsx
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search, RotateCcw, MapPin, Calendar, Edit2, Trash2 } from 'lucide-react';
+import { Search, RotateCcw, MapPin, Calendar, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-hot-toast';
@@ -25,7 +25,6 @@ interface CarsListViewProps {
 const CarsListView: React.FC<CarsListViewProps> = ({
   onAddCar,
   onCarClick,
-  onEditCar,
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -97,11 +96,6 @@ const CarsListView: React.FC<CarsListViewProps> = ({
     else navigate(`/dashboard/Trips/CarDetailsView/${id}`);
   };
 
-  const handleEditClick = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    if (onEditCar) onEditCar(id);
-    else navigate(`/dashboard/Trips/AddCarForm?edit=${id}`);
-  };
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -221,13 +215,7 @@ const CarsListView: React.FC<CarsListViewProps> = ({
                   )}
 
                   <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={(e) => handleEditClick(e, car.id)}
-                      className="p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-all"
-                      aria-label="Edit car"
-                    >
-                      <Edit2 size={16} className="text-slate-700" />
-                    </button>
+            
 
                     <button
                       onClick={(e) => handleDelete(e, car.id)}

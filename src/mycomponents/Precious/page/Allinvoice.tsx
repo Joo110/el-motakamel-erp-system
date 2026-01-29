@@ -1,3 +1,4 @@
+// Allinvoice.tsx
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import usePurchaseInvoices from '../hooks/useAllinvoices';
@@ -135,8 +136,9 @@ const Allinvoice: React.FC = () => {
   const { invoices, refresh } = usePurchaseInvoices();
   const { payInvoice, loading: paymentLoading } = usePayInvoice();
 
-  const pay = async (invoiceId: string) => {
-    return await payInvoice(invoiceId);
+  // now payInvoice expects (invoiceId, { amount }) -> hook adds defaults via service
+  const pay = async (invoiceId: string, amount: number) => {
+    return await payInvoice(invoiceId, { amount });
   };
 
   const mappedInvoices: Invoice[] = useMemo(() => {
@@ -223,22 +225,33 @@ const Allinvoice: React.FC = () => {
     }
 
     const invoiceId = selectedInvoice._id ?? selectedInvoice.id ?? '';
-    try {
-      const response = await pay(invoiceId);
 
-      if (response) {
-        toast.success(t('payment_processed_successfully').replace('{amount}', amount));
-        setIsModalOpen(false);
-        setSelectedInvoice(null);
-        await refresh();
-      } else {
-        toast.error(t('payment_failed'));
-      }
+    const numericAmount = Number(amount);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      toast.error(t('invalid_amount'));
+      return;
+    }
+
+    try {
+await pay(invoiceId, numericAmount);
+
+      toast.success(
+        t('payment_processed_successfully').replace('{amount}', amount)
+      );
+
+      setIsModalOpen(false);
+      setSelectedInvoice(null);
+      await refresh();
     } catch (error: any) {
-      console.error('Payment error:', error);
-      toast.error(error?.message || t('failed_to_process_payment'));
+      const errors = error?.response?.data?.errors;
+      if (Array.isArray(errors)) {
+        errors.forEach((e) => toast.error(e.msg));
+      } else {
+        toast.error(error?.message || t('failed_to_process_payment'));
+      }
     }
   };
+
 
   const getCurrentInvoicesFull = () => {
     switch (activeTab) {
@@ -262,9 +275,6 @@ const Allinvoice: React.FC = () => {
     const start = (currentPage - 1) * perPage;
     return fullList.slice(start, start + perPage);
   }, [fullList, currentPage, perPage]);
-
-  const showingFrom = totalItems === 0 ? 0 : (currentPage - 1) * perPage + 1;
-  const showingTo = Math.min(currentPage * perPage, totalItems);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -314,10 +324,7 @@ const Allinvoice: React.FC = () => {
         </div>
 
         <div className="p-6">
-          <div className="mb-4 text-sm text-gray-600">
-            {t('showing_invoices')} {showingFrom}-{showingTo} {t('of_invoices')} {totalItems} {t('invoices_text')}
-          </div>
-
+          {/* table & pagination unchanged */}
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>

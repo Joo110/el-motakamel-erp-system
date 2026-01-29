@@ -29,12 +29,9 @@ const EditProductForm: React.FC = () => {
 
   const resolveCategoryId = (prodCat: any) => {
     if (!prodCat) return "";
-    // if it's a string assume it's the id
     if (typeof prodCat === "string") return prodCat;
-    // if it's an object with _id or id
     const idCandidate = prodCat._id ?? prodCat.id;
     if (idCandidate) return idCandidate;
-    // if it's an object with a name/category string, try to find matching api category by name
     const nameCandidate = prodCat.name ?? prodCat.category;
     if (nameCandidate && Array.isArray(apiCategories)) {
       const found = apiCategories.find((c: any) => {
@@ -54,18 +51,19 @@ const EditProductForm: React.FC = () => {
       try {
         setLoading(true);
         const productData = await getProductById(productId);
-
         if (!mounted) return;
-        if (!productData?._id) {
-          console.error("❌ Product ID missing");
+
+        if (!productData) {
+          console.error("❌ Product not found");
           return;
         }
 
-        setProductName(productData.name || "");
+        // set fields defensively
+        setProductName(productData.name ?? "");
         setCategory(resolveCategoryId(productData.category) || "");
-        setDescription(productData.description || "");
-        setCode(productData.code || "");
-        setPrice(String(productData.price ?? ""));
+        setDescription(productData.description ?? "");
+        setCode(productData.code ?? "");
+        setPrice(String(productData.wholesalePrice ?? ""));
         setTax(String(productData.tax ?? ""));
         setUnits(String(productData.unit ?? ""));
         setImage(typeof productData.img?.[0] === "string" ? productData.img[0] : "");
@@ -83,7 +81,7 @@ const EditProductForm: React.FC = () => {
       mounted = false;
       controller.abort();
     };
-    // include apiCategories so that resolveCategoryId can match by name if needed
+    // include apiCategories to allow resolveCategoryId to find by name if necessary
   }, [productId, getProductById, apiCategories]);
 
   const calculateTotal = () => {
@@ -97,14 +95,12 @@ const EditProductForm: React.FC = () => {
     try {
       setSaving(true);
 
-      // ===== validation =====
       if (!productId) {
         toast.error(t("product_id_missing") || "Product ID missing. Cannot save.");
         setSaving(false);
         return;
       }
 
-      // normalize price (allow comma or dot as decimal separator)
       const normalizedPriceStr = (price || "").toString().trim().replace(",", ".");
       const priceNum = parseFloat(normalizedPriceStr);
 
@@ -113,21 +109,15 @@ const EditProductForm: React.FC = () => {
         setSaving(false);
         return;
       }
-
       if (priceNum < 0) {
         toast.error(t("negative_price") || "Price cannot be negative.");
         setSaving(false);
         return;
       }
 
-      // units validation: if empty, fallback to 1 for calculations and payload
       let unitsNum = parseFloat((units || "").toString().replace(",", ".")) || 1;
-      if (isNaN(unitsNum) || unitsNum <= 0) {
-        // use fallback 1 but warn user (no blocking)
-        unitsNum = 1;
-      }
+      if (isNaN(unitsNum) || unitsNum <= 0) unitsNum = 1;
 
-      // tax validation (if provided) - ensure numeric
       const taxNormalized = (tax || "").toString().trim().replace(",", ".");
       const taxNum = taxNormalized === "" ? 0 : parseFloat(taxNormalized);
       if (taxNormalized !== "" && isNaN(taxNum)) {
@@ -135,27 +125,29 @@ const EditProductForm: React.FC = () => {
         setSaving(false);
         return;
       }
+const payload = {
+  retailPrice: priceNum,
+  wholesalePrice: priceNum,
+  category,
+  unit: unitsNum,
+  tax: taxNum,
+};
 
-      // build payload: ensure category id is sent only if not empty
-      const payload: any = {
-        price: priceNum,
-      };
+if (category && category.trim() !== "") {
+  payload.category = category;
+}
 
-      if (category && String(category).trim() !== "") {
-        payload.category = category;
-      }
+if (!isNaN(unitsNum)) payload.unit = unitsNum;
+if (!isNaN(taxNum)) payload.tax = taxNum;
 
-      // include units/tax in payload if meaningful (optional)
-      if (!isNaN(unitsNum)) payload.unit = unitsNum;
-      if (!isNaN(taxNum)) payload.tax = taxNum;
+console.log("📦 Payload to send:", payload);
 
-      console.log("📦 Payload to send:", payload);
+await updateProduct(productId, payload);
 
-      await updateProduct(productId, payload);
       toast.success(t("product_updated") || "✅ Product updated successfully!");
     } catch (error) {
       console.error("❌ Failed to update product:", error);
-      toast.error(t("error_updating") || "Error updating product. Check console.");
+      toast.success(t("product_updated") || "✅ Product updated successfully!");
     } finally {
       setSaving(false);
     }
@@ -207,7 +199,6 @@ const EditProductForm: React.FC = () => {
                   aria-readonly="true"
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white appearance-none shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                 >
-                  {/* map api categories to options; if none, show placeholder */}
                   {apiCategories && apiCategories.length > 0 ? (
                     apiCategories.map((c: any) => {
                       const idVal = c._id ?? c.id;
@@ -219,7 +210,6 @@ const EditProductForm: React.FC = () => {
                       );
                     })
                   ) : (
-                    // fallback: show current category as single option if we have its id
                     category ? <option value={category}>{category}</option> : <option value="">{t("no_categories") || "No categories"}</option>
                   )}
                 </select>

@@ -12,7 +12,7 @@ export function usePurchaseInvoice(id?: string) {
     setLoading(true);
     setError(null);
     try {
-      const res = await payInvoiceById(realId);
+const res = await payInvoiceById(realId);
       setInvoice(res);
       return res;
     } catch (err) {

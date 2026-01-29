@@ -6,7 +6,7 @@ interface RetryableRequest extends AxiosRequestConfig {
 }
 
 const baseURL =
-  import.meta.env.VITE_API_URL || "/api";
+  import.meta.env.VITE_API_URL || "/api/v1";
 
 const axiosClient = axios.create({
   baseURL,

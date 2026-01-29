@@ -1,10 +1,10 @@
-// src/services/customers.ts
 import axiosClient from '@/lib/axiosClient';
 import type { AxiosRequestConfig } from 'axios';
 
 /* ---------- Types ---------- */
 export type Customer = {
   _id?: string;
+  id?: string;
   name?: string;
   email?: string;
   phone?: string;
@@ -21,92 +21,121 @@ export type Customer = {
   [k: string]: any;
 };
 
-type ListResponseShape = any; // backend may vary
+type ListResponseShape = any;
 
 /* ---------- Helpers ---------- */
 const BASE = '/customers';
-const ORG_ADD_CUSTOMER = '/organizations/addCustomer';
 
-function extractCustomersFromResponse(payload: ListResponseShape): Customer[] {
-  if (!payload) return [];
-  // common shapes:
-  // { data: { customers: [...] } }
-  if (payload.data?.customers && Array.isArray(payload.data.customers)) return payload.data.customers;
-  // { customers: [...] }
-  if (Array.isArray(payload.customers)) return payload.customers;
-  // { data: [...] }
-  if (Array.isArray(payload.data)) return payload.data;
-  // direct array
-  if (Array.isArray(payload)) return payload;
-  // fallback: try to find first array under data
-  if (payload.data) {
-    const maybe = Object.values(payload.data).find((v) => Array.isArray(v));
-    if (Array.isArray(maybe)) return maybe as Customer[];
-  }
-  return [];
+function extractCustomersFromResponse(payload: any): Customer[] {
+  const customers =
+    payload?.data?.customers ||
+    payload?.customers ||
+    payload?.data ||
+    payload ||
+    [];
+
+  return customers.map((c: any) => ({
+    ...c,
+    _id: c._id ?? c.id,
+  }));
 }
 
 /* ---------- Service functions ---------- */
 
-/**
- * Get all customers
- * GET /api/v1/customers
- */
 export async function getAllCustomers(config?: AxiosRequestConfig): Promise<Customer[]> {
   const { data } = await axiosClient.get<ListResponseShape>(BASE, config);
   return extractCustomersFromResponse(data);
 }
 
-/**
- * Get single customer by id
- * GET /api/v1/customers/:id
- */
 export async function getCustomerById(id: string, config?: AxiosRequestConfig): Promise<Customer | null> {
   const { data } = await axiosClient.get<any>(`${BASE}/${id}`, config);
-  // handle multiple shapes
   if (!data) return null;
-  if (data.data?.customer) return data.data.customer as Customer;
-  if (data.customer) return data.customer as Customer;
-  // sometimes backend returns the resource directly
-  if (data._id) return data as Customer;
-  return null;
+
+  const customer =
+    data.data?.customer ||
+    data.data ||
+    data.customer ||
+    data;
+
+  return {
+    ...customer,
+    _id: customer._id ?? customer.id,
+  };
 }
 
-/**
- * Create customer under organization
- * POST /api/v1/organizations/addCustomer/:orgId
- * body: customer payload
- */
-export async function createCustomerUnderOrg(orgId: string, payload: Partial<Customer>, config?: AxiosRequestConfig): Promise<Customer> {
-  const { data } = await axiosClient.post<any>(`${ORG_ADD_CUSTOMER}/${orgId}`, payload, config);
-  if (data?.data?.customer) return data.data.customer as Customer;
-  if (data?.customer) return data.customer as Customer;
-  // sometimes API returns created object directly
-  return (data?.data ?? data) as Customer;
+
+export async function createCustomerUnderOrg(
+  payload: Partial<Customer>,
+  config?: AxiosRequestConfig
+): Promise<Customer> {
+  try {
+    const { data } = await axiosClient.post<any>(
+      `/customers`,
+      payload,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(config?.headers || {}),
+        },
+        ...config,
+      }
+    );
+
+    if (data?.data?.customer) return data.data.customer;
+    if (data?.customer) return data.customer;
+    if (data?.data) return data.data;
+    return data;
+  } catch (error: any) {
+    console.error('❌ createCustomerUnderOrg error:', error.response?.data || error.message);
+    throw error;
+  }
 }
 
-/**
- * Delete customer (endpoint given as /organizations/addCustomer/:orgId)
- * DELETE /api/v1/organizations/addCustomer/:orgId
- * If backend expects customer id, pass it via params.customerId
- */
 
-/**
- * Direct delete customer:
- * DELETE /api/v1/customers/:id
- */
-export async function deleteCustomer(id: string, config?: AxiosRequestConfig): Promise<{ success?: boolean; message?: string } | null> {
-  const { data } = await axiosClient.delete(`/customers/${id}`, config);
+export async function updateCustomer(
+  id: string,
+  payload: Partial<Customer>,
+  config?: AxiosRequestConfig
+): Promise<Customer> {
+  const { data } = await axiosClient.patch<any>(`${BASE}/${id}`, payload, config);
+  if (data?.data?.customer) return data.data.customer;
+  if (data?.customer) return data.customer;
+  return data;
+}
+
+// ————————————————
+export async function hardDeleteCustomer(
+  id: string,
+  config?: AxiosRequestConfig
+): Promise<{ success?: boolean; message?: string } | null> {
+  const { data } = await axiosClient.delete(`${BASE}/${id}`, config);
   return data ?? null;
 }
 
-/**
- * Update customer
- * PATCH /api/v1/customers/:id
- */
-export async function updateCustomer(id: string, payload: Partial<Customer>, config?: AxiosRequestConfig): Promise<Customer> {
-  const { data } = await axiosClient.patch<any>(`${BASE}/${id}`, payload, config);
-  if (data?.data?.customer) return data.data.customer as Customer;
-  if (data?.customer) return data.customer as Customer;
-  return data as Customer;
+export async function softDeleteCustomer(
+  id: string,
+  config?: AxiosRequestConfig
+): Promise<{ success?: boolean; message?: string } | null> {
+  const { data } = await axiosClient.patch(`${BASE}/soft-delete/${id}`, null, config);
+  return data ?? null;
+}
+
+// PATCH — إضافة Organization للعميل
+export async function addOrganizationToCustomer(
+  customerId: string,
+  orgId: string,
+  config?: AxiosRequestConfig
+): Promise<{ success?: boolean; message?: string } | null> {
+  const { data } = await axiosClient.patch(`${BASE}/${customerId}/organizations/${orgId}`, null, config);
+  return data ?? null;
+}
+
+// DELETE — حذف Organization من عميل
+export async function removeOrganizationFromCustomer(
+  customerId: string,
+  orgId: string,
+  config?: AxiosRequestConfig
+): Promise<{ success?: boolean; message?: string } | null> {
+  const { data } = await axiosClient.delete(`${BASE}/${customerId}/organizations/${orgId}`, config);
+  return data ?? null;
 }

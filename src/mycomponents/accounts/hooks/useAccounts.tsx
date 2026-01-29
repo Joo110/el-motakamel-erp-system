@@ -14,7 +14,6 @@ export function useAccounts(initialParams?: Record<string, any>) {
   const [error, setError] = useState<any | null>(null);
   const [params, setParams] = useState<Record<string, any> | undefined>(initialParams);
 
-  // جلب البيانات
   const fetch = useCallback(async (p?: Record<string, any>) => {
     setLoading(true);
     setError(null);
@@ -63,7 +62,6 @@ export function useAccounts(initialParams?: Record<string, any>) {
     }
   }, []);
 
-  // حذف حساب
   const deleteAccount = useCallback(async (id: string) => {
     try {
       setLoading(true);

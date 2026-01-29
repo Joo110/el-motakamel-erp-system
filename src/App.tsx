@@ -187,7 +187,7 @@ function App() {
     { path: "Trips/NewTrip", element: <NewTrip /> },
     { path: "Trips/DelegatesManagement/:id", element: <DelegatesManagement /> },
     { path: "Trips/CarsListView", element: <CarsListView /> },
-    { path: "Trips/CarDetailsView", element: <CarDetailsView /> },
+    { path: "Trips/CarDetailsView/:id", element: <CarDetailsView /> },
     { path: "Trips/AddCarForm", element: <AddCarForm /> },
     { path: "Trips/Transfercar", element: <Transfercar /> },
 

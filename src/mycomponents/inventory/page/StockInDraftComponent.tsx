@@ -16,7 +16,7 @@ const StockInDraftComponent: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { item: orderData, loading, error } = usePurchaseOrder(id);
+  const { item: orderData } = usePurchaseOrder(id);
   const { organization: organizationData } = useOrganization(orderData?.organizationId);
 
   const [creating, setCreating] = useState(false);
@@ -62,83 +62,101 @@ const StockInDraftComponent: React.FC = () => {
 
   const warehouseName = extractOrgName(organizationData) || orderData?.organizationId || '-';
 
-  const handleCreateInvoice = async () => {
-    if (!id) return;
-    setApiError(null);
-    setCreating(true);
-    try {
-      const resp = await axiosClient.post(`/purchaseInvoices/${id}`);
+ const handleCreateInvoice = async () => {
+  if (!id) return;
 
-      const contentType =
-        typeof resp?.headers?.get === 'function'
-          ? (resp.headers.get('content-type') ?? '')
-          : String((resp?.headers as any)?.['content-type'] ?? '');
+  setApiError(null);
+  setCreating(true);
 
-      const body = resp?.data;
-
-      const isHtmlText =
-        typeof body === 'string' ||
-        (typeof contentType === 'string' && contentType.includes('text/html'));
-
-      if (isHtmlText) {
-        if (typeof resp?.data === "string") {
-          const normalized = resp.data.toLowerCase().trim();
-          if (normalized.includes("welcome to erp")) {
-            toast.error(t('unexpected_server_response'));
-            return;
-          }
-        }
+  try {
+    const resp = await axiosClient.post(
+      `/purchase-invoices/${id}`,
+      {
+        notes: 'Invoice created from purchase order',
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
       }
+    );
 
-      const returnedInvoice = resp?.data?.data?.invoice ?? resp?.data?.invoice ?? resp?.data ?? resp;
-      console.log('Create invoice response:', returnedInvoice);
-      toast.success(t('invoice_created_successfully'));
-      navigate(`/dashboard/preciousmanagement`);
-    } catch (err: any) {
-      console.error('Create invoice error:', err?.response?.data ?? err);
-      const serverBody = err?.response?.data;
-      if (typeof serverBody === 'string' && serverBody.includes('Welcome to ERP')) {
-        const msg = t('server_returned_welcome_erp');
-        setApiError(msg);
-        toast.error(msg);
-      } else {
-        const msg = err?.response?.data?.message || err?.message || String(err);
-        setApiError(String(msg));
-        toast.error(t('failed_create_invoice') + ': ' + msg);
+    const returnedInvoice =
+      resp?.data?.data?.invoice ??
+      resp?.data?.invoice ??
+      resp?.data ??
+      resp;
+
+    console.log('Create invoice response:', returnedInvoice);
+
+    toast.success(t('invoice_created_successfully'));
+    navigate(`/dashboard/preciousmanagement`);
+  } catch (err: any) {
+    console.error('Create invoice error:', err?.response?.data ?? err);
+
+    const msg =
+      err?.response?.data?.message ||
+      err?.message ||
+      'Unknown error';
+
+    setApiError(msg);
+    toast.error(t('failed_create_invoice') + ': ' + msg);
+  } finally {
+    setCreating(false);
+  }
+};
+
+
+  // ---- Helpers to safely extract/display values ----
+  const safeText = (v: any): string => {
+    if (v === null || v === undefined) return '-';
+    if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return String(v);
+    if (typeof v === 'object') {
+      if (Array.isArray(v)) return v.join(', ');
+      if (v.name) return String(v.name);
+      if (v.productName) return String(v.productName);
+      if (v.tradeName) return String(v.tradeName);
+      if (v._id) return String(v._id);
+      if (v.id) return String(v.id);
+      try {
+        const s = JSON.stringify(v);
+        return s.length > 80 ? s.slice(0, 77) + '…' : s;
+      } catch {
+        return '[Object]';
       }
-    } finally {
-      setCreating(false);
     }
+    return String(v);
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen text-gray-600 text-lg">
-        {t('loading_purchase_order_details')}
-      </div>
-    );
-  }
+  const getQuantity = (p: any): number => {
+    return Number(p.quantity ?? p.qty ?? p.units ?? 0) || 0;
+  };
 
-  if (error) {
-    return (
-      <div className="flex justify-center items-center h-screen text-red-600 text-lg">
-        {t('failed_load_purchase_order')}: {error.message}
-      </div>
-    );
-  }
+  const getWholesalePrice = (p: any): number => {
+    // prioritize explicit wholesalePrice, then product.wholesalePrice, then fallbacks
+    return Number(p.wholesalePrice ?? p.product?.wholesalePrice ?? p.wholesale ?? p.price ?? p.retailPrice ?? 0) || 0;
+  };
 
-  if (!orderData) {
-    return (
-      <div className="flex justify-center items-center h-screen text-gray-600 text-lg">
-        {t('no_purchase_order_data_found')}: {id}
-      </div>
-    );
-  }
+  const getRetailPrice = (p: any): number => {
+    return Number(p.retailPrice ?? p.product?.retailPrice ?? p.retailPrice ?? p.retail ?? 0) || 0;
+  };
 
+  const getDiscount = (p: any): number => {
+    return Number(p.discount ?? 0) || 0;
+  };
+
+  // compute subtotal based on wholesale price (quantity * wholesale * (1 - discount))
   const subtotal =
-    orderData?.products?.reduce((sum: number, item: any) => sum + (item.total ?? 0), 0) || 0;
+    (orderData?.products ?? []).reduce((sum: number, item: any) => {
+      const q = getQuantity(item);
+      const w = getWholesalePrice(item);
+      const d = getDiscount(item);
+      const line = w * q * (1 - d / 100);
+      return sum + (Number.isFinite(line) ? line : 0);
+    }, 0) || 0;
+
   const tax = subtotal * 0.14;
-  const total = orderData?.totalAmount ?? subtotal + tax;
+  const total = subtotal + tax;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -168,7 +186,7 @@ const StockInDraftComponent: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">{t('invoice_number')}:</label>
               <input
                 type="text"
-                value={orderData?.invoiceNumber || '-'}
+                value={safeText(orderData?.invoiceNumber ?? '-')}
                 readOnly
                 className="w-full px-3 py-2 border border-gray-300 rounded-full bg-gray-50"
               />
@@ -195,7 +213,7 @@ const StockInDraftComponent: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">{t('supplier_id')}:</label>
                   <input
                     type="text"
-                    value={orderData?.supplierId || '-'}
+                    value={safeText(orderData?.supplierId ??  '-')}
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-full bg-gray-50"
                   />
@@ -204,7 +222,7 @@ const StockInDraftComponent: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">{t('currency_label')}:</label>
                   <input
                     type="text"
-                    value={orderData?.currency || '-'}
+                    value={safeText(orderData?.currency ?? '-') }
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-full bg-gray-50"
                   />
@@ -219,7 +237,7 @@ const StockInDraftComponent: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">{t('warehouse_id')}:</label>
                   <input
                     type="text"
-                    value={warehouseName}
+                    value={safeText(warehouseName)}
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-full bg-gray-50"
                   />
@@ -250,25 +268,43 @@ const StockInDraftComponent: React.FC = () => {
                   <tr>
                     <th className="px-4 py-3 text-xs font-medium text-gray-600 text-left">{t('product_col')}</th>
                     <th className="px-4 py-3 text-xs font-medium text-gray-600 text-left">{t('quantity_label')}</th>
-                    <th className="px-4 py-3 text-xs font-medium text-gray-600 text-left">{t('price_col')}</th>
+                    <th className="px-4 py-3 text-xs font-medium text-gray-600 text-left">{t('wholesale_price_col') || 'Wholesale'}</th>
+                    <th className="px-4 py-3 text-xs font-medium text-gray-600 text-left">{t('retail_price_col') || 'Retail'}</th>
                     <th className="px-4 py-3 text-xs font-medium text-gray-600 text-left">{t('discount_col')}</th>
                     <th className="px-4 py-3 text-xs font-medium text-gray-600 text-left">{t('total_col')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {orderData?.products?.length ? (
-                    orderData.products.map((p: any, i: number) => (
-                      <tr key={i} className="border-b last:border-0">
-                        <td className="px-4 py-3 text-sm">{p.name || '-'}</td>
-                        <td className="px-4 py-3 text-sm">{p.quantity ?? 0}</td>
-                        <td className="px-4 py-3 text-sm">{((p.price ?? 0) as number).toFixed(2)}</td>
-                        <td className="px-4 py-3 text-sm">{p.discount ?? 0}%</td>
-                        <td className="px-4 py-3 text-sm font-medium">{((p.total ?? 0) as number).toFixed(2)}</td>
-                      </tr>
-                    ))
+                    orderData.products.map((p: any, i: number) => {
+                       console.log('DEBUG PRODUCT', {
+    retailPrice: p.retailPrice,
+    wholesalePrice: p.wholesalePrice,
+    full: p
+  });
+                      const q = getQuantity(p);
+                      const wholesale = getWholesalePrice(p);
+                      const retail = getRetailPrice(p);
+                      const discount = getDiscount(p);
+                      const lineTotal = wholesale * q * (1 - discount / 100);
+
+                      // product name may be nested under `product`
+                      const productName = p.product?.name ?? p.productName ?? p.name ?? p.product?.title ?? '-';
+
+                      return (
+                        <tr key={i} className="border-b last:border-0">
+                          <td className="px-4 py-3 text-sm">{safeText(productName)}</td>
+                          <td className="px-4 py-3 text-sm">{q}</td>
+                          <td className="px-4 py-3 text-sm">{wholesale.toFixed(2)}</td>
+                          <td className="px-4 py-3 text-sm">{retail.toFixed(2)}</td>
+                          <td className="px-4 py-3 text-sm">{discount ?? 0}%</td>
+                          <td className="px-4 py-3 text-sm font-medium">{lineTotal.toFixed(2)}</td>
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr>
-                      <td colSpan={5} className="text-center py-10 text-gray-400">
+                      <td colSpan={6} className="text-center py-10 text-gray-400">
                         {t('no_products_found')}
                       </td>
                     </tr>

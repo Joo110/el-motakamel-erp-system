@@ -22,14 +22,23 @@ const StockOutDraftComponent: React.FC = () => {
 
   const [creating, setCreating] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+const futureDate = new Date();
+futureDate.setDate(futureDate.getDate() + 30);
+
+const dueDate = futureDate.toISOString().split('T')[0];
 
   const parseStatus = (raw?: any): StatusType | null => {
     if (!raw) return null;
     const s = String(raw).trim().toLowerCase();
 
     if (s === 'draft') return 'Draft';
-    if (s === 'sales order approved' || s === 'salesorderapproved' || s === 'sales_order_approved' || 
-        s === 'sales-order-approved' || (s.includes('sales') && s.includes('approved'))) {
+    if (
+      s === 'sales order approved' ||
+      s === 'salesorderapproved' ||
+      s === 'sales_order_approved' ||
+      s === 'sales-order-approved' ||
+      (s.includes('sales') && s.includes('approved'))
+    ) {
       return 'Sales Order Approved';
     }
     if (s === 'quotation' || s === 'quote') return 'Quotation';
@@ -59,15 +68,21 @@ const StockOutDraftComponent: React.FC = () => {
 
   const extractOrgName = (org: any): string | null => {
     if (!org) return null;
-    if (typeof org === 'string') return null;
+    if (typeof org === 'string') return org;
     if (org.name) return org.name;
+    if (org.tradeName) return org.tradeName;
     if (org.data?.organization?.name) return org.data.organization.name;
     if (org.organization?.name) return org.organization.name;
     if (org.data?.name) return org.data.name;
+    if (org._id) return String(org._id);
+    if (org.id) return String(org.id);
     return null;
   };
 
-  const warehouseName = extractOrgName(organizationData) || orderData?.organizationId || '-';
+  const warehouseName =
+    extractOrgName(organizationData) ||
+    extractOrgName(orderData?.organizationId) ||
+    '-';
 
   const findExistingInvoice = (resp: any, saleOrderId: string) => {
     if (!resp) return null;
@@ -88,63 +103,92 @@ const StockOutDraftComponent: React.FC = () => {
     return matches[0];
   };
 
-  const handleCreateInvoice = async () => {
-    if (!id) return;
-    setApiError(null);
-    setCreating(true);
+ const handleCreateInvoice = async () => {
+  if (!id) return;
 
-    try {
-      const checkResp = await axiosClient.get('/api/v1/saleInvoices', { params: { saleOrder: id } });
+  setApiError(null);
+  setCreating(true);
 
-      const existing = findExistingInvoice(checkResp, id);
-      if (existing) {
-        const invoiceId = existing._id ?? existing.id ?? null;
-        toast.success(t('invoice_already_exists_opening'));
-        if (invoiceId) {
-          navigate(`/dashboard/sales-invoices/${invoiceId}`);
-        } else {
-          navigate(`/dashboard/sales-invoices/${id}`);
-        }
-        return;
-      }
+  try {
+    const checkResp = await axiosClient.get('/sale-invoices', {
+      params: { saleOrder: id },
+    });
 
-      const created = await createInvoiceForSaleOrder(id);
+    const existing = findExistingInvoice(checkResp, id);
+    if (existing) {
+      const invoiceId = existing._id ?? existing.id ?? null;
+      toast.success(t('invoice_already_exists_opening'));
 
-      const rawString = typeof created === 'string' ? created : JSON.stringify(created ?? '');
-      if (rawString.toLowerCase().includes('welcome to erp')) {
-        const msg = t('unexpected_server_response');
-        setApiError(msg);
-        toast.error(msg);
-        return;
-      }
-
-      const invoiceObj = created?.data?.invoice ?? created?.invoice ?? created;
-      const invoiceId = invoiceObj?._id ?? invoiceObj?.id ?? null;
-
-      console.log('Create invoice response:', created);
-      toast.success(t('invoice_created_successfully'));
-
-      if (invoiceId) {
-        navigate(`/dashboard/inventoryorders`);
-      } else {
-        navigate(`/dashboard/inventoryorders`);
-      }
-    } catch (err: any) {
-      console.error('Create invoice error:', err?.response?.data ?? err);
-      const serverBody = err?.response?.data;
-      if (typeof serverBody === 'string' && serverBody.toLowerCase().includes('welcome to erp')) {
-        const msg = t('server_returned_welcome_erp');
-        setApiError(msg);
-        toast.error(msg);
-      } else {
-        const msg = err?.response?.data?.message || err?.message || String(err);
-        setApiError(String(msg));
-        toast.error(t('failed_create_invoice') + ': ' + msg);
-      }
-    } finally {
-      setCreating(false);
+      navigate(
+        invoiceId
+          ? `/dashboard/sales-invoices/${invoiceId}`
+          : `/dashboard/sales-invoices/${id}`
+      );
+      return;
     }
+
+    const created = await createInvoiceForSaleOrder(id, {
+  notes: 'Invoice created for sale order',
+  dueDate,
+});
+
+    const rawString =
+      typeof created === 'string' ? created : JSON.stringify(created ?? '');
+
+    if (rawString.toLowerCase().includes('welcome to erp')) {
+      const msg = t('unexpected_server_response');
+      setApiError(msg);
+      toast.error(msg);
+      return;
+    }
+
+    
+
+    console.log('Create invoice response:', created);
+    toast.success(t('invoice_created_successfully'));
+
+    navigate('/dashboard/inventoryorders');
+  } catch (err: any) {
+    console.error('Create invoice error:', err?.response?.data ?? err);
+
+    const msg =
+      err?.response?.data?.message ||
+      err?.message ||
+      String(err);
+
+    setApiError(String(msg));
+    toast.error(t('failed_create_invoice') + ': ' + msg);
+  } finally {
+    setCreating(false);
+  }
+};
+
+
+  // ====== Safe renderer helper ======
+  const renderValue = (v: any): string => {
+    if (v === null || v === undefined) return '-';
+    if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return String(v);
+    // if it's an object, prefer common name-like fields
+    if (typeof v === 'object') {
+      if (Array.isArray(v)) return v.map((x) => (typeof x === 'object' ? JSON.stringify(x) : String(x))).join(', ');
+      if ('name' in v && typeof v.name === 'string') return v.name;
+      if ('title' in v && typeof v.title === 'string') return v.title;
+      if ('tradeName' in v && typeof v.tradeName === 'string') return v.tradeName;
+      if ('email' in v && typeof v.email === 'string') return v.email;
+      if ('phone' in v && typeof v.phone === 'string') return v.phone;
+      if ('_id' in v) return String(v._id);
+      if ('id' in v) return String(v.id);
+      // fallback to shallow JSON but keep it short
+      try {
+        const s = JSON.stringify(v);
+        return s.length > 80 ? s.slice(0, 77) + '…' : s;
+      } catch {
+        return '[Object]';
+      }
+    }
+    return String(v);
   };
+  // =================================
 
   if (loading) {
     return (
@@ -171,7 +215,7 @@ const StockOutDraftComponent: React.FC = () => {
   }
 
   const subtotal =
-    orderData?.products?.reduce((sum: number, item: any) => sum + (item.total ?? 0), 0) || 0;
+    orderData?.products?.reduce((sum: number, item: any) => sum + (Number(item.total ?? 0) || 0), 0) || 0;
   const tax = subtotal * 0.14;
   const total = orderData?.totalAmount ?? subtotal + tax;
 
@@ -203,7 +247,7 @@ const StockOutDraftComponent: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">{t('invoice_number')}:</label>
               <input
                 type="text"
-                value={orderData?.invoiceNumber || '-'}
+                value={renderValue(orderData?.invoiceNumber ?? orderData?.invoiceNo ?? '-')}
                 readOnly
                 className="w-full px-3 py-2 border border-gray-300 rounded-full bg-gray-50"
               />
@@ -213,7 +257,9 @@ const StockOutDraftComponent: React.FC = () => {
               <input
                 type="text"
                 value={
-                  orderData?.createdAt ? new Date(orderData.createdAt).toLocaleDateString('ar-EG') : '-'
+                  orderData?.createdAt
+                    ? new Date(orderData.createdAt).toLocaleDateString('ar-EG')
+                    : renderValue(orderData?.createdAt ?? '-')
                 }
                 readOnly
                 className="w-full px-3 py-2 border border-gray-300 rounded-full bg-gray-50"
@@ -231,7 +277,7 @@ const StockOutDraftComponent: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">{t('customer_id')}:</label>
                   <input
                     type="text"
-                    value={orderData?.customerName || orderData?.customerId || '-'}
+                    value={renderValue(orderData?.customerName ?? orderData?.customer ?? orderData?.customerId ?? '-')}
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-full bg-gray-50"
                   />
@@ -240,7 +286,7 @@ const StockOutDraftComponent: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">{t('phone_number')}:</label>
                   <input
                     type="text"
-                    value={orderData?.customerPhone || '-'}
+                    value={renderValue(orderData?.customerPhone ?? orderData?.customer?.phone ?? orderData?.phone ?? '-')}
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-full bg-gray-50"
                   />
@@ -249,7 +295,7 @@ const StockOutDraftComponent: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">{t('email_label')}:</label>
                   <input
                     type="text"
-                    value={orderData?.customerEmail || '-'}
+                    value={renderValue(orderData?.customerEmail ?? orderData?.customer?.email ?? '-')}
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-full bg-gray-50"
                   />
@@ -265,7 +311,7 @@ const StockOutDraftComponent: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">{t('requested_by')}:</label>
                   <input
                     type="text"
-                    value={orderData?.requestedBy || '-'}
+                    value={renderValue(orderData?.requestedBy ?? orderData?.createdBy ?? '-')}
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-full bg-gray-50"
                   />
@@ -274,7 +320,7 @@ const StockOutDraftComponent: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">{t('warehouse_id')}:</label>
                   <input
                     type="text"
-                    value={warehouseName}
+                    value={renderValue(warehouseName)}
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-full bg-gray-50"
                   />
@@ -283,7 +329,7 @@ const StockOutDraftComponent: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">{t('address_label')}:</label>
                   <input
                     type="text"
-                    value={orderData?.address || '-'}
+                    value={renderValue(orderData?.address ?? orderData?.organization?.address ?? '-')}
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-full bg-gray-50"
                   />
@@ -295,7 +341,7 @@ const StockOutDraftComponent: React.FC = () => {
                     value={
                       orderData?.expectedDeliveryDate
                         ? new Date(orderData.expectedDeliveryDate).toLocaleDateString('ar-EG')
-                        : '-'
+                        : renderValue(orderData?.expectedDeliveryDate ?? '-')
                     }
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-full bg-gray-50"
@@ -325,13 +371,18 @@ const StockOutDraftComponent: React.FC = () => {
                   {orderData?.products?.length ? (
                     orderData.products.map((p: any, i: number) => (
                       <tr key={i} className="border-b last:border-0">
-                        <td className="px-4 py-3 text-sm">{p.name || '-'}</td>
-                        <td className="px-4 py-3 text-sm">{p.inventory ?? '-'}</td>
-                        <td className="px-4 py-3 text-sm">{p.code || '-'}</td>
-                        <td className="px-4 py-3 text-sm">{p.quantity ?? 0}</td>
-                        <td className="px-4 py-3 text-sm">{((p.price ?? 0) as number).toFixed(2)}</td>
-                        <td className="px-4 py-3 text-sm">{p.discount ?? 0}%</td>
-                        <td className="px-4 py-3 text-sm font-medium">{((p.total ?? 0) as number).toFixed(2)}</td>
+                        <td className="px-4 py-3 text-sm">{renderValue(p.name ?? p.product?.name ?? p.productName)}</td>
+                        <td className="px-4 py-3 text-sm">
+                          {renderValue(
+                            // inventory might be object or id or nested under inventory object
+                            p.inventory?.name ?? p.inventory?.location ?? p.inventory ?? p.inventoryId ?? '-'
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm">{renderValue(p.code ?? p.product?.code ?? '-')}</td>
+                        <td className="px-4 py-3 text-sm">{Number(p.quantity ?? p.qty ?? p.units ?? 0)}</td>
+                        <td className="px-4 py-3 text-sm">{((Number(p.price ?? p.retailPrice ?? p.wholesalePrice ?? 0)) as number).toFixed(2)}</td>
+                        <td className="px-4 py-3 text-sm">{Number(p.discount ?? 0)}%</td>
+                        <td className="px-4 py-3 text-sm font-medium">{((Number(p.total ?? 0)) as number).toFixed(2)}</td>
                       </tr>
                     ))
                   ) : (
@@ -352,7 +403,7 @@ const StockOutDraftComponent: React.FC = () => {
               <h3 className="text-base font-semibold text-gray-900 mb-3">{t('notes_label')}</h3>
               <textarea
                 readOnly
-                value={orderData?.notes || ''}
+                value={renderValue(orderData?.notes ?? '')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm"
                 rows={4}
               />
@@ -441,13 +492,25 @@ const StockOutDraftComponent: React.FC = () => {
 
 // Print styles
 const printStyles = `
+  @page {
+    size: A4;
+    margin: 8mm;
+  }
+
   @media print {
+    body {
+      margin: 0;
+      padding: 0;
+    }
+
     body * {
       visibility: hidden;
     }
+
     .print-area, .print-area * {
       visibility: visible;
     }
+
     .print-area {
       position: absolute;
       left: 0;
@@ -455,16 +518,21 @@ const printStyles = `
       width: 100%;
       box-shadow: none !important;
       border-radius: 0 !important;
+      font-size: 12px; /* تصغير المحتوى */
+      line-height: 1.2;
     }
+
     .no-print {
       display: none !important;
     }
+
     input, textarea {
       border: none !important;
       background: transparent !important;
       padding: 0 !important;
       font-weight: 500;
     }
+
     .rounded-full {
       border-radius: 0 !important;
     }

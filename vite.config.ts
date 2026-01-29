@@ -12,9 +12,9 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "https://erp-3-5mq8.onrender.com",
+        target: "https://akhdar-erp-dev.vercel.app", // بدل القديم
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, "/api/v1"),
+        // ممكن تشيل الـ rewrite خالص لأن /api/v1 موجودة بالفعل
       },
     },
   },

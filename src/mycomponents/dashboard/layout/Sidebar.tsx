@@ -555,7 +555,7 @@ const Sidebar = () => {
                       : "opacity-0 group-hover/item:opacity-100"
                   }`}></div>
                 </Link>
-
+                
                 <Link
                   to="/dashboard/hr/attendance"
                   className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
@@ -728,7 +728,8 @@ const Sidebar = () => {
 
             {openMenus["Trips"] && (
               <div className="bg-[#34495e] py-2">
-                <Link
+               
+ <Link
                   to="/dashboard/Trips/TripsManagement"
                   className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
                     location.pathname === "/dashboard/Trips/TripsManagement"
@@ -743,7 +744,6 @@ const Sidebar = () => {
                       : "opacity-0 group-hover/item:opacity-100"
                   }`}></div>
                 </Link>
-
                 <Link
                   to="/dashboard/Trips/NewTrip"
                   className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${

@@ -1,3 +1,4 @@
+// src/mycomponents/inventory/page/StockSearchView.tsx
 import React, { useState, useMemo, useEffect } from 'react';
 import { Search, RotateCcw, ChevronDown } from 'lucide-react';
 import { useInventories } from "@/mycomponents/inventory/hooks/useInventories";
@@ -81,7 +82,6 @@ const StockSearchView: React.FC = () => {
       map.set(id, name);
     });
 
-    // keep id sentinel "All Categories" for logic compatibility, but show translated label
     const arr: CategoryItem[] = [{ id: "All Categories", name: t('all_categories') ?? 'All Categories' }];
     for (const [id, name] of map.entries()) {
       arr.push({ id, name });
@@ -101,19 +101,44 @@ const StockSearchView: React.FC = () => {
       const stockRes = await getAllStocks();
       const transferRes = await getAllStockTransfers();
 
+      // normalize possible response shapes
       const stockPayload = stockRes?.data?.data ?? stockRes?.data ?? stockRes;
       const transferPayload = transferRes?.data?.data ?? transferRes?.data ?? transferRes;
 
-      const rawStocks = stockPayload?.stocks ?? stockPayload?.data?.stocks ?? [];
-      const rawTransfers = transferPayload?.stockTransfers ?? transferPayload?.data?.stockTransfers ?? [];
+      // extract rawStocks array in flexible ways
+      let rawStocks: any[] = [];
+      if (Array.isArray(stockPayload)) rawStocks = stockPayload;
+      else if (Array.isArray(stockPayload?.stocks)) rawStocks = stockPayload.stocks;
+      else if (Array.isArray(stockPayload?.data)) rawStocks = stockPayload.data;
+      else if (Array.isArray(stockPayload?.data?.stocks)) rawStocks = stockPayload.data.stocks;
+      else {
+        const possible = Object.values(stockPayload || {}).find((v) => Array.isArray(v));
+        rawStocks = Array.isArray(possible) ? possible as any[] : [];
+      }
 
-      const mappedStocks: StockItem[] = (Array.isArray(rawStocks) ? rawStocks : []).map((s: any) => {
+      let rawTransfers: any[] = [];
+      if (Array.isArray(transferPayload)) rawTransfers = transferPayload;
+      else if (Array.isArray(transferPayload?.stockTransfers)) rawTransfers = transferPayload.stockTransfers;
+      else if (Array.isArray(transferPayload?.data)) rawTransfers = transferPayload.data;
+      else {
+        const possibleT = Object.values(transferPayload || {}).find((v) => Array.isArray(v));
+        rawTransfers = Array.isArray(possibleT) ? possibleT as any[] : [];
+      }
+
+      console.debug("StockSearchView - rawStocks:", rawStocks);
+      console.debug("StockSearchView - rawTransfers:", rawTransfers);
+
+      const mappedStocks: StockItem[] = (Array.isArray(rawStocks) ? rawStocks : []).map((s: any, idx: number) => {
         const productObj =
           s.productId ??
           s.product ??
           (s.productInfo ? s.productInfo : undefined);
 
-        const inventoryObj = s.inventoryId ?? s.inventory ?? (s.location ?? undefined);
+        const inventoryObj =
+          s.inventoryId ??
+          s.inventory ??
+          (s.location ? s.location : undefined) ??
+          (s.inventoryInfo ? s.inventoryInfo : undefined);
 
         let categoryId: string | undefined = undefined;
         if (productObj) {
@@ -135,7 +160,7 @@ const StockSearchView: React.FC = () => {
         const quantity = s.quantity ?? s.unit ?? s.qty ?? 0;
 
         return {
-          _id: s._id ?? s.stockId ?? (productObj?._id ?? productObj?.id ?? "N/A"),
+          _id: s._id ?? s.stockId ?? (productObj?._id ?? productObj?.id ?? `stock-${idx}`),
           product: {
             _id: productObj?._id ?? productObj?.id ?? "",
             name: productObj?.name ?? productObj?.title ?? s.productName ?? "N/A",
@@ -152,13 +177,14 @@ const StockSearchView: React.FC = () => {
 
       setStockItems(mappedStocks);
 
+      // handle transfers
       if (Array.isArray(rawTransfers) && rawTransfers.length > 0) {
         const transfersArr = rawTransfers;
 
         const productIdsToFetch = new Set<string>();
-        transfersArr.forEach((t: any) => {
-          const firstProduct = t.products?.[0] ?? null;
-          const pid = firstProduct?.productId;
+        transfersArr.forEach((tr: any) => {
+          const firstProduct = tr.products?.[0] ?? null;
+          const pid = firstProduct?.productId ?? firstProduct?.product?._id ?? firstProduct?.product?.id;
           if (pid && typeof pid === 'string') productIdsToFetch.add(pid);
         });
 
@@ -167,26 +193,33 @@ const StockSearchView: React.FC = () => {
 
         if (productIdArray.length > 0) {
           await Promise.all(
-            productIdArray.map(async (id) => {
+            productIdArray.map(async (pid) => {
               try {
-                const p = await getProductById(id);
-                const name = p?.name ?? String(id);
-                productIdNameMap[id] = name;
+                const p = await getProductById(pid);
+                productIdNameMap[pid] = p?.name ?? String(pid);
               } catch (err) {
-                productIdNameMap[id] = String(id);
-                console.warn("Failed to fetch product for id", id, err);
+                productIdNameMap[pid] = String(pid);
+                console.warn("Failed to fetch product for id", pid, err);
               }
             })
           );
         }
 
+        // use inventories from hook if available, otherwise try service
         let inventoryArray: any[] = Array.isArray(inventories) && inventories.length > 0 ? inventories : [];
 
         if (!inventoryArray || inventoryArray.length === 0) {
           try {
             const invRes = await getInventoriesService();
-            const invPayload = invRes?.data ?? invRes?.data ?? invRes;
-            inventoryArray = invPayload?.inventories ?? invPayload ?? [];
+            // normalize possible shapes
+            const invPayload = invRes.items;
+            if (Array.isArray(invPayload)) inventoryArray = invPayload;
+            else if (Array.isArray(invPayload?.data)) inventoryArray = invPayload.data;
+            else if (Array.isArray(invPayload?.inventories)) inventoryArray = invPayload.inventories;
+            else {
+              const possibleInv = Object.values(invPayload || {}).find((v) => Array.isArray(v));
+              inventoryArray = Array.isArray(possibleInv) ? possibleInv as any[] : [];
+            }
           } catch (err) {
             console.warn("Failed to fetch inventories from service, falling back to hook state", err);
             inventoryArray = Array.isArray(inventories) ? inventories : [];
@@ -200,45 +233,38 @@ const StockSearchView: React.FC = () => {
           if (key) inventoryMap[key] = inv.name ?? inv.title ?? key;
         });
 
-        const mappedTransactions: Transaction[] = transfersArr.map((t: any) => {
-          const firstProduct = t.products?.[0] ?? null;
+        const mappedTransactions: Transaction[] = transfersArr.map((tr: any, idx: number) => {
+          const firstProduct = tr.products?.[0] ?? null;
 
           let prodName = "N/A";
           let categoryId: string | undefined = undefined;
 
           if (firstProduct) {
-            const pid = firstProduct.productId;
+            const pid = firstProduct.productId ?? firstProduct.product?._id ?? firstProduct.product?.id;
             if (!pid) {
-              prodName = firstProduct.name ?? t.productName ?? "N/A";
+              prodName = firstProduct.name ?? tr.productName ?? "N/A";
             } else if (typeof pid === 'string') {
               prodName = productIdNameMap[pid] ?? pid;
             } else if (typeof pid === 'object') {
               prodName = pid.name ?? pid.title ?? "N/A";
-              if (typeof pid.category === 'string') {
-                categoryId = pid.category;
-              } else if (pid.category?._id) {
-                categoryId = pid.category._id;
-              }
+              if (typeof pid.category === 'string') categoryId = pid.category;
+              else categoryId = pid.category?._id ?? pid.category?.id;
             } else {
               prodName = firstProduct.name ?? "N/A";
             }
 
             if (!categoryId && firstProduct.category) {
-              if (typeof firstProduct.category === 'string') {
-                categoryId = firstProduct.category;
-              } else {
-                categoryId = firstProduct.category._id ?? firstProduct.category.id;
-              }
+              if (typeof firstProduct.category === 'string') categoryId = firstProduct.category;
+              else categoryId = firstProduct.category._id ?? firstProduct.category.id;
             }
           } else {
-            prodName = t.productName ?? "N/A";
+            prodName = tr.productName ?? "N/A";
           }
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const resolveInventoryName = (invField: any, fieldName: string) => {
+
+          const resolveInventoryName = (invField: any) => {
             if (!invField) return "N/A";
             if (typeof invField === 'string') {
-              const resolved = inventoryMap[invField] ?? invField;
-              return resolved;
+              return inventoryMap[invField] ?? invField;
             }
             if (typeof invField === 'object') {
               const idCandidate = invField._id ?? invField.id;
@@ -248,21 +274,21 @@ const StockSearchView: React.FC = () => {
             return "N/A";
           };
 
-          const fromName = resolveInventoryName(t.from, 'from');
-          const toName = resolveInventoryName(t.to, 'to');
+          const fromName = resolveInventoryName(tr.from ?? tr.fromInventory ?? tr.fromId);
+          const toName = resolveInventoryName(tr.to ?? tr.toInventory ?? tr.toId);
 
           return {
-            _id: t._id ?? t.transferId ?? "N/A",
+            _id: tr._id ?? tr.transferId ?? `transfer-${idx}`,
             product: {
               name: prodName,
               category: categoryId,
             },
-            transactionNumber: t.reference ?? t.ref ?? t.transferNumber ?? "N/A",
-            quantity: firstProduct?.unit ?? firstProduct?.quantity ?? t.quantity ?? 0,
+            transactionNumber: tr.reference ?? tr.ref ?? tr.transferNumber ?? "N/A",
+            quantity: firstProduct?.unit ?? firstProduct?.quantity ?? tr.quantity ?? 0,
             type: 'Transfer',
             fromInventory: { name: fromName },
             toInventory: { name: toName },
-            createdAt: t.createdAt ?? t.updatedAt ?? undefined,
+            createdAt: tr.createdAt ?? tr.updatedAt ?? undefined,
           } as Transaction;
         });
 
@@ -401,7 +427,6 @@ const StockSearchView: React.FC = () => {
 
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <h1 className="text-2xl font-bold">{t('inventory_management') || 'Inventory Management'}</h1>
-            {/* breadcrumb/title alignment preserved; stacked on small screens */}
           </div>
         </div>
 
@@ -455,7 +480,7 @@ const StockSearchView: React.FC = () => {
 
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
-            <h2 className="text-lg font-semibold">{t('stock') || 'Stock'}</h2>
+            <h2 className="text-lg font-semibold">{t('Stock') || 'stock'}</h2>
             <span className="text-sm text-gray-500">
               {t('showing') || 'Showing'} {filteredStockItems.length > 0 ? (stockCurrentPage - 1) * stockPageSize + 1 : 0}-{Math.min(stockCurrentPage * stockPageSize, filteredStockItems.length)} {t('of') || 'of'} {filteredStockItems.length} {t('products') || 'products'}
             </span>
@@ -572,7 +597,7 @@ const StockSearchView: React.FC = () => {
               <thead className="border-b">
                 <tr className="text-left text-sm text-gray-600">
                   <th className="pb-3 font-medium">{t('product_col') || 'Product'}</th>
-                  <th className="pb-3 font-medium">Trans. {t('number') || 'Number'}</th>
+                  <th className="pb-3 font-medium">{t('Trans_Number') || 'Number'}</th>
                   <th className="pb-3 font-medium">{t('units_label') || 'Units'}</th>
                   <th className="pb-3 font-medium">{t('type') || 'Type'}</th>
                   <th className="pb-3 font-medium">{t('from_label') || 'From'}</th>

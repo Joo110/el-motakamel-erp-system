@@ -28,15 +28,20 @@ export type SupplierResponse = {
 
 // Get all suppliers
 export async function getSuppliers(config?: AxiosRequestConfig): Promise<Supplier[]> {
-  const { data } = await axiosClient.get<SupplierResponse>("/suppliers", config);
-  return data?.data?.suppliers || [];
+  const { data } = await axiosClient.get("/suppliers", config);
+  return data.data; 
 }
 
+
 // Get single supplier by ID
-export async function getSupplierById(id: string, config?: AxiosRequestConfig): Promise<Supplier | null> {
-  const { data } = await axiosClient.get<SupplierResponse>(`/suppliers/${id}`, config);
-  return data?.data?.supplier || null;
+export async function getSupplierById(
+  id: string,
+  config?: AxiosRequestConfig
+): Promise<Supplier | null> {
+  const { data } = await axiosClient.get(`/suppliers/${id}`, config);
+  return data.data ?? null;
 }
+
 
 // Create supplier
 export async function createSupplier(body: Supplier, config?: AxiosRequestConfig): Promise<Supplier> {
@@ -54,4 +59,19 @@ export async function updateSupplier(id: string, body: Partial<Supplier>, config
 export async function deleteSupplier(id: string, config?: AxiosRequestConfig): Promise<{ message?: string }> {
   const { data } = await axiosClient.delete<{ message?: string }>(`/suppliers/${id}`, config);
   return data;
+}
+
+/* ============================================================
+   ORGANIZATION RELATED
+============================================================ */
+
+// Get all suppliers for a given organization
+export async function getOrganizationSuppliers(organizationId: string, config?: AxiosRequestConfig): Promise<Supplier[]> {
+  const { data } = await axiosClient.get<SupplierResponse>(`/suppliers/organizations/${organizationId}`, config);
+  return data?.data?.suppliers || [];
+}
+
+// Add an organization to a supplier
+export async function addOrganizationToSupplier(supplierId: string, organizationId: string, config?: AxiosRequestConfig): Promise<void> {
+  await axiosClient.patch(`/suppliers/${supplierId}/organizations/${organizationId}`, {}, config);
 }

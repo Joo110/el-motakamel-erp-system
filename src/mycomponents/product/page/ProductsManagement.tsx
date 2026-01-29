@@ -249,7 +249,7 @@ const ProductsManagement: React.FC = () => {
               <tbody className="divide-y divide-gray-200">
                 {paginatedProducts.map((product) => {
                   const productImage = getProductImage(product.img);
-                  const total = calculateTotal(product.price, product.tax);
+                  const total = calculateTotal(product.retailPrice || 0, product.tax || 0);
 
                   let categoryName = "—";
                   const cat = (product as any).category;
@@ -282,7 +282,7 @@ const ProductsManagement: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 text-gray-700 font-mono text-sm">{product.code}</td>
                       <td className="px-6 py-4 text-gray-700">{product.unit}</td>
-                      <td className="px-6 py-4 text-gray-700">{Number(product.price).toFixed(2)} SR</td>
+                      <td className="px-6 py-4 text-gray-700">{Number(product.wholesalePrice).toFixed(2)} SR</td>
                       <td className="px-6 py-4 text-gray-700">{Number(product.tax).toFixed(2)}%</td>
                       <td className="px-6 py-4 text-gray-700 font-semibold">{total.toFixed(2)} SR</td>
                       <td className="px-6 py-4">
