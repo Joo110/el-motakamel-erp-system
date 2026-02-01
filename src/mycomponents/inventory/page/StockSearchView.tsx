@@ -1,4 +1,3 @@
-// src/mycomponents/inventory/page/StockSearchView.tsx
 import React, { useState, useMemo, useEffect } from 'react';
 import { Search, RotateCcw, ChevronDown } from 'lucide-react';
 import { useInventories } from "@/mycomponents/inventory/hooks/useInventories";
@@ -61,9 +60,7 @@ const StockSearchView: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
-  const [stockPageSize, setStockPageSize] = useState(5);
   const [transPageSize, setTransPageSize] = useState(5);
-  const [stockCurrentPage, setStockCurrentPage] = useState(1);
   const [transCurrentPage, setTransCurrentPage] = useState(1);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -125,9 +122,7 @@ const StockSearchView: React.FC = () => {
         rawTransfers = Array.isArray(possibleT) ? possibleT as any[] : [];
       }
 
-      console.debug("StockSearchView - rawStocks:", rawStocks);
-      console.debug("StockSearchView - rawTransfers:", rawTransfers);
-
+      // map stocks
       const mappedStocks: StockItem[] = (Array.isArray(rawStocks) ? rawStocks : []).map((s: any, idx: number) => {
         const productObj =
           s.productId ??
@@ -301,21 +296,7 @@ const StockSearchView: React.FC = () => {
     }
   };
 
-  const filteredStockItems = useMemo(() => {
-    return stockItems.filter(item => {
-      const productName = item.product?.name?.toLowerCase() || '';
-      const productId = item._id?.toLowerCase() || '';
-      const matchesSearch = productName.includes(searchQuery.toLowerCase()) ||
-                           productId.includes(searchQuery.toLowerCase());
 
-      if (selectedCategory === 'All Categories') return matchesSearch;
-
-      const cat = item.product?.category;
-      if (!cat) return false;
-
-      return matchesSearch && cat === selectedCategory;
-    });
-  }, [searchQuery, selectedCategory, stockItems]);
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter(trans => {
@@ -333,21 +314,20 @@ const StockSearchView: React.FC = () => {
     });
   }, [searchQuery, selectedCategory, transactions]);
 
-  const paginatedStockItems = useMemo(() => {
-    const startIndex = (stockCurrentPage - 1) * stockPageSize;
-    return filteredStockItems.slice(startIndex, startIndex + stockPageSize);
-  }, [filteredStockItems, stockCurrentPage, stockPageSize]);
 
   const paginatedTransactions = useMemo(() => {
     const startIndex = (transCurrentPage - 1) * transPageSize;
     return filteredTransactions.slice(startIndex, startIndex + transPageSize);
   }, [filteredTransactions, transCurrentPage, transPageSize]);
 
-  const stockTotalPages = Math.ceil(filteredStockItems.length / stockPageSize);
-  const transTotalPages = Math.ceil(filteredTransactions.length / transPageSize);
+  const transTotalPages = Math.ceil(filteredTransactions.length / transPageSize) || 1;
 
-  const getPaginationPages = (current: number, total: number, maxVisible = 5) => {
+  // compute visible pagination pages inline (replaces previous helper)
+  const paginationPages = (() => {
     const pages: number[] = [];
+    const current = transCurrentPage;
+    const total = transTotalPages;
+    const maxVisible = 5;
     const half = Math.floor(maxVisible / 2);
     let start = Math.max(1, current - half);
     let end = Math.min(total, current + half);
@@ -362,20 +342,12 @@ const StockSearchView: React.FC = () => {
 
     for (let i = start; i <= end; i++) pages.push(i);
     return pages;
-  };
+  })();
 
-  const handleSearch = () => {
-    setStockCurrentPage(1);
-    setTransCurrentPage(1);
-  };
-
-  const handleReset = () => {
-    setSearchQuery('');
-    setSelectedCategory('All Categories');
-    setStockCurrentPage(1);
-    setTransCurrentPage(1);
-  };
-
+  // inline handlers instead of separate functions
+  // search button sets current page to 1 (filtering uses searchQuery state)
+  // reset button clears search & category and resets page
+  // formatDate kept
   const formatDate = (date?: string) => {
     if (!date) return '-';
     const d = new Date(date);
@@ -461,14 +433,14 @@ const StockSearchView: React.FC = () => {
 
             <div className="flex gap-3 flex-col sm:flex-row items-stretch sm:items-center">
               <button
-                onClick={handleSearch}
+                onClick={() => setTransCurrentPage(1)}
                 className="px-6 py-2 bg-slate-700 text-white rounded-full hover:bg-blue-800 transition-colors flex items-center gap-2 whitespace-nowrap flex-shrink-0 w-full sm:w-auto"
               >
                 <Search size={18} />
                 {t('search') || 'Search'}
               </button>
               <button
-                onClick={handleReset}
+                onClick={() => { setSearchQuery(''); setSelectedCategory('All Categories'); setTransCurrentPage(1); }}
                 className="px-6 py-2 bg-gray-400 text-gray-800 rounded-full hover:bg-gray-500 transition-colors flex items-center gap-2 whitespace-nowrap flex-shrink-0 w-full sm:w-auto"
               >
                 <RotateCcw size={18} />
@@ -478,111 +450,7 @@ const StockSearchView: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
-            <h2 className="text-lg font-semibold">{t('Stock') || 'stock'}</h2>
-            <span className="text-sm text-gray-500">
-              {t('showing') || 'Showing'} {filteredStockItems.length > 0 ? (stockCurrentPage - 1) * stockPageSize + 1 : 0}-{Math.min(stockCurrentPage * stockPageSize, filteredStockItems.length)} {t('of') || 'of'} {filteredStockItems.length} {t('products') || 'products'}
-            </span>
-          </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-max">
-              <thead className="border-b">
-                <tr className="text-left text-sm text-gray-600">
-                  <th className="pb-3 font-medium">{t('product_col') || 'Product'}</th>
-                  <th className="pb-3 font-medium">{t('inventory_col') || 'Inventory'}</th>
-                  <th className="pb-3 font-medium">{t('units_col') || 'Units/Inventory'}</th>
-                  <th className="pb-3 font-medium">{t('last_updated') || 'Last update'}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedStockItems.length > 0 ? (
-                  paginatedStockItems.map((item) => {
-                    const categoryName = resolveCategoryNameById(item.product?.category);
-
-                    return (
-                      <tr key={item._id} className="border-b last:border-b-0">
-                        <td className="py-4 flex items-center gap-3 whitespace-nowrap">
-                          <div className="w-10 h-10 bg-gray-200 rounded-full flex-shrink-0"></div>
-                          <div>
-                            <div className="font-medium">{item.product?.name || t('n_a') || 'N/A'}</div>
-                            <div className="text-sm text-gray-500">{categoryName}</div>
-                          </div>
-                        </td>
-                        <td className="py-4 text-blue-600 underline cursor-pointer whitespace-nowrap">
-                          {item.inventory?.name || '-'}
-                        </td>
-                        <td className="py-4 whitespace-nowrap">{item.quantity || 0}</td>
-                        <td className="py-4 text-sm text-gray-600 whitespace-nowrap">
-                          {formatDate(item.lastUpdate)}
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={4} className="py-8 text-center text-gray-500">
-                      {t('no_products_found') || 'No products found'}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-3">
-            <div className="flex items-center gap-2 text-sm whitespace-nowrap">
-              <span>{t('show_label') || 'Show'}</span>
-              <select
-                value={stockPageSize}
-                onChange={(e) => {
-                  setStockPageSize(Number(e.target.value));
-                  setStockCurrentPage(1);
-                }}
-                className="border border-gray-300 rounded-full px-2 py-1"
-              >
-                <option>5</option>
-                <option>10</option>
-                <option>25</option>
-                <option>50</option>
-              </select>
-              <span>{t('entries_label') || 'entries'}</span>
-            </div>
-
-            <div className="flex items-center gap-2 overflow-x-auto py-1">
-              <button
-                onClick={() => setStockCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={stockCurrentPage === 1}
-                className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 whitespace-nowrap"
-              >
-                {t('previous_label') || 'Previous'}
-              </button>
-
-              <div className="flex gap-2 px-1">
-                {getPaginationPages(stockCurrentPage, stockTotalPages).map(page => (
-                  <button
-                    key={page}
-                    onClick={() => setStockCurrentPage(page)}
-                    className={`px-3 py-1 rounded-full flex-shrink-0 whitespace-nowrap ${
-                      stockCurrentPage === page ? 'bg-slate-700 text-white' : 'border hover:bg-gray-50'
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
-              </div>
-
-              <button
-                onClick={() => setStockCurrentPage(prev => Math.min(stockTotalPages, prev + 1))}
-                disabled={stockCurrentPage === stockTotalPages}
-                className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 whitespace-nowrap"
-              >
-                {t('next_label') || 'Next'}
-              </button>
-            </div>
-          </div>
-        </div>
 
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
@@ -593,16 +461,17 @@ const StockSearchView: React.FC = () => {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-max">
+            {/* dir RTL علشان العناوين والكلام العربي يقابلو البيانات */}
+            <table dir="rtl" className="w-full min-w-max">
               <thead className="border-b">
                 <tr className="text-left text-sm text-gray-600">
-                  <th className="pb-3 font-medium">{t('product_col') || 'Product'}</th>
-                  <th className="pb-3 font-medium">{t('Trans_Number') || 'Number'}</th>
-                  <th className="pb-3 font-medium">{t('units_label') || 'Units'}</th>
-                  <th className="pb-3 font-medium">{t('type') || 'Type'}</th>
-                  <th className="pb-3 font-medium">{t('from_label') || 'From'}</th>
-                  <th className="pb-3 font-medium">{t('to_label') || 'To'}</th>
-                  <th className="pb-3 font-medium">{t('time_date') || 'Time/Date'}</th>
+                  <th className="pb-3 font-medium text-right">{t('product_col') || 'Product'}</th>
+                  <th className="pb-3 font-medium text-right">{t('Trans_Number') || 'Number'}</th>
+                  <th className="pb-3 font-medium text-right">{t('units_label') || 'Units'}</th>
+                  <th className="pb-3 font-medium text-right">{t('type') || 'Type'}</th>
+                  <th className="pb-3 font-medium text-right">{t('from_label') || 'From'}</th>
+                  <th className="pb-3 font-medium text-right">{t('to_label') || 'To'}</th>
+                  <th className="pb-3 font-medium text-right">{t('time_date') || 'Time/Date'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -614,14 +483,14 @@ const StockSearchView: React.FC = () => {
                       <tr key={trans._id} className="border-b last:border-b-0">
                         <td className="py-4 flex items-center gap-3 whitespace-nowrap">
                           <div className="w-10 h-10 bg-gray-200 rounded-full flex-shrink-0"></div>
-                          <div>
+                          <div className="text-right">
                             <div className="font-medium">{trans.product?.name || t('n_a') || 'N/A'}</div>
                             <div className="text-sm text-gray-500">{categoryName}</div>
                           </div>
                         </td>
-                        <td className="py-4 whitespace-nowrap">{trans.transactionNumber || '-'}</td>
-                        <td className="py-4 whitespace-nowrap">{trans.quantity || 0}</td>
-                        <td className="py-4">
+                        <td className="py-4 whitespace-nowrap text-right">{trans.transactionNumber || '-'}</td>
+                        <td className="py-4 whitespace-nowrap text-right">{trans.quantity || 0}</td>
+                        <td className="py-4 text-right">
                           <span className={`px-2 py-1 rounded-full text-xs ${
                             trans.type === 'In' ? 'bg-green-100 text-green-700' :
                             trans.type === 'Out' ? 'bg-red-100 text-red-700' :
@@ -630,9 +499,9 @@ const StockSearchView: React.FC = () => {
                             {trans.type === 'In' ? (t('stock_in') || 'In') : trans.type === 'Out' ? (t('stock_out') || 'Out') : (t('transfer') || 'Transfer')}
                           </span>
                         </td>
-                        <td className="py-4 whitespace-nowrap">{trans.fromInventory?.name || '-'}</td>
-                        <td className="py-4 whitespace-nowrap">{trans.toInventory?.name || '-'}</td>
-                        <td className="py-4 text-sm text-gray-600 whitespace-nowrap">
+                        <td className="py-4 whitespace-nowrap text-right">{trans.fromInventory?.name || '-'}</td>
+                        <td className="py-4 whitespace-nowrap text-right">{trans.toInventory?.name || '-'}</td>
+                        <td className="py-4 text-sm text-gray-600 whitespace-nowrap text-right">
                           {formatDate(trans.createdAt)}
                         </td>
                       </tr>
@@ -678,7 +547,7 @@ const StockSearchView: React.FC = () => {
               </button>
 
               <div className="flex gap-2 px-1">
-                {getPaginationPages(transCurrentPage, transTotalPages).map(page => (
+                {paginationPages.map(page => (
                   <button
                     key={page}
                     onClick={() => setTransCurrentPage(page)}

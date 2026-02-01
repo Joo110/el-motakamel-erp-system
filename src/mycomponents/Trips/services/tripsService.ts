@@ -1,11 +1,20 @@
 import axiosClient from "@/lib/axiosClient";
 
+export interface TripProduct {
+  product: string;
+  quantity: number;
+  price: number;
+  notes?: string;
+}
+
 export interface TripPayload {
   representative: string;
   driver: string;
   car: string;
   location: string;
-  date: string; // ISO or whatever backend expects
+  date: string;
+  area?: string;
+  products?: TripProduct[];
 }
 
 export interface Trip extends TripPayload {
@@ -33,6 +42,7 @@ function normalizeTrip(raw: any): Trip {
     location: raw.location ?? raw.area ?? null,
     date: raw.date ?? raw.createdAt ?? null,
     status: raw.status ?? null,
+    products: raw.products ?? [],
   } as Trip;
 }
 
@@ -49,12 +59,6 @@ export const getTripsService = async (
   const res = await axiosClient.get(TRIPS_BASE, { params });
   const d = res.data ?? {};
 
-  // common shapes:
-  // { data: [...] }
-  // { data: { ... pagination ... , data: [...] } } (some APIs nest)
-  // [...]
-  // { results: n, data: [...] }
-  // try to find array payload
   let arr: any[] | undefined;
 
   if (Array.isArray(d)) arr = d;
@@ -65,7 +69,6 @@ export const getTripsService = async (
   else if (Array.isArray(d.paginationResult?.data)) arr = d.paginationResult.data;
   else if (Array.isArray((res as any).data?.data)) arr = (res as any).data.data;
 
-  // fallback: if top-level has "data" that's an object with array inside named data/rows etc.
   if (!arr) {
     // try to detect data.* arrays
     for (const key of Object.keys(d)) {
@@ -80,7 +83,6 @@ export const getTripsService = async (
     }
   }
 
-  // last resort: if res.data.data exists and is object that contains array under 'data' or similar
   if (!arr && d && typeof d === "object") {
     // check common nested
     const candidates = ["data", "items", "docs", "results", "trips"];
@@ -104,17 +106,18 @@ export const patchTripsService = async (payload: TripPayload) => {
   return res.data;
 };
 
-// PATCH api/v1/trips/:id/trip/compelete
+// PATCH api/v1/trips/complete/:id
 export const completeTripService = async (
   id: string,
   payload?: Record<string, any>
 ) => {
   const res = await axiosClient.patch(
-    `${TRIPS_BASE}/${id}/trip/compelete`,
+    `${TRIPS_BASE}/complete/${id}`,
     payload ?? {}
   );
   return res.data;
 };
+
 
 // GET api/v1/trips/:id
 export const getTripByIdService = async (id: string): Promise<Trip | null> => {

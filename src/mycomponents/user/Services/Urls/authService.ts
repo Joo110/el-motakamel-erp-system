@@ -1,5 +1,5 @@
 // src/mycomponents/user/Services/Urls/authService.ts
-import { publicAxiosInstance } from "./Urls"; // instance عام بدون interceptors
+import { publicAxiosInstance } from "./Urls";
 
 // ====== Types ======
 export interface ForgetPasswordRequest { email: string; }
@@ -40,29 +40,26 @@ export interface RegisterResponse {
 
 // ====== Services ======
 
-// Register - عامة => نستخدم publicAxiosInstance
 export const registerService = async (
   payload: RegisterRequest
 ): Promise<RegisterResponse> => {
   const response = await publicAxiosInstance.post<RegisterResponse>(
-    "/users/register",
+    "/auth/signUp",
     payload
   );
   return response.data;
 };
 
-// Verify reset code - عامة
 export const verifyResetCodeService = async (
   data: VerifyCodeRequest
 ): Promise<VerifyCodeResponse> => {
   const response = await publicAxiosInstance.post<VerifyCodeResponse>(
-    "/auth/verifiedPassword",
+    "/forgetPassword/resendResetCode",
     data
   );
   return response.data;
 };
 
-// Reset password - عامة (عادة بدون Authorization) — إذا كانت تتطلب توكن استخدم axiosClient
 export const resetPasswordService = async (
   data: ResetPasswordRequest
 ): Promise<ResetPasswordResponse> => {
@@ -73,7 +70,7 @@ export const resetPasswordService = async (
   return response.data;
 };
 
-// Login - عامة
+// Login
 export const loginService = async (
   data: LoginRequest
 ): Promise<LoginResponse> => {
@@ -81,7 +78,7 @@ export const loginService = async (
   return response.data;
 };
 
-// Forget password - عامة
+// Forget password
 export const forgetPasswordService = async (
   data: ForgetPasswordRequest
 ): Promise<ForgetPasswordResponse> => {

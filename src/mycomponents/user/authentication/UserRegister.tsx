@@ -88,40 +88,50 @@ const UserRegister = () => {
 
   const { register: doRegister, loading } = useRegister();
 
-  const onSubmit = async (data: FormData) => {
-    const payload = {
-      ...data,
-      organizations: data.organizations || [],
-    };
+const onSubmit = async (data: FormData) => {
+  let phone = data.phone.phoneNumber.trim();
 
-    console.log("Payload sent:", payload);
-
-    try {
-      const response = await doRegister(payload);
-      toast.success(response.message || "Registration successfully");
-      reset({
-        fullname: "",
-        email: "",
-        phone: { countryCode: countries[0].code, phoneNumber: "" },
-        password: "",
-        confirmPassword: "",
-        role: "",
-        organizations: [],
-      });
-      console.log("Response received:", response);
-    } catch (err) {
-      if (typeof err === "object" && err !== null && "response" in err) {
- // @ts-expect-error: err might not always have a response property (AxiosError handling)
-const serverMsg = err.response?.data?.status ?? undefined;
-
-        if (serverMsg) {
-          toast.error(serverMsg);
-          return;
-        }
-      }
-      toast.error("An error occurred during registration.");
+  if (data.phone.countryCode === "+20") {
+    // remove leading 0 if exists
+    if (phone.startsWith("0")) {
+      phone = phone.slice(1);
     }
+    phone = `+20${phone}`;
+  }
+
+  if (data.phone.countryCode === "+966") {
+    if (phone.startsWith("0")) {
+      phone = phone.slice(1);
+    }
+    phone = `+966${phone}`;
+  }
+
+  const payload = {
+    name: data.fullname,
+    email: data.email,
+    phone, // ✅ STRING مش object
+    role: data.role,
+    password: data.password,
+    passwordConfirmation: data.confirmPassword,
+    organizations: data.organizations || [],
   };
+
+  console.log("FINAL PAYLOAD:", payload);
+
+  try {
+    const response = await doRegister(payload as any);
+    toast.success(response?.message ?? "Registration successfully");
+    reset();
+  } catch (err: any) {
+    const errors = err?.response?.data?.errors;
+    if (Array.isArray(errors)) {
+      toast.error(errors.map(e => e.msg).join(" • "));
+      return;
+    }
+    toast.error("Registration failed");
+  }
+};
+
 
   // Close dropdown when clicking outside
   useEffect(() => {

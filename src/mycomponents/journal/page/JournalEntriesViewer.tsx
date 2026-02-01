@@ -17,12 +17,12 @@ const JournalEntriesViewer: React.FC = () => {
   const { entries: hookJournals, loading: hookLoadingJournals } = useJournal();
   const { t } = useTranslation();
   
-const { 
-    entries, 
-    loading: entriesLoading, 
-    setJournalId,
-    removeEntry
-} = useJournal();
+  const { 
+      entries, 
+      loading: entriesLoading, 
+      setJournalId,
+      removeEntry
+  } = useJournal();
 
 
   const { accounts } = useAccounts();
@@ -39,13 +39,43 @@ const {
     }
   }, [hookJournals]);
 
-  const getAccountName = (accountId: string): string => {
-    const account = accounts.find(acc => acc._id === accountId || acc.id === accountId);
-    return account?.name || t('Unknown Account');
+  // Accept either account id string or account object (with _id, name, code)
+  const getAccountName = (accountRef: any): string => {
+    if (!accountRef) return t('Unknown Account');
+
+    // If it's an object with name, return it
+    if (typeof accountRef === 'object') {
+      const name = accountRef.name ?? accountRef.accountName ?? accountRef.title;
+      if (name && String(name).trim() !== '') return String(name);
+      // if object has id, try lookup by id
+      const id = accountRef._id ?? accountRef.id;
+      if (id) {
+        const account = accounts.find(acc => acc._id === id || acc.id === id);
+        if (account?.name) return account.name;
+      }
+      // fallback to stringified object
+      return t('Unknown Account');
+    }
+
+    // if it's a string, treat as id
+    const account = accounts.find(acc => acc._id === accountRef || acc.id === accountRef);
+    return account?.name ?? t('Unknown Account');
   };
 
-  const getAccountCode = (accountId: string): string | undefined => {
-    const account = accounts.find(acc => acc._id === accountId || acc.id === accountId);
+  const getAccountCode = (accountRef: any): string | undefined => {
+    if (!accountRef) return undefined;
+    if (typeof accountRef === 'object') {
+      const code = accountRef.code ?? accountRef.accountCode;
+      if (code) return String(code);
+      const id = accountRef._id ?? accountRef.id;
+      if (id) {
+        const account = accounts.find(acc => acc._id === id || acc.id === id);
+        return account?.code;
+      }
+      return undefined;
+    }
+    // string id
+    const account = accounts.find(acc => acc._id === accountRef || acc.id === accountRef);
     return account?.code;
   };
 
@@ -326,16 +356,23 @@ const {
                         </thead>
                         <tbody>
                           {lines.map((line: any, lineIndex: number) => (
-                            <tr key={line._id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                            <tr key={line._id ?? lineIndex} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                               <td className="py-4 px-4 text-gray-600 text-sm">{lineIndex + 1}</td>
                               <td className="py-4 px-4">
                                 <div>
                                   <p className="font-semibold text-gray-900">
-                                    {line.accountId ? getAccountName(line.accountId) : (line.accountName || 'N/A')}
+                                    {/* show name from account object if provided, otherwise lookup by id */}
+                                    {line.accountId
+                                      ? (typeof line.accountId === 'object' ? (line.accountId.name ?? getAccountName(line.accountId)) : getAccountName(line.accountId))
+                                      : (line.accountName || 'N/A')}
                                   </p>
-                                  {(line.accountId ? getAccountCode(line.accountId) : line.accountCode) && (
+                                  {(line.accountId
+                                      ? (typeof line.accountId === 'object' ? (line.accountId.code ?? getAccountCode(line.accountId)) : getAccountCode(line.accountId))
+                                      : line.accountCode) && (
                                     <p className="text-xs text-gray-500 font-mono mt-0.5">
-                                      {line.accountId ? getAccountCode(line.accountId) : line.accountCode}
+                                      {line.accountId
+                                        ? (typeof line.accountId === 'object' ? (line.accountId.code ?? getAccountCode(line.accountId)) : getAccountCode(line.accountId))
+                                        : line.accountCode}
                                     </p>
                                   )}
                                 </div>

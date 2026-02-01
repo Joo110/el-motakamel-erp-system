@@ -195,22 +195,6 @@ const Sidebar = () => {
                 </Link>
 
                 <Link
-                  to="/dashboard/transfermanagement"
-                  className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
-                    location.pathname === "/dashboard/transfermanagement"
-                      ? "text-white font-medium"
-                      : "text-gray-300 hover:text-white hover:bg-[#3d5466]"
-                  }`}
-                >
-                  {t("transfer_management")}
-                  <div className={`absolute right-0 top-0 h-full w-1 bg-[#3498db] transition-opacity ${
-                    location.pathname === "/dashboard/transfermanagement"
-                      ? "opacity-100"
-                      : "opacity-0 group-hover/item:opacity-100"
-                  }`}></div>
-                </Link>
-
-                <Link
                   to="/dashboard/transfer"
                   className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
                     location.pathname === "/dashboard/transfer"
@@ -729,7 +713,7 @@ const Sidebar = () => {
             {openMenus["Trips"] && (
               <div className="bg-[#34495e] py-2">
                
- <Link
+                 <Link
                   to="/dashboard/Trips/TripsManagement"
                   className={`block px-6 py-2.5 pl-14 text-sm transition-colors relative group/item ${
                     location.pathname === "/dashboard/Trips/TripsManagement"

@@ -83,7 +83,6 @@ export function usePayrolls(initialParams?: Record<string, any>) {
       setError(null);
       try {
         const res = await updatePayrollService(id, payload);
-        toast.success("✅ Payroll updated successfully");
         // refresh local list after update
         await fetch();
         return res;

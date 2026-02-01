@@ -420,13 +420,14 @@ const PayrollScreen: React.FC = () => {
                     <td className="px-6 py-4 text-sm text-gray-600">{item.total}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">{item.date}</td>
                     <td className="px-6 py-4 flex items-center gap-2">
-                  
-                      <button
-                        onClick={() => handleModify(item)}
-                        className="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded-xl hover:bg-gray-300"
-                      >
-                        {t('modify')}
-                      </button>
+                      {item.status === 'Unpaid' && (
+                        <button
+                          onClick={() => handleModify(item)}
+                          className="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded-xl hover:bg-gray-300"
+                        >
+                          {t('modify')}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

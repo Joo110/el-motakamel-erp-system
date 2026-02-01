@@ -1,14 +1,15 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from "react-router-dom";
+// FILE: src/mycomponents/Trips/page/TripsManagement.tsx
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import useTrips from "../hooks/useTrips";
+import type { Trip } from "../services/tripsService";
+import { toast } from 'react-hot-toast';
 
 interface TripRow {
+  id?: string;
   tripNumber: string | number;
-  agent: string;
   driver: string;
   expenses: string;
-  sales: string;
   area: string;
   date: string;
   status: string;
@@ -18,9 +19,16 @@ const TripsManagement: React.FC = () => {
   const { t } = useTranslation();
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
-  const navigate = useNavigate();
 
-  const { trips: apiTrips, loading } = useTrips();
+  // useTrips provides trips array, loading, and actions
+  const { trips: apiTrips, loading, getTrip, completeTrip, refresh } = useTrips();
+
+  // modal / overlay state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
+  const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
+  const [expensesInput, setExpensesInput] = useState<string>('');
+  const [modalLoading, setModalLoading] = useState(false);
 
   const uiTrips: TripRow[] = useMemo(() => {
     const formatDate = (d?: string) => {
@@ -39,14 +47,11 @@ const TripsManagement: React.FC = () => {
     };
 
     return (apiTrips || []).map((t) => ({
+      id: t._id ?? t.id ?? undefined,
       tripNumber: t.tripNumber ?? t._id ?? t.id ?? '-',
-      agent:
-        typeof t.representative === "string"
-          ? t.representative
-          : (t.representative as any)?.name ?? "-",
       driver: t.driver ?? "-",
-      expenses: (t as any).expenses ? `${(t as any).expenses}` : "-",
-      sales: (t as any).sales ? `${(t as any).sales}` : "-",
+      // show expense field if exists else '-'
+      expenses: (t as any).expenseses || (t as any).expenses ? `${(t as any).expenseses ?? (t as any).expenses}` : "-",
       area: t.location ?? "-",
       date: formatDate(t.date ?? t.createdAt ?? ""),
       status: (t.status ?? "inprogress") as string,
@@ -55,21 +60,73 @@ const TripsManagement: React.FC = () => {
 
   const totalTrips = uiTrips.length;
 
-  // ---------------------- NEW PAGINATION LOGIC ----------------------
+  // Pagination
   const totalPages = Math.max(1, Math.ceil(totalTrips / entriesPerPage));
-
   const paginatedTrips = useMemo(() => {
     const start = (currentPage - 1) * entriesPerPage;
     return uiTrips.slice(start, start + entriesPerPage);
   }, [uiTrips, currentPage, entriesPerPage]);
 
   const pageNumbers = [...Array(totalPages)].map((_, i) => i + 1);
-  // ------------------------------------------------------------------
 
-  const handleContinue = (tripNumber: string | number) => {
-    // navigate by id if available; try to find underlying trip id
-    // if tripNumber is actually the trip id, fine; otherwise navigate with it
-    navigate(`/dashboard/Trips/DelegatesManagement/${tripNumber}`);
+  // Open overlay modal to enter expenses (no navigation away from current page)
+  const handleContinue = async (tripIdOrNumber: string | number) => {
+    // try to map trip id: prefer real id from uiTrips array
+    const row = uiTrips.find(r => r.tripNumber === tripIdOrNumber || r.id === String(tripIdOrNumber));
+    const id = row?.id ?? String(tripIdOrNumber);
+    setSelectedTripId(id);
+    setModalOpen(true);
+
+    try {
+      // fetch full trip details (uses useTrips.getTrip)
+      const trip = id ? await getTrip(id) : null;
+      setSelectedTrip(trip ?? null);
+
+      // prefill expenses input if backend already has value
+      const existingExpenses = (trip as any)?.expenseses ?? (trip as any)?.expenses ?? '';
+      setExpensesInput(existingExpenses ? String(existingExpenses) : '');
+    } catch (err) {
+      console.error('Failed to load trip details', err);
+      toast.error(t('Error loading trip details'));
+      setSelectedTrip(null);
+      setExpensesInput('');
+    }
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setSelectedTripId(null);
+    setSelectedTrip(null);
+    setExpensesInput('');
+    setModalLoading(false);
+  };
+
+  const handleSubmitExpenses = async () => {
+    if (!selectedTripId) {
+      toast.error(t('No trip selected'));
+      return;
+    }
+
+    // basic validation
+    const val = Number(expensesInput);
+    if (isNaN(val) || val < 0) {
+      toast.error(t('Please enter a valid non-negative number for expenses'));
+      return;
+    }
+
+    setModalLoading(true);
+    try {
+      // call completeTrip to send payload { expenseses: <number> }
+      await completeTrip(selectedTripId, { expenseses: val });
+      toast.success(t('Expenses saved successfully'));
+      // refresh trips list to reflect changes
+      await refresh();
+      closeModal();
+    } catch (err: any) {
+      console.error('Failed to submit expenses', err);
+      toast.error(err?.response?.data?.message ?? t('Error submitting expenses'));
+      setModalLoading(false);
+    }
   };
 
   return (
@@ -109,16 +166,10 @@ const TripsManagement: React.FC = () => {
                   {t('Trip number')}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  {t('Agent')}
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                   {t('Driver')}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                   {t('Expenses')}
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  {t('Sales')}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                   {t('Area')}
@@ -138,14 +189,12 @@ const TripsManagement: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-100">
               {paginatedTrips.map((trip, index) => (
                 <tr
-                  key={String(trip.tripNumber ?? index)}
+                  key={trip.id ?? String(trip.tripNumber ?? index)}
                   className="hover:bg-blue-50 transition-all duration-200"
                 >
                   <td className="px-6 py-4 text-sm font-semibold text-gray-900">{trip.tripNumber}</td>
-                  <td className="px-6 py-4 text-sm font-medium text-gray-800">{trip.agent}</td>
                   <td className="px-6 py-4 text-sm font-medium text-gray-800">{trip.driver}</td>
                   <td className="px-6 py-4 text-sm font-medium text-gray-800">{trip.expenses}</td>
-                  <td className="px-6 py-4 text-sm font-medium text-gray-800">{trip.sales}</td>
                   <td className="px-6 py-4 text-sm font-medium text-gray-800">{trip.area}</td>
                   <td className="px-6 py-4 text-sm font-medium text-gray-800">{trip.date}</td>
                   <td className="px-6 py-4">
@@ -155,7 +204,7 @@ const TripsManagement: React.FC = () => {
                   </td>
                   <td className="px-6 py-4">
                     <button
-                      onClick={() => handleContinue(trip.tripNumber)}
+                      onClick={() => handleContinue(trip.id ?? trip.tripNumber)}
                       className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-5 py-2 rounded-xl font-semibold shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
                     >
                       {t('Continue')}
@@ -166,7 +215,7 @@ const TripsManagement: React.FC = () => {
 
               {!loading && paginatedTrips.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                     {t('No trips found')}
                   </td>
                 </tr>
@@ -174,7 +223,7 @@ const TripsManagement: React.FC = () => {
 
               {loading && (
                 <tr>
-                  <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                     {t('Loading...')}
                   </td>
                 </tr>
@@ -233,6 +282,77 @@ const TripsManagement: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal / Overlay to enter expenses */}
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 relative">
+            <button
+              onClick={closeModal}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+
+            <h3 className="text-lg font-semibold mb-4">{t('Enter_Expenses')}</h3>
+
+            <div className="mb-4">
+              <label className="text-sm text-gray-700 block mb-2">{t('Trip')}</label>
+              <div className="text-sm text-gray-900">
+                #{selectedTrip?.tripNumber ?? selectedTripId} • {selectedTrip?.driver ?? ''}
+                {selectedTrip?.car ? ` • ${ (selectedTrip.car as any)?.name ?? '' }` : ''}
+              </div>
+            </div>
+
+            {/* show products summary (optional) */}
+            {selectedTrip?.products && selectedTrip.products.length > 0 && (
+              <div className="mb-4">
+                <label className="text-sm text-gray-700 block mb-2">{t('Products')}</label>
+                <div className="max-h-40 overflow-auto border rounded p-3 bg-gray-50 text-sm">
+                  {selectedTrip.products.map((p: any) => (
+                    <div key={p._id ?? p.product?._id ?? `${p.product}-${p._id}`} className="flex justify-between py-1">
+                      <div>{(p.product as any)?.name ?? p.product ?? '-'}</div>
+                      <div className="text-gray-600">{p.quantity} × {p.price} = {(p.total ?? (p.quantity * p.price))}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Expenses input */}
+            <div className="mb-6">
+              <label className="text-sm text-gray-700 block mb-2">{t('Expenses')}</label>
+              <input
+                type="number"
+                min={0}
+                value={expensesInput}
+                onChange={(e) => setExpensesInput(e.target.value)}
+                className="w-full px-3 py-2 border rounded-md"
+                placeholder="1500"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={closeModal}
+                className="px-4 py-2 border rounded-md text-sm"
+                disabled={modalLoading}
+              >
+                {t('Cancel')}
+              </button>
+
+              <button
+                onClick={handleSubmitExpenses}
+                className="px-5 py-2 bg-blue-600 text-white rounded-xl font-semibold shadow"
+                disabled={modalLoading}
+              >
+                {modalLoading ? t('Saving...') : t('Save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
