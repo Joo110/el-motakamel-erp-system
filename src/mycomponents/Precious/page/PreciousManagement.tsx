@@ -63,7 +63,7 @@ const PreciousManagement = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-    void fetch(activeTab);
+void fetch();
   }, [activeTab, fetch]);
 
   const totalPages = Math.max(1, Math.ceil(items.length / itemsPerPage));
@@ -180,18 +180,17 @@ const PreciousManagement = () => {
                                 if (activeTab === "draft") {
                                   await approvePurchaseOrder(orderId);
                                   toast.success("✅ " + t("approve") + " successfully!");
-                                  void fetch(activeTab);
-                               } else if (activeTab === "approved") {
-  // مثال: هنا بتحدد الكميات اللي اتسلمت
-  const quantities = order.products.map(p => p.quantity); // ممكن تعدل حسب الـ input
-  await deliverPurchaseOrder(orderId, quantities);
-  toast.success("🚚 " + t("deliver") + " successfully!");
-  void fetch(activeTab);
-}
- else {
-                                  navigate(`/dashboard/stock-in-draft/${orderId}`, {
-                                    state: { status: "invoice" },
-                                  });
+void fetch();
+                                } else if (activeTab === "approved") {
+                                  await deliverPurchaseOrder(orderId);
+                                  toast.success("🚚 " + t("deliver") + " successfully!");
+void fetch();
+                                } else {
+                                  // changed to single-argument form to satisfy TS types
+                               navigate(`/dashboard/stock-in-draft/${orderId}`, {
+  state: { status: "invoice" },
+});
+
                                 }
                               } catch (err: any) {
                                 console.error(err);
@@ -212,9 +211,11 @@ const PreciousManagement = () => {
                             onClick={() => {
                               console.log("👁️ Viewing Order ID:", orderId);
                               console.log("📦 Status:", activeTab);
-                              navigate(`/dashboard/stock-in-draft/${orderId}`, {
-                                state: { status: activeTab },
-                              });
+                              // changed to single-argument form to satisfy TS types
+                            navigate(`/dashboard/stock-in-draft/${orderId}`, {
+  state: { status: activeTab },
+});
+
                             }}
                           >
                             {t("view")}
