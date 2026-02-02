@@ -1,10 +1,9 @@
 // src/mycomponents/HR/page/AddEmployeeScreen.tsx
 import React, { useState } from 'react';
 import { useDepartments } from '../../Department/hooks/useDepartments';
-import { useEmployees } from '../../HR/hooks/useEmployees';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import { Edit2, Upload } from 'lucide-react';
+import { Edit2, Upload, AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import axiosClient from "@/lib/axiosClient";
 
@@ -25,6 +24,11 @@ type EmployeeFormData = {
   manager: string;
   salary: string;
   dateOfEmployment: string;
+};
+
+type ValidationError = {
+  field: string;
+  message: string;
 };
 
 const AddEmployeeScreen: React.FC = () => {
@@ -51,13 +55,11 @@ const AddEmployeeScreen: React.FC = () => {
 
   const [image, setImage] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
-
-  // new states for CV
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [cvName, setCvName] = useState<string>('');
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
 
   const { departments = [] } = useDepartments();
-  const { createEmployee } = useEmployees();
 
   const fakeManagers = [
     { id: '696407925278be5e9b469fe4', name: 'Ahmed Mohamed Updated' },
@@ -147,19 +149,16 @@ const AddEmployeeScreen: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
-  // CV upload handler (keeps UI minimal and consistent with image upload area)
   const handleCvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     if (!file) return;
 
-    // allowed types: pdf, doc, docx
     const allowed = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
     if (!allowed.includes(file.type)) {
       toast.error(t('validation_cv_type_invalid') || 'CV must be PDF or DOC/DOCX');
       return;
     }
 
-    // limit size to 10MB
     if (file.size > 10 * 1024 * 1024) {
       toast.error(t('validation_cv_too_large') || 'CV must be smaller than 10MB');
       return;
@@ -202,23 +201,30 @@ const AddEmployeeScreen: React.FC = () => {
 
   const [saving, setSaving] = useState(false);
 
-  // upload CV document to the endpoint
-const uploadEmployeeDocuments = async (employeeId: string) => {
-  if (!cvFile) return;
+  const uploadEmployeeDocuments = async (employeeId: string) => {
+    if (!cvFile) return;
 
-  const fd = new FormData();
-  fd.append('documents', cvFile);
+    const fd = new FormData();
+    fd.append('documents', cvFile);
 
-  const res = await axiosClient.post(
-    `/employees/documents/${employeeId}`,
-    fd,
-    { headers: { 'Content-Type': 'multipart/form-data' } }
-  );
+    const res = await axiosClient.post(
+      `/employees/documents/${employeeId}`,
+      fd,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
 
-  return res.data;
-};
+    return res.data;
+  };
 
-  const handleSave = async () => {
+  const getFieldErrorMessage = (fieldName: string): string | null => {
+    const error = validationErrors.find(e => e.field === fieldName);
+    return error ? error.message : null;
+  };
+
+ const handleSave = async () => {
+    // مسح الأخطاء السابقة
+    setValidationErrors([]);
+
     if (!formData.name.trim()) {
       toast.error(t('validation_name_required'));
       return;
@@ -293,14 +299,15 @@ const uploadEmployeeDocuments = async (employeeId: string) => {
       return;
     }
 
+    setSaving(true);
+
     try {
-      setSaving(true);
       const form = new FormData();
       form.append('name', formData.name);
       form.append('jobTitle', formData.jobTitle);
       form.append('nationalId', formData.nationalId);
       form.append('address', formData.address);
-form.append('birth_date', birthIso); // اسم مختلف
+      form.append('birth_date', birthIso);
       form.append('email', formData.email);
       if (phoneE164) form.append('phone', phoneE164);
       if (altPhoneE164) form.append('alternativePhone', altPhoneE164);
@@ -317,76 +324,169 @@ form.append('birth_date', birthIso); // اسم مختلف
       form.append('employmentDate', empIso);
       if (imageFile) form.append('avatar', imageFile);
 
-      // create employee using existing hook (expects FormData or similar)
-      const created = await createEmployee(form as unknown as any);
+      // استدعاء الـ API مباشرة
+      const response = await axiosClient.post('/employees', form, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
 
-      // try to extract employee id from response in a few common shapes
-      let employeeId: string | undefined;
-      if (!created) {
-        throw new Error('Create employee returned empty response');
-      }
-      // possible shapes: created._id, created.id, created.data._id, created.data.id, created.data.data._id (multiple APIs)
-      employeeId =
-        (created as any)._id ??
-        (created as any).id ??
-        (created as any)?.data?._id ??
-        (created as any)?.data?.id ??
-        (created as any)?.data?.data?._id ??
-        (created as any)?.employee?._id ??
+      console.log('Success response:', response);
+
+      const created = response.data;
+      const employeeId: string | undefined =
+        created?._id ??
+        created?.id ??
+        created?.data?._id ??
+        created?.data?.id ??
+        created?.employee?._id ??
         undefined;
 
-      // fallback: if created is axios response object, check created.data
-      if (!employeeId && (created as any).data && typeof (created as any).data === 'object') {
-        const d = (created as any).data;
-        employeeId = d._id ?? d.id ?? d?.data?._id ?? d?.data?.id ?? undefined;
-      }
-
       if (!employeeId) {
-        // Best-effort: if object has array with created employee (unlikely), try to find string id field
-        const strId = Object.values(created as any).find((v: any) => typeof v === 'string' && v.length > 5);
-        if (typeof strId === 'string') employeeId = strId;
-      }
-
-      if (!employeeId) {
-        // creation succeeded but couldn't determine id — inform user and stop CV upload
-        toast.success(t('success_employee_created'));
+        toast.success(t('success_employee_created') || 'تم إنشاء الموظف بنجاح');
         navigate('/dashboard/hr/employees');
+        setSaving(false);
         return;
       }
 
-      // if cv provided upload it
+      // رفع الـ CV لو موجود
       if (cvFile) {
         try {
           await uploadEmployeeDocuments(employeeId);
-          toast.success(t('cv_uploaded_success') || 'CV uploaded successfully');
+          toast.success(t('cv_uploaded_success') || 'تم رفع السيرة الذاتية بنجاح');
         } catch (err) {
           console.error('CV upload failed', err);
-          toast.error(t('cv_upload_failed') || 'CV upload failed');
+          toast.error(t('cv_upload_failed') || 'فشل رفع السيرة الذاتية');
         }
       }
 
-      toast.success(t('success_employee_created'));
+      toast.success(t('success_employee_created') || 'تم إنشاء الموظف بنجاح');
       navigate('/dashboard/hr/employees');
-    } catch (err: any) {
-      console.error('Create employee error', err);
-      const message =
-        err?.message ||
-        err?.err?.message ||
-        err?.response?.data?.message ||
-        err?.err?.errorResponse?.errmsg ||
-        '';
-      if (typeof message === 'string' && message.includes('E11000 duplicate key error')) {
-        if (message.includes('email')) {
-          toast.error(t('error_email_duplicate'));
-        } else if (message.includes('phone')) {
-          toast.error(t('error_phone_duplicate'));
-        } else if (message.includes('alternativePhone')) {
-          toast.error(t('error_alt_phone_duplicate'));
-        } else {
-          toast.error(t('error_duplicate_field'));
-        }
+
+    } catch (error: any) {
+      console.error('=== ERROR CAUGHT ===');
+      console.error('Full error object:', error);
+      console.error('Error response:', error?.response);
+      console.error('Error response data:', error?.response?.data);
+      console.error('Error response data errors:', error?.response?.data?.errors);
+      
+      // استخراج الأخطاء من الـ response
+      const responseData = error?.response?.data;
+      const serverErrors = responseData?.errors;
+
+      if (Array.isArray(serverErrors) && serverErrors.length > 0) {
+        console.log('Found server errors:', serverErrors);
+        
+        // دالة للترجمة بناءً على اسم الحقل ونوع الخطأ
+        const translateError = (fieldName: string, errorMsg: string): string => {
+          const lowerMsg = errorMsg.toLowerCase();
+          
+          // ترجمة حسب نوع الخطأ
+          if (lowerMsg.includes('already exists') || lowerMsg.includes('already in use')) {
+            if (fieldName === 'email') return t('error_email_exists') || 'البريد الإلكتروني مستخدم بالفعل';
+            if (fieldName === 'phone') return t('error_phone_exists') || 'رقم الهاتف مستخدم بالفعل';
+            if (fieldName === 'nationalId') return t('error_national_id_exists') || 'الرقم القومي مستخدم بالفعل';
+            return `${translateFieldName(fieldName)} ${t('error_already_exists') || 'مستخدم بالفعل'}`;
+          }
+          
+          if (lowerMsg.includes('required') || lowerMsg.includes('is required')) {
+            return `${translateFieldName(fieldName)} ${t('error_required') || 'مطلوب'}`;
+          }
+          
+          if (lowerMsg.includes('invalid') || lowerMsg.includes('must be valid')) {
+            return `${translateFieldName(fieldName)} ${t('error_invalid') || 'غير صالح'}`;
+          }
+          
+          if (lowerMsg.includes('must be') && lowerMsg.includes('characters')) {
+            const match = errorMsg.match(/(\d+)\s*characters?/i);
+            if (match) {
+              return `${translateFieldName(fieldName)} ${t('error_must_be')} ${match[1]} ${t('error_characters') || 'حرف'}`;
+            }
+          }
+          
+          if (lowerMsg.includes('must be one of')) {
+            // استخراج القيم المسموحة
+            const valuesMatch = errorMsg.match(/must be one of:?\s*(.+)/i);
+            if (valuesMatch) {
+              return `${translateFieldName(fieldName)} ${t('error_must_be_one_of') || 'يجب أن يكون أحد القيم التالية'}: ${valuesMatch[1]}`;
+            }
+            return `${translateFieldName(fieldName)} ${t('error_invalid_value') || 'قيمة غير صالحة'}`;
+          }
+          
+          if (lowerMsg.includes('phone') && (lowerMsg.includes('egyptian') || lowerMsg.includes('saudi'))) {
+            return `${translateFieldName(fieldName)} ${t('error_phone_format') || 'يجب أن يكون رقم هاتف مصري أو سعودي صحيح'}`;
+          }
+          
+          // إذا لم نجد ترجمة محددة، نرجع الرسالة الأصلية
+          return `${translateFieldName(fieldName)}: ${errorMsg}`;
+        };
+        
+        // دالة لترجمة أسماء الحقول
+        const translateFieldName = (fieldName: string): string => {
+          const fieldTranslations: Record<string, string> = {
+            'email': t('email') || 'البريد الإلكتروني',
+            'phone': t('phone') || 'رقم الهاتف',
+            'alternativePhone': t('alternate_phone') || 'رقم الهاتف البديل',
+            'nationalId': t('national_id') || 'الرقم القومي',
+            'role': t('role') || 'الدور الوظيفي',
+            'name': t('employee_name') || 'اسم الموظف',
+            'jobTitle': t('job_title') || 'المسمى الوظيفي',
+            'department': t('department') || 'القسم',
+            'manager': t('manager') || 'المدير',
+            'salary': t('salary') || 'الراتب',
+            'address': t('address') || 'العنوان',
+            'birth_date': t('date_of_birth') || 'تاريخ الميلاد',
+            'employmentDate': t('date_of_employment') || 'تاريخ التوظيف',
+            'workLocation': t('work_location') || 'موقع العمل',
+            'levelOfExperience': t('level_of_experience') || 'مستوى الخبرة',
+            'employmentType': t('employment_type') || 'نوع التوظيف',
+          };
+          
+          return fieldTranslations[fieldName] || fieldName;
+        };
+        
+        const mappedErrors: ValidationError[] = serverErrors.map((err: any) => {
+          const fieldName = err.path || err.param || err.field || 'general';
+          const errorMsg = err.msg || err.message || t('error_validation') || 'خطأ في البيانات';
+          
+          return {
+            field: translateFieldName(fieldName),
+            message: translateError(fieldName, errorMsg)
+          };
+        });
+
+        console.log('Mapped validation errors:', mappedErrors);
+        setValidationErrors(mappedErrors);
+
+        // عرض كل خطأ في toast
+        mappedErrors.forEach(error => {
+          toast.error(error.message, {
+            duration: 6000,
+          });
+        });
       } else {
-        toast.error(t(message || 'error_creating_employee'));
+        // لو مفيش أخطاء مهيكلة
+        let errorMessage = t('error_creating_employee') || 'حدث خطأ في إنشاء الموظف';
+        
+        // جرب تترجم الرسالة العامة لو موجودة
+        if (responseData?.message) {
+          const msg = responseData.message.toLowerCase();
+          if (msg.includes('duplicate') || msg.includes('already exists')) {
+            errorMessage = t('error_duplicate_data') || 'توجد بيانات مكررة';
+          } else if (msg.includes('validation')) {
+            errorMessage = t('error_validation') || 'خطأ في التحقق من البيانات';
+          } else if (msg.includes('unauthorized')) {
+            errorMessage = t('error_unauthorized') || 'غير مصرح لك بهذا الإجراء';
+          } else if (msg.includes('not found')) {
+            errorMessage = t('error_not_found') || 'البيانات غير موجودة';
+          } else {
+            // إذا لم نجد ترجمة، نعرض الرسالة مع سياق
+            errorMessage = `${t('error_creating_employee') || 'خطأ في إنشاء الموظف'}: ${responseData.message}`;
+          }
+        } else if (error?.message) {
+          errorMessage = `${t('error_creating_employee') || 'خطأ في إنشاء الموظف'}`;
+        }
+        
+        console.log('Showing generic error:', errorMessage);
+        toast.error(errorMessage);
       }
     } finally {
       setSaving(false);
@@ -413,8 +513,29 @@ form.append('birth_date', birthIso); // اسم مختلف
       </div>
 
       <div className="max-w-5xl mx-auto px-6 py-6">
+        {/* عرض الأخطاء في البداية */}
+        {validationErrors.length > 0 && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={20} />
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-red-800 mb-2">
+                  يرجى تصحيح الأخطاء التالية:
+                </h3>
+                <ul className="space-y-1">
+                  {validationErrors.map((error, index) => (
+                    <li key={index} className="text-sm text-red-700">
+                      <span className="font-medium">{error.field}:</span> {error.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h2 className="Text-base font-semibold text-gray-900 mb-5">{t('personal_details')}</h2>
+          <h2 className="text-base font-semibold text-gray-900 mb-5">{t('personal_details')}</h2>
 
           <div className="grid grid-cols-3 gap-5 mb-5">
             <div className="col-span-2 space-y-4">
@@ -424,8 +545,13 @@ form.append('birth_date', birthIso); // اسم مختلف
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
+                  className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500 ${
+                    getFieldErrorMessage('name') ? 'border-red-500' : 'border-gray-300'
+                  }`}
                 />
+                {getFieldErrorMessage('name') && (
+                  <p className="mt-1 text-xs text-red-600">{getFieldErrorMessage('name')}</p>
+                )}
               </div>
 
               <div>
@@ -434,8 +560,13 @@ form.append('birth_date', birthIso); // اسم مختلف
                   type="text"
                   value={formData.jobTitle}
                   onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
+                  className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500 ${
+                    getFieldErrorMessage('jobTitle') ? 'border-red-500' : 'border-gray-300'
+                  }`}
                 />
+                {getFieldErrorMessage('jobTitle') && (
+                  <p className="mt-1 text-xs text-red-600">{getFieldErrorMessage('jobTitle')}</p>
+                )}
               </div>
 
               <div>
@@ -444,8 +575,13 @@ form.append('birth_date', birthIso); // اسم مختلف
                   type="text"
                   value={formData.nationalId}
                   onChange={(e) => setFormData({ ...formData, nationalId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
+                  className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500 ${
+                    getFieldErrorMessage('nationalId') ? 'border-red-500' : 'border-gray-300'
+                  }`}
                 />
+                {getFieldErrorMessage('nationalId') && (
+                  <p className="mt-1 text-xs text-red-600">{getFieldErrorMessage('nationalId')}</p>
+                )}
               </div>
             </div>
 
@@ -481,7 +617,6 @@ form.append('birth_date', birthIso); // اسم مختلف
                 )}
               </div>
 
-              {/* CV upload control (keeps visual style minimal and in the same area) */}
               <div className="mt-3">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <div className="flex items-center justify-center gap-2 px-3 py-1.5 bg-white text-gray-700 rounded text-xs border border-gray-300 hover:bg-gray-50 transition-all">
@@ -538,8 +673,13 @@ form.append('birth_date', birthIso); // اسم مختلف
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
+                className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500 ${
+                  getFieldErrorMessage('email') ? 'border-red-500' : 'border-gray-300'
+                }`}
               />
+              {getFieldErrorMessage('email') && (
+                <p className="mt-1 text-xs text-red-600">{getFieldErrorMessage('email')}</p>
+              )}
             </div>
 
             <div>
@@ -548,8 +688,13 @@ form.append('birth_date', birthIso); // اسم مختلف
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
+                className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500 ${
+                  getFieldErrorMessage('phone') ? 'border-red-500' : 'border-gray-300'
+                }`}
               />
+              {getFieldErrorMessage('phone') && (
+                <p className="mt-1 text-xs text-red-600">{getFieldErrorMessage('phone')}</p>
+              )}
             </div>
 
             <div className="col-span-2">
@@ -558,8 +703,13 @@ form.append('birth_date', birthIso); // اسم مختلف
                 type="tel"
                 value={formData.alternatePhone}
                 onChange={(e) => setFormData({ ...formData, alternatePhone: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
+                className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500 ${
+                  getFieldErrorMessage('alternativePhone') ? 'border-red-500' : 'border-gray-300'
+                }`}
               />
+              {getFieldErrorMessage('alternativePhone') && (
+                <p className="mt-1 text-xs text-red-600">{getFieldErrorMessage('alternativePhone')}</p>
+              )}
             </div>
           </div>
 
@@ -604,8 +754,13 @@ form.append('birth_date', birthIso); // اسم مختلف
                 type="text"
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
+                className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500 ${
+                  getFieldErrorMessage('role') ? 'border-red-500' : 'border-gray-300'
+                }`}
               />
+              {getFieldErrorMessage('role') && (
+                <p className="mt-1 text-xs text-red-600">{getFieldErrorMessage('role')}</p>
+              )}
             </div>
 
             <div>

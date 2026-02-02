@@ -1,5 +1,5 @@
 // src/mycomponents/statistics/hooks/useStatistics.ts
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { getStatisticsService } from "../services/statistics";
 import type { StatisticsResponse } from "../services/statistics";
 
@@ -8,7 +8,7 @@ export const useStatistics = () => {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<StatisticsResponse | null>(null);
 
-  const getStatistics = async () => {
+  const getStatistics = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -22,7 +22,7 @@ export const useStatistics = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   return {
     getStatistics,

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect } from "react"; 
 import { Card, CardContent } from "@/components/ui/card";
 import { 
   Users, 
@@ -21,9 +21,10 @@ const DashboardHome = () => {
   const { t } = useTranslation();
   const { getStatistics, data, loading, error } = useStatistics();
 
-  useEffect(() => {
-    getStatistics();
-  }, []);
+ useEffect(() => {
+  getStatistics();
+}, [getStatistics]);
+
 
   // Loading State
   if (loading) {

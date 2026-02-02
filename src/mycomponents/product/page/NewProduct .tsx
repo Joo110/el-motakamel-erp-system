@@ -95,21 +95,52 @@ const NewProduct: React.FC = () => {
       toast.success(t("product_created_success"));
       handleCancel();
     } catch (error: any) {
-      console.error("❌ Error creating product:", error);
+     console.error("❌ Error creating product:", error);
 
-      // server duplicate key
-      if (error?.response?.data?.err?.code === 11000 || error?.err?.code === 11000) {
-        toast.error(t("duplicate_code_error"));
-      } else if (
-        error?.response?.data?.err?.statusCode === 413 ||
-        error?.err?.statusCode === 413 ||
-        error?.statusCode === 413 ||
-        error?.response?.status === 413
-      ) {
-        toast.error(t("image_too_large"));
-      } else {
-        toast.error(t("error_creating_product"));
-      }
+// حاول تجيب رسالة من السيرفر
+const serverMessage =
+  error?.response?.data?.message ||
+  error?.message ||
+  error?.response?.data?.err?.message ||
+  (typeof error === "string" ? error : undefined);
+
+if (serverMessage) {
+  const lower = String(serverMessage).toLowerCase();
+
+  // كود منتج مكرر
+  if (
+    lower.includes("product code already exists") ||
+    lower.includes("code already exists") ||
+    lower.includes("already exists") ||
+    lower.includes("duplicate") ||
+    lower.includes("exists")
+  ) {
+    toast.error(t("duplicate_code_error"));
+  }
+  // أي رسالة معروفة تانية من السيرفر (مستقبلاً)
+  else {
+    toast.error(t("error_creating_product"));
+  }
+}
+// Mongo duplicate key (fallback قديم)
+else if (
+  error?.response?.data?.err?.code === 11000 ||
+  error?.err?.code === 11000
+) {
+  toast.error(t("duplicate_code_error"));
+}
+else if (
+  error?.response?.data?.err?.statusCode === 413 ||
+  error?.err?.statusCode === 413 ||
+  error?.statusCode === 413 ||
+  error?.response?.status === 413
+) {
+  toast.error(t("image_too_large"));
+}
+else {
+  toast.error(t("error_creating_product"));
+}
+
     } finally {
       setSaving(false);
     }

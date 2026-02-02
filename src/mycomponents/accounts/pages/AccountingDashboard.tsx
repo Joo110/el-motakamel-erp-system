@@ -140,7 +140,7 @@ const handleAddAccount = async () => {
           {/* Accounts Grid */}
           <div className="p-4 sm:p-6">
             {loading ? (
-              <div className="py-12 text-center text-gray-500">{t('Loading accounts...')}</div>
+              <div className="py-12 text-center text-gray-500">{t('Loading_accounts')}</div>
             ) : (
               // responsive grid: 1 col on xs, 2 on md, 3 on lg
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

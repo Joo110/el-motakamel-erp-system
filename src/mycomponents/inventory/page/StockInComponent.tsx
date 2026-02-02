@@ -123,6 +123,35 @@ const StockInComponent: React.FC = () => {
     setFormProduct((f) => ({ ...f, inventory: inv?.name ?? '' }));
   };
 
+
+
+  // When setting expected delivery, if it's before orderDate -> show error and don't set
+  const handleExpectedDeliveryChange = (value: string) => {
+    if (orderDate && value) {
+      const expected = new Date(value);
+      const order = new Date(orderDate);
+      // expected must be on or after order date (not before)
+      if (expected.getTime() < order.getTime()) {
+        toast.error(t('expected_delivery_must_be_after_order') || 'تاريخ التسليم يجب أن يكون بعد أو مساوي لتاريخ الطلب');
+        return;
+      }
+    }
+    setExpectedDeliveryDate(value);
+  };
+
+  // When setting order date, ensure it's not after expectedDeliveryDate
+  const handleOrderDateChange = (value: string) => {
+    if (expectedDeliveryDate && value) {
+      const expected = new Date(expectedDeliveryDate);
+      const order = new Date(value);
+      if (order.getTime() > expected.getTime()) {
+        toast.error(t('order_date_cannot_be_after_expected') || 'تاريخ الطلب لا يمكن أن يكون بعد تاريخ التسليم المتوقع');
+        return;
+      }
+    }
+    setOrderDate(value);
+  };
+
   const handleAddProduct = () => {
     if (!selectedProductId) {
       toast.error(t('please_select_product'));
@@ -132,14 +161,44 @@ const StockInComponent: React.FC = () => {
       toast.error(t('please_select_inventory'));
       return;
     }
+
+    // Validate that selected product and inventory actually exist in the lists
+    const foundProduct = productsFromHook.find((x: any) => x._id === selectedProductId || x.id === selectedProductId);
+    const foundInventory = inventories.find((x: any) => x._id === selectedInventoryId || x.id === selectedInventoryId);
+    if (!foundProduct) {
+      toast.error(t('selected_product_not_found') || 'Selected product not found in list');
+      return;
+    }
+    if (!foundInventory) {
+      toast.error(t('selected_inventory_not_found') || 'Selected inventory not found in list');
+      return;
+    }
+
     if (!formProduct.units || Number(formProduct.units) <= 0) {
       toast.error(t('units_must_greater_zero'));
       return;
     }
+
+    // discount validation
+    const discountVal = Number(formProduct.discount || 0);
+    if (discountVal < 0 || discountVal > 100) {
+      toast.error(t('discount_must_between_0_100') || 'خصم غير صالح (يجب أن يكون بين 0 و 100)');
+      return;
+    }
+
     // choose price according to saleType
     const chosenPrice = Number(formProduct.saleType === 'جملة' ? formProduct.wholesalePrice : formProduct.price);
     if (!chosenPrice || chosenPrice <= 0) {
       toast.error(t('price_must_greater_zero'));
+      return;
+    }
+
+    // prevent duplicate item with same product+inventory+saleType
+    const duplicate = products.some(
+      (p) => p.productId === selectedProductId && p.inventoryId === selectedInventoryId && p.saleType === formProduct.saleType
+    );
+    if (duplicate) {
+      toast.error(t('product_already_added') || 'تم إضافة هذا المنتج في نفس المخزن ونفس نوع البيع بالفعل');
       return;
     }
 
@@ -157,21 +216,21 @@ const StockInComponent: React.FC = () => {
       inventories.find((i: any) => i._id === selectedInventoryId || i.id === selectedInventoryId)?.name ??
       formProduct.inventory;
 
-   const newProduct: ProductRow = {
-  id: `${selectedProductId}-${selectedInventoryId}-${formProduct.saleType}`, // فريد لكل نوع بيع
-  productId: selectedProductId,
-  inventoryId: selectedInventoryId,
-  name: productName,
-  inventoryName,
-  code: formProduct.code || '96060',
-  units,
-  price,
-  wholesalePrice: wholesalePriceVal,
-  retailPrice: retailPriceVal,
-  discount,
-  total: Math.round((tot + Number.EPSILON) * 100) / 100,
-  saleType: formProduct.saleType || 'جملة',
-};
+    const newProduct: ProductRow = {
+      id: `${selectedProductId}-${selectedInventoryId}-${formProduct.saleType}`, // فريد لكل نوع بيع
+      productId: selectedProductId,
+      inventoryId: selectedInventoryId,
+      name: productName,
+      inventoryName,
+      code: formProduct.code || '96060',
+      units,
+      price,
+      wholesalePrice: wholesalePriceVal,
+      retailPrice: retailPriceVal,
+      discount,
+      total: Math.round((tot + Number.EPSILON) * 100) / 100,
+      saleType: formProduct.saleType || 'جملة',
+    };
 
     setProducts((prev) => [...prev, newProduct]);
     handleResetForm();
@@ -208,6 +267,16 @@ const StockInComponent: React.FC = () => {
       if (products.length === 0) {
         toast.error(t('please_add_at_least_one_product'));
         return;
+      }
+
+      // validate dates before save
+      if (orderDate && expectedDeliveryDate) {
+        const order = new Date(orderDate);
+        const expected = new Date(expectedDeliveryDate);
+        if (expected.getTime() < order.getTime()) {
+          toast.error(t('expected_delivery_must_be_after_order') || 'تاريخ التسليم يجب أن يكون بعد أو مساوي لتاريخ الطلب');
+          return;
+        }
       }
 
       const payload: any = {
@@ -278,7 +347,7 @@ const StockInComponent: React.FC = () => {
                 type="date"
                 className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm"
                 value={expectedDeliveryDate}
-                onChange={(e) => setExpectedDeliveryDate(e.target.value)}
+                onChange={(e) => handleExpectedDeliveryChange(e.target.value)}
               />
               <Calendar className="absolute right-2 top-3 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
@@ -291,7 +360,7 @@ const StockInComponent: React.FC = () => {
                 type="date"
                 className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm"
                 value={orderDate}
-                onChange={(e) => setOrderDate(e.target.value)}
+                onChange={(e) => handleOrderDateChange(e.target.value)}
               />
               <Calendar className="absolute right-2 top-3 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
