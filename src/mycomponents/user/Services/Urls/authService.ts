@@ -54,7 +54,7 @@ export const verifyResetCodeService = async (
   data: VerifyCodeRequest
 ): Promise<VerifyCodeResponse> => {
   const response = await publicAxiosInstance.post<VerifyCodeResponse>(
-    "/forgetPassword/resendResetCode",
+    "/forgetPassword/verifyResetCode",
     data
   );
   return response.data;
@@ -63,8 +63,8 @@ export const verifyResetCodeService = async (
 export const resetPasswordService = async (
   data: ResetPasswordRequest
 ): Promise<ResetPasswordResponse> => {
-  const response = await publicAxiosInstance.patch<ResetPasswordResponse>(
-    "/auth/resetPassword",
+  const response = await publicAxiosInstance.put<ResetPasswordResponse>(
+    "/forgetPassword/resetPassword",
     data
   );
   return response.data;

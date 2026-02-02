@@ -36,7 +36,7 @@ const UserForgetPassword = () => {
     console.log("Payload sent:", payload);
 
     try {
-      const response = await publicAxiosInstance.post("/auth/forgetPassword", payload);
+      const response = await publicAxiosInstance.post("/forgetPassword/sendResetCode", payload);
       toast.success(response.data.message || "Password reset email sent successfully");
       console.log("Response received:", response.data);
       navigate("/user-verification");

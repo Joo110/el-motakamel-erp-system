@@ -2,9 +2,9 @@ import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState, useRef, useEffect } from "react";
-import { toast } from 'react-hot-toast';
+import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
-import { useVerification } from "../hooks/useVerification";
+import axios from "axios";
 
 type FormData = {
   code: string;
@@ -13,18 +13,13 @@ type FormData = {
 const UserVerification = () => {
   const { handleSubmit, formState: { isSubmitting } } = useForm<FormData>();
   const [code, setCode] = useState(["", "", "", "", "", ""]);
-  const inputsRef = useRef<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
   const navigate = useNavigate();
-  const { verifyCode, loading } = useVerification();
 
   useEffect(() => {
-    if (inputsRef.current[0]) {
-      try {
-        inputsRef.current[0].focus();
-      } catch {
-        // no-op
-      }
-    }
+    inputsRef.current[0]?.focus();
   }, []);
 
   const handleChange = (value: string, idx: number) => {
@@ -34,40 +29,31 @@ const UserVerification = () => {
     newCode[idx] = value;
     setCode(newCode);
 
-    if (value && idx < inputsRef.current.length - 1) {
-      const next = inputsRef.current[idx + 1];
-      if (next && typeof next.focus === "function") next.focus();
+    if (value && idx < 5) {
+      inputsRef.current[idx + 1]?.focus();
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, idx: number) => {
-    const key = e.key;
-
-    if (key === "Backspace") {
+    if (e.key === "Backspace") {
       if (code[idx]) {
         const newCode = [...code];
         newCode[idx] = "";
         setCode(newCode);
       } else if (idx > 0) {
-        const prev = inputsRef.current[idx - 1];
-        if (prev && typeof prev.focus === "function") prev.focus();
+        inputsRef.current[idx - 1]?.focus();
       }
-      return;
     }
 
-    if (key === "ArrowLeft" && idx > 0) {
-      const prev = inputsRef.current[idx - 1];
-      if (prev && typeof prev.focus === "function") prev.focus();
-      return;
+    if (e.key === "ArrowLeft" && idx > 0) {
+      inputsRef.current[idx - 1]?.focus();
     }
 
-    if (key === "ArrowRight" && idx < inputsRef.current.length - 1) {
-      const next = inputsRef.current[idx + 1];
-      if (next && typeof next.focus === "function") next.focus();
-      return;
+    if (e.key === "ArrowRight" && idx < 5) {
+      inputsRef.current[idx + 1]?.focus();
     }
 
-    if (key.length === 1 && !/^[0-9]$/.test(key)) {
+    if (e.key.length === 1 && !/^[0-9]$/.test(e.key)) {
       e.preventDefault();
     }
   };
@@ -75,44 +61,56 @@ const UserVerification = () => {
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     const paste = e.clipboardData.getData("Text") || "";
     const digits = paste.replace(/\D/g, "").slice(0, 6).split("");
-    if (digits.length === 0) return;
+
+    if (!digits.length) return;
 
     const newCode = ["", "", "", "", "", ""];
-    digits.forEach((d, i) => {
-      newCode[i] = d;
-      const ref = inputsRef.current[i];
-      if (ref) {
-        try {
-          // If Input forwards native input, set value; otherwise ignore
-          if (typeof ref.value !== "undefined") ref.value = d;
-        } catch {
-          // ignore
-        }
-      }
-    });
+    digits.forEach((d, i) => (newCode[i] = d));
     setCode(newCode);
 
-    const nextIndex = Math.min(digits.length, inputsRef.current.length - 1);
-    const next = inputsRef.current[nextIndex];
-    if (next && typeof next.focus === "function") next.focus();
-
+    inputsRef.current[Math.min(digits.length, 5)]?.focus();
     e.preventDefault();
   };
 
   const onSubmit = async () => {
     const resetCode = code.join("");
+
     if (!/^\d{6}$/.test(resetCode)) {
       toast.error("Please enter a 6-digit verification code.");
       return;
     }
 
     try {
-      const response = await verifyCode(resetCode);
-      toast.success(response?.message || "Verification successful 🎉");
+      setLoading(true);
+
+      const res = await axios.post(
+        "/api/v1/forgetPassword/verifyResetCode",
+        { resetCode }
+      );
+
+      toast.success(res?.data?.message || "Verification successful 🎉");
       navigate("/user-reset-password");
+
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "Invalid or expired verification code ❌";
-      toast.error(msg);
+      const resData = err?.response?.data;
+
+      // لو السيرفر رجع validation errors array
+      if (Array.isArray(resData?.errors)) {
+        resData.errors.forEach((e: any) => {
+          toast.error(e.msg);
+        });
+        inputsRef.current[0]?.focus();
+        return;
+      }
+
+      // fallback message
+      toast.error(
+        resData?.message ||
+        err?.message ||
+        "Invalid or expired verification code ❌"
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -129,15 +127,13 @@ const UserVerification = () => {
           {code.map((digit, idx) => (
             <Input
               key={idx}
-              ref={(el) => {
-                inputsRef.current[idx] = el;
-              }}
+ref={(el) => void (inputsRef.current[idx] = el)}
               maxLength={1}
               inputMode="numeric"
               pattern="[0-9]*"
               value={digit}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange(e.target.value.replace(/\s/g, ""), idx)}
-              onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => handleKeyDown(e, idx)}
+              onChange={(e) => handleChange(e.target.value, idx)}
+              onKeyDown={(e) => handleKeyDown(e, idx)}
               onPaste={handlePaste}
               className="flex-1 h-16 text-center text-xl border-[2px] border-[#213555] rounded"
             />
@@ -147,7 +143,7 @@ const UserVerification = () => {
         <Button
           disabled={isSubmitting || loading}
           type="submit"
-          className="w-full bg-[#213555] hover:bg-[#1a2b45] text-white transition-colors duration-200 rounded"
+          className="w-full bg-[#213555] hover:bg-[#1a2b45] text-white rounded"
         >
           {isSubmitting || loading ? "Loading..." : "Continue"}
         </Button>
