@@ -296,8 +296,6 @@ const StockSearchView: React.FC = () => {
     }
   };
 
-
-
   const filteredTransactions = useMemo(() => {
     return transactions.filter(trans => {
       const productName = trans.product?.name?.toLowerCase() || '';
@@ -314,7 +312,6 @@ const StockSearchView: React.FC = () => {
     });
   }, [searchQuery, selectedCategory, transactions]);
 
-
   const paginatedTransactions = useMemo(() => {
     const startIndex = (transCurrentPage - 1) * transPageSize;
     return filteredTransactions.slice(startIndex, startIndex + transPageSize);
@@ -322,7 +319,6 @@ const StockSearchView: React.FC = () => {
 
   const transTotalPages = Math.ceil(filteredTransactions.length / transPageSize) || 1;
 
-  // compute visible pagination pages inline (replaces previous helper)
   const paginationPages = (() => {
     const pages: number[] = [];
     const current = transCurrentPage;
@@ -344,10 +340,6 @@ const StockSearchView: React.FC = () => {
     return pages;
   })();
 
-  // inline handlers instead of separate functions
-  // search button sets current page to 1 (filtering uses searchQuery state)
-  // reset button clears search & category and resets page
-  // formatDate kept
   const formatDate = (date?: string) => {
     if (!date) return '-';
     const d = new Date(date);
@@ -450,8 +442,6 @@ const StockSearchView: React.FC = () => {
           </div>
         </div>
 
-
-
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
             <h2 className="text-lg font-semibold">{t('transactions') || 'Transactions'}</h2>
@@ -461,17 +451,16 @@ const StockSearchView: React.FC = () => {
           </div>
 
           <div className="overflow-x-auto">
-            {/* dir RTL علشان العناوين والكلام العربي يقابلو البيانات */}
-            <table dir="rtl" className="w-full min-w-max">
+            <table className="w-full min-w-max">
               <thead className="border-b">
-                <tr className="text-left text-sm text-gray-600">
-                  <th className="pb-3 font-medium text-right">{t('product_col') || 'Product'}</th>
-                  <th className="pb-3 font-medium text-right">{t('Trans_Number') || 'Number'}</th>
-                  <th className="pb-3 font-medium text-right">{t('units_label') || 'Units'}</th>
-                  <th className="pb-3 font-medium text-right">{t('type') || 'Type'}</th>
-                  <th className="pb-3 font-medium text-right">{t('from_label') || 'From'}</th>
-                  <th className="pb-3 font-medium text-right">{t('to_label') || 'To'}</th>
-                  <th className="pb-3 font-medium text-right">{t('time_date') || 'Time/Date'}</th>
+                <tr className="text-sm text-gray-600">
+                  <th className="pb-3 font-medium text-right pr-4">{t('product_col') || 'Product'}</th>
+                  <th className="pb-3 font-medium text-right pr-4">{t('Trans_Number') || 'Number'}</th>
+                  <th className="pb-3 font-medium text-right pr-4">{t('units_label') || 'Units'}</th>
+                  <th className="pb-3 font-medium text-right pr-4">{t('type') || 'Type'}</th>
+                  <th className="pb-3 font-medium text-right pr-4">{t('from_label') || 'From'}</th>
+                  <th className="pb-3 font-medium text-right pr-4">{t('to_label') || 'To'}</th>
+                  <th className="pb-3 font-medium text-right pr-4">{t('time_date') || 'Time/Date'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -481,17 +470,19 @@ const StockSearchView: React.FC = () => {
 
                     return (
                       <tr key={trans._id} className="border-b last:border-b-0">
-                        <td className="py-4 flex items-center gap-3 whitespace-nowrap">
-                          <div className="w-10 h-10 bg-gray-200 rounded-full flex-shrink-0"></div>
-                          <div className="text-right">
-                            <div className="font-medium">{trans.product?.name || t('n_a') || 'N/A'}</div>
-                            <div className="text-sm text-gray-500">{categoryName}</div>
+                        <td className="py-4 pr-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gray-200 rounded-full flex-shrink-0"></div>
+                            <div className="text-right">
+                              <div className="font-medium">{trans.product?.name || t('n_a') || 'N/A'}</div>
+                              <div className="text-sm text-gray-500">{categoryName}</div>
+                            </div>
                           </div>
                         </td>
-                        <td className="py-4 whitespace-nowrap text-right">{trans.transactionNumber || '-'}</td>
-                        <td className="py-4 whitespace-nowrap text-right">{trans.quantity || 0}</td>
-                        <td className="py-4 text-right">
-                          <span className={`px-2 py-1 rounded-full text-xs ${
+                        <td className="py-4 pr-4 text-right">{trans.transactionNumber || '-'}</td>
+                        <td className="py-4 pr-4 text-right">{trans.quantity || 0}</td>
+                        <td className="py-4 pr-4 text-right">
+                          <span className={`px-2 py-1 rounded-full text-xs inline-block ${
                             trans.type === 'In' ? 'bg-green-100 text-green-700' :
                             trans.type === 'Out' ? 'bg-red-100 text-red-700' :
                             'bg-blue-100 text-blue-700'
@@ -499,9 +490,9 @@ const StockSearchView: React.FC = () => {
                             {trans.type === 'In' ? (t('stock_in') || 'In') : trans.type === 'Out' ? (t('stock_out') || 'Out') : (t('transfer') || 'Transfer')}
                           </span>
                         </td>
-                        <td className="py-4 whitespace-nowrap text-right">{trans.fromInventory?.name || '-'}</td>
-                        <td className="py-4 whitespace-nowrap text-right">{trans.toInventory?.name || '-'}</td>
-                        <td className="py-4 text-sm text-gray-600 whitespace-nowrap text-right">
+                        <td className="py-4 pr-4 text-right">{trans.fromInventory?.name || '-'}</td>
+                        <td className="py-4 pr-4 text-right">{trans.toInventory?.name || '-'}</td>
+                        <td className="py-4 pr-4 text-sm text-gray-600 text-right">
                           {formatDate(trans.createdAt)}
                         </td>
                       </tr>
@@ -563,7 +554,7 @@ const StockSearchView: React.FC = () => {
               <button
                 onClick={() => setTransCurrentPage(prev => Math.min(transTotalPages, prev + 1))}
                 disabled={transCurrentPage === transTotalPages}
-                className="px-3 py-1 border rounded-full hover:bg-gray-50.disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 whitespace-nowrap"
+                className="px-3 py-1 border rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 whitespace-nowrap"
               >
                 {t('next_label') || 'Next'}
               </button>

@@ -49,7 +49,7 @@ const StockOutComponent: React.FC = () => {
 
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<string>('');
   const [orderDate, setOrderDate] = useState<string>('');
-const [currency, setCurrency] = useState<string>('SAR');
+  const [currency, setCurrency] = useState<string>('SAR');
   const [notes, setNotes] = useState<string>('');
   const [shippingCost, setShippingCost] = useState<string>('');
   
@@ -299,9 +299,8 @@ const [currency, setCurrency] = useState<string>('SAR');
       }
 
       const payload: any = {
-        // NOTE: original logic used a hardcoded customerId in payload in the earlier file;
-        // we keep the same behavior (do not change logic) even though we validate customerId above.
-        customerId: '6963ed57d4010f957c2de3ad',
+        // Use the selected customerId from the dropdown (was previously hardcoded).
+        customerId: customerId,
         organizationId,
         products: mappedProducts,
         expectedDeliveryDate: expectedDeliveryDate || undefined,
@@ -598,7 +597,7 @@ const [currency, setCurrency] = useState<string>('SAR');
                       </button>
                     </td>
                   </tr>
-                ))}
+                ))} 
                 {products.length === 0 && (
                   <tr>
                     <td colSpan={10} className="py-8 text-center text-gray-500">

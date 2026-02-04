@@ -25,8 +25,8 @@ interface Invoice {
 
 const formatMoney = (n: number | string) => {
   const num = typeof n === 'number' ? n : parseFloat(String(n) || '0');
-  if (Number.isNaN(num)) return '0.00 SR';
-  return `${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} SR`;
+  if (Number.isNaN(num)) return '0.00 EGP';
+  return `${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EGP`;
 };
 
 const PaymentModal: React.FC<{
