@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Calendar, ChevronDown, Trash2, Save } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { usePurchaseOrder } from '../../Sales/hooks/useSaleOrders'; // ✅ استخدم نفس الـ hook
+import { usePurchaseOrder } from '../../Sales/hooks/useSaleOrders';
 import { useProducts } from '../../product/hooks/useProducts';
 import { useInventories } from '../../inventory/hooks/useInventories';
 import { useSuppliers } from '../../Precious/hooks/useSuppliers';
 import { toast } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 interface ProductRow {
   id: string;
@@ -26,16 +27,15 @@ const truncate = (s: string | undefined, n = 30) => {
 };
 
 const EditSaleOrderComponent: React.FC = () => {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  // ✅ استخدم نفس الـ hook اللي في StockOutDraftComponent
   const { item, loading: orderLoading, error: orderError, patch } = usePurchaseOrder(id);
   const { products: productsFromHook = [], loading: productsLoading = false } = useProducts() as any;
   const { inventories = [], isLoading: inventoriesLoading = false } = useInventories() as any;
   const { suppliers = [], loading: suppliersLoading = false } = useSuppliers() as any;
 
-  // ===== State =====
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [supplierId, setSupplierId] = useState<string>('');
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<string>('');
@@ -55,11 +55,8 @@ const EditSaleOrderComponent: React.FC = () => {
   const [selectedInventoryId, setSelectedInventoryId] = useState<string>('');
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
 
-  // ✅ تحميل البيانات من الـ API
   useEffect(() => {
     if (item) {
-      console.log('📦 Loaded Sale Order Data:', item);
-      
       setSupplierId(item.supplierId || '');
       setExpectedDeliveryDate(item.expectedDeliveryDate || '');
       setOrderDate(item.createdAt ? item.createdAt.split('T')[0] : '');
@@ -94,7 +91,6 @@ const EditSaleOrderComponent: React.FC = () => {
     return isFinite(tot) ? tot.toFixed(2) + ' ' + currency : '0.00 ' + currency;
   }, [formProduct.units, formProduct.price, formProduct.discount, currency]);
 
-  // ===== Handlers =====
   const handleFormChange = (key: keyof typeof formProduct, value: string) => {
     setFormProduct((s) => ({ ...s, [key]: value }));
   };
@@ -123,7 +119,7 @@ const EditSaleOrderComponent: React.FC = () => {
 
   const handleAddProduct = () => {
     if (!selectedProductId || !selectedInventoryId || Number(formProduct.units) <= 0 || Number(formProduct.price) <= 0) {
-      toast.error('Please select product & inventory and fill Units (>0) and Price (>0)');
+      toast.error(t('select_product_inventory_units_price', 'Please select product & inventory and fill Units (>0) and Price (>0)'));
       return;
     }
 
@@ -152,7 +148,7 @@ const EditSaleOrderComponent: React.FC = () => {
 
     setProducts((prev) => [...prev, newProduct]);
     handleResetForm();
-    toast.success('✅ Product added');
+    toast.success(t('product_added', '✅ Product added'));
   };
 
   const handleCheckboxToggle = (id: string) => {
@@ -162,7 +158,7 @@ const EditSaleOrderComponent: React.FC = () => {
   const handleDeleteProduct = (id: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== id));
     setSelectedProducts((prev) => prev.filter((x) => x !== id));
-    toast.success('🗑️ Product removed');
+    toast.success(t('product_removed', '🗑️ Product removed'));
   };
 
   const mapProductsForApi = (p: ProductRow[]) => {
@@ -176,16 +172,15 @@ const EditSaleOrderComponent: React.FC = () => {
     }));
   };
 
-  // ✅ استخدم patch بدل update
   const handleUpdate = async () => {
     try {
       if (!supplierId) {
-        toast.error('Please select a supplier before updating.');
+        toast.error(t('select_supplier_before_update', 'Please select a supplier before updating.'));
         return;
       }
 
       if (products.length === 0) {
-        toast.error('Please add at least one product.');
+        toast.error(t('add_at_least_one_product', 'Please add at least one product.'));
         return;
       }
 
@@ -197,27 +192,24 @@ const EditSaleOrderComponent: React.FC = () => {
         notes: notes || undefined,
       };
 
-      console.log('🔄 Updating sale order with payload:', payload);
       await patch(payload);
-      toast.success('✅ Sale order updated successfully');
-      
+      toast.success(t('sale_order_updated', '✅ Sale order updated successfully'));
       setTimeout(() => navigate(-1), 1000);
     } catch (err: any) {
       console.error('❌ Update error:', err);
-      toast.error('Failed to update sale order. Check console for details.');
+      toast.error(t('failed_update_sale_order', 'Failed to update sale order. Check console for details.'));
     }
   };
 
-  // ===== Loading & Error States =====
-  if (orderLoading) return <div className="min-h-screen flex items-center justify-center">Loading sale order...</div>;
-  if (orderError) return <div className="min-h-screen flex items-center justify-center text-red-600">Error: {orderError.message}</div>;
-  if (!item) return <div className="min-h-screen flex items-center justify-center">Sale order not found</div>;
+  if (orderLoading) return <div className="min-h-screen flex items-center justify-center">{t('loading_sale_order', 'Loading sale order...')}</div>;
+  if (orderError) return <div className="min-h-screen flex items-center justify-center text-red-600">{t('error', 'Error')}: {orderError.message}</div>;
+  if (!item) return <div className="min-h-screen flex items-center justify-center">{t('sale_order_not_found', 'Sale order not found')}</div>;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Edit Sale Order</h1>
-        <p className="text-sm text-gray-500">Dashboard &gt; Sales Orders &gt; Edit #{item.invoiceNumber || id}</p>
+        <h1 className="text-2xl font-semibold text-gray-900">{t('edit_sale_order', 'Edit Sale Order')}</h1>
+        <p className="text-sm text-gray-500">{t('dashboard', 'Dashboard')} &gt; {t('sales_orders', 'Sales Orders')} &gt; {t('edit_order_number', 'Edit')} #{item.invoiceNumber || id}</p>
       </div>
 
       {/* Main Form */}
@@ -225,14 +217,14 @@ const EditSaleOrderComponent: React.FC = () => {
         {/* Top Section */}
         <div className="grid grid-cols-4 gap-4 mb-8">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Supplier</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('supplier', 'Supplier')}</label>
             <div className="relative">
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
                 value={supplierId}
                 onChange={(e) => setSupplierId(e.target.value)}
               >
-                <option value="">{suppliersLoading ? 'Loading suppliers...' : 'Select supplier'}</option>
+                <option value="">{suppliersLoading ? t('loading_suppliers', 'Loading suppliers...') : t('select_supplier', 'Select supplier')}</option>
                 {suppliers.map((s: any) => (
                   <option key={s._id ?? s.id ?? s.name} value={s._id}>
                     {truncate(s.name, 36)}
@@ -244,7 +236,7 @@ const EditSaleOrderComponent: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Expected Delivery Date</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('expected_delivery_date', 'Expected Delivery Date')}</label>
             <div className="relative">
               <input
                 type="date"
@@ -257,7 +249,7 @@ const EditSaleOrderComponent: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Order Date</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('order_date', 'Order Date')}</label>
             <div className="relative">
               <input
                 type="date"
@@ -270,7 +262,7 @@ const EditSaleOrderComponent: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('currency', 'Currency')}</label>
             <div className="relative">
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
@@ -289,16 +281,16 @@ const EditSaleOrderComponent: React.FC = () => {
 
         {/* Add Products Section */}
         <div className="mb-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Add More Products</h2>
+          <h2 className="text-lg font-medium text-gray-900 mb-4">{t('add_more_products', 'Add More Products')}</h2>
           <div className="grid grid-cols-7 gap-3 items-end">
             <div className="relative">
-              <label className="block text-xs text-gray-600 mb-1">Product</label>
+              <label className="block text-xs text-gray-600 mb-1">{t('product', 'Product')}</label>
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
                 value={selectedProductId}
                 onChange={(e) => handleProductSelect(e.target.value)}
               >
-                <option value="">{productsLoading ? 'Loading...' : 'Select'}</option>
+                <option value="">{productsLoading ? t('loading', 'Loading...') : t('select', 'Select')}</option>
                 {productsFromHook.map((p: any) => (
                   <option key={p._id ?? p.id} value={p._id ?? p.id}>
                     {truncate(p.name, 36)}
@@ -309,13 +301,13 @@ const EditSaleOrderComponent: React.FC = () => {
             </div>
 
             <div className="relative">
-              <label className="block text-xs text-gray-600 mb-1">Inventory</label>
+              <label className="block text-xs text-gray-600 mb-1">{t('inventory', 'Inventory')}</label>
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
                 value={selectedInventoryId}
                 onChange={(e) => handleInventorySelect(e.target.value)}
               >
-                <option value="">{inventoriesLoading ? 'Loading...' : 'Select'}</option>
+                <option value="">{inventoriesLoading ? t('loading', 'Loading...') : t('select', 'Select')}</option>
                 {inventories.map((inv: any) => (
                   <option key={inv._id ?? inv.id} value={inv._id}>
                     {truncate(inv.name, 36)}
@@ -326,7 +318,7 @@ const EditSaleOrderComponent: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Code</label>
+              <label className="block text-xs text-gray-600 mb-1">{t('code', 'Code')}</label>
               <input
                 type="text"
                 className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
@@ -336,7 +328,7 @@ const EditSaleOrderComponent: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Units</label>
+              <label className="block text-xs text-gray-600 mb-1">{t('units', 'Units')}</label>
               <input
                 type="number"
                 className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
@@ -347,7 +339,7 @@ const EditSaleOrderComponent: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Price</label>
+              <label className="block text-xs text-gray-600 mb-1">{t('price', 'Price')}</label>
               <input
                 type="number"
                 className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
@@ -359,7 +351,7 @@ const EditSaleOrderComponent: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Discount</label>
+              <label className="block text-xs text-gray-600 mb-1">{t('discount', 'Discount')}</label>
               <input
                 type="number"
                 className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
@@ -371,7 +363,7 @@ const EditSaleOrderComponent: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Total</label>
+              <label className="block text-xs text-gray-600 mb-1">{t('total', 'Total')}</label>
               <input
                 type="text"
                 readOnly
@@ -386,105 +378,105 @@ const EditSaleOrderComponent: React.FC = () => {
               onClick={handleResetForm}
               className="px-4 py-2 bg-gray-200 text-gray-700 rounded-full text-sm hover:bg-gray-300"
             >
-              Reset
+              {t('reset', 'Reset')}
             </button>
             <button
               onClick={handleAddProduct}
               className="px-4 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-slate-800"
             >
-              + Add Product
+              + {t('add_product', 'Add Product')}
             </button>
           </div>
         </div>
 
-        {/* Products Table */}
-        <div className="mb-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Order Products</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3 w-8"></th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Product</th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Inventory</th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Code</th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Units</th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Price</th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Discount</th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Total</th>
-                  <th className="w-8"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {products.map((product) => (
-                  <tr key={product.id} className="border-b border-gray-100">
-                    <td className="py-3">
-                      <input
-                        type="checkbox"
-                        className="w-4 h-4 rounded border-gray-300"
-                        checked={selectedProducts.includes(product.id)}
-                        onChange={() => handleCheckboxToggle(product.id)}
-                      />
-                    </td>
-                    <td className="py-3 text-sm text-gray-900">{product.name}</td>
-                    <td className="py-3 text-sm text-gray-600">{product.inventoryName}</td>
-                    <td className="py-3 text-sm text-gray-600">{product.code}</td>
-                    <td className="py-3 text-sm text-gray-600">{product.units}</td>
-                    <td className="py-3 text-sm text-gray-600">{product.price.toFixed(2)}</td>
-                    <td className="py-3 text-sm text-gray-600">{product.discount}%</td>
-                    <td className="py-3 text-sm text-gray-900">
-                      {product.total.toFixed(2)} {currency}
-                    </td>
-                    <td className="py-3">
-                      <button onClick={() => handleDeleteProduct(product.id)} className="text-gray-400 hover:text-red-500">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+{/* Products Table */}
+<div className="mb-6">
+  <h2 className="text-lg font-medium text-gray-900 mb-4">{t('order_products', 'Order Products')}</h2>
+  <div className="overflow-x-auto">
+    <table className="w-full">
+      <thead>
+        <tr className="border-b border-gray-200">
+          <th className="text-left text-xs font-medium text-gray-600 pb-3 w-8"></th>
+          <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('product', 'Product')}</th>
+          <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('inventory', 'Inventory')}</th>
+          <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('code', 'Code')}</th>
+          <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('units', 'Units')}</th>
+          <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('price', 'Price')}</th>
+          <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('discount', 'Discount')}</th>
+          <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('total', 'Total')}</th>
+          <th className="w-8"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {products.map((product) => (
+          <tr key={product.id} className="border-b border-gray-100">
+            <td className="py-3">
+              <input
+                type="checkbox"
+                className="w-4 h-4 rounded border-gray-300"
+                checked={selectedProducts.includes(product.id)}
+                onChange={() => handleCheckboxToggle(product.id)}
+              />
+            </td>
+            <td className="py-3 text-sm text-gray-900">{product.name}</td>
+            <td className="py-3 text-sm text-gray-600">{product.inventoryName}</td>
+            <td className="py-3 text-sm text-gray-600">{product.code}</td>
+            <td className="py-3 text-sm text-gray-600">{product.units}</td>
+            <td className="py-3 text-sm text-gray-600">{product.price.toFixed(2)}</td>
+            <td className="py-3 text-sm text-gray-600">{product.discount}%</td>
+            <td className="py-3 text-sm text-gray-900">
+              {product.total.toFixed(2)} {currency}
+            </td>
+            <td className="py-3">
+              <button onClick={() => handleDeleteProduct(product.id)} className="text-gray-400 hover:text-red-500">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
 
-          <div className="flex justify-end mt-4">
-            <div className="text-right">
-              <span className="text-sm font-medium text-gray-700">Total: </span>
-              <span className="text-sm font-semibold text-gray-900">
-                {total.toFixed(2)} {currency}
-              </span>
-            </div>
-          </div>
-        </div>
+  <div className="flex justify-end mt-4">
+    <div className="text-right">
+      <span className="text-sm font-medium text-gray-700">{t('total', 'Total')}: </span>
+      <span className="text-sm font-semibold text-gray-900">
+        {total.toFixed(2)} {currency}
+      </span>
+    </div>
+  </div>
+</div>
 
-        {/* Notes */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-          <textarea
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm resize-none"
-            rows={4}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Add any notes here..."
-          ></textarea>
-        </div>
+{/* Notes */}
+<div className="mb-6">
+  <label className="block text-sm font-medium text-gray-700 mb-2">{t('notes', 'Notes')}</label>
+  <textarea
+    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm resize-none"
+    rows={4}
+    value={notes}
+    onChange={(e) => setNotes(e.target.value)}
+    placeholder={t('add_notes_placeholder', 'Add any notes here...')}
+  ></textarea>
+</div>
 
-        {/* Action Buttons */}
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={() => navigate(-1)}
-            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-full text-sm hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleUpdate}
-            disabled={orderLoading}
-            className="px-6 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            <Save className="w-4 h-4" />
-            {orderLoading ? 'Updating...' : 'Update Order'}
-          </button>
-        </div>
+{/* Action Buttons */}
+<div className="flex justify-end gap-3">
+  <button
+    onClick={() => navigate(-1)}
+    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-full text-sm hover:bg-gray-50"
+  >
+    {t('cancel', 'Cancel')}
+  </button>
+  <button
+    onClick={handleUpdate}
+    disabled={orderLoading}
+    className="px-6 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+  >
+    <Save className="w-4 h-4" />
+    {orderLoading ? t('updating', 'Updating...') : t('update_order', 'Update Order')}
+  </button>
+</div>
       </div>
     </div>
   );

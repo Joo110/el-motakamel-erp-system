@@ -24,21 +24,21 @@ export type CreatePurchaseOrderPayload = {
 };
 
 export type PurchaseOrderProduct = {
-  productId: string;
+  productId?: string;
   name?: string;
   quantity: number;
-  deliveredQuantity?: number;
-  remainingQuantity?: number;
-  price: number;
+  wholesalePrice: number;
+  retailPrice: number;
   discount?: number;
   inventoryId?: string;
   _id?: string;
   total?: number;
 };
 
+
 export type PurchaseOrderResponse = {
-  _id: string;
-  supplierId: string;
+  _id?: string;
+  supplierId?: string;
   organizationId?: string;
   products: PurchaseOrderProduct[];
   expectedDeliveryDate?: string;
@@ -55,26 +55,144 @@ export type PurchaseOrderResponse = {
 
 /* ---------- Helpers ---------- */
 
-const BASE = '/purchaseOrders';
+const BASE = '/purchase-orders';
 
-function extractPurchasesFromListResponse(resData: any): PurchaseOrderResponse[] {
-
+function extractPurchasesFromListResponse(resData: any): any[] {
   if (!resData) return [];
-  if (Array.isArray(resData)) return resData as PurchaseOrderResponse[];
 
-  // common structure: { status, results, data: { purchases: [...] } }
-  if (resData.data && Array.isArray(resData.data.purchases)) return resData.data.purchases as PurchaseOrderResponse[];
+  if (Array.isArray(resData)) return resData as any[];
+  if (resData.data && Array.isArray(resData.data)) return resData.data as any[];
+  if (resData.data && Array.isArray(resData.data.purchases)) return resData.data.purchases as any[];
+  if (Array.isArray(resData.purchases)) return resData.purchases as any[];
 
-  // sometimes: { purchases: [...] }
-  if (Array.isArray(resData.purchases)) return resData.purchases as PurchaseOrderResponse[];
-
-  // maybe the API put the array directly under data but with different key
   if (resData.data && typeof resData.data === 'object') {
-    const maybeArray = Object.values(resData.data).find(v => Array.isArray(v)) as any;
-    if (Array.isArray(maybeArray)) return maybeArray as PurchaseOrderResponse[];
+    const maybeArray = Object.values(resData.data).find((v) => Array.isArray(v));
+    if (Array.isArray(maybeArray)) return maybeArray as any[];
   }
 
   return [];
+}
+
+/* ---------- Normalization ---------- */
+
+function normalizeProductLine(raw: any): PurchaseOrderProduct {
+  if (!raw) {
+    return {
+      quantity: 0,
+      wholesalePrice: 0,
+      retailPrice: 0,
+    } as PurchaseOrderProduct;
+  }
+
+  const productNode = raw.product ?? null;
+
+  const name =
+    raw.name ??
+    (productNode && (productNode.name ?? productNode.title)) ??
+    raw.productName ??
+    raw.itemName ??
+    undefined;
+
+  const productId =
+    raw.productId ??
+    (productNode && (productNode.id ?? productNode._id)) ??
+    undefined;
+
+  const quantity = Number(raw.quantity ?? raw.qty ?? raw.count ?? 0);
+
+const wholesalePrice =
+  Number(raw.wholesalePrice ?? raw.price ?? 0) || 0;
+
+const retailPrice =
+  Number(raw.retailPrice ?? 0) || 0;
+
+  const discount = Number(raw.discount ?? 0) || 0;
+
+  const total = Number(raw.total ?? raw.lineTotal ?? raw.amount ?? (wholesalePrice * quantity - (discount || 0))) || 0;
+
+  const inventoryId =
+    raw.inventoryId ?? raw.inventory?._id ?? raw.inventory?.id ?? raw.inventory ?? undefined;
+
+  const _id = raw._id ?? raw.id ?? (productNode && (productNode._id ?? productNode.id)) ?? undefined;
+
+return {
+  productId,
+  name,
+  quantity,
+  wholesalePrice,
+  retailPrice,
+  discount,
+  total,
+  inventoryId,
+  _id,
+} as PurchaseOrderProduct;
+}
+
+function normalizePurchaseOrder(raw: any): PurchaseOrderResponse {
+  if (!raw) return { products: [] };
+
+  // If the response wrapper is { data: { ... } } sometimes the actual object is nested.
+  const payload = raw.data && (raw.id || raw.invoiceNumber || raw.products) ? raw.data : raw;
+
+  const _id = payload._id ?? payload.id ?? undefined;
+  const supplierId =
+    payload.supplierId ??
+    payload.supplier?._id ??
+    payload.supplier?.id ??
+    payload.customer?.id ??
+    payload.customer?._id ??
+    payload.customerId ??
+    undefined;
+
+  const organizationId =
+    payload.organizationId ??
+    payload.organization?.id ??
+    payload.organization?._id ??
+    (typeof payload.organization === 'string' ? payload.organization : undefined);
+
+  const invoiceNumber = payload.invoiceNumber ?? payload.invoiceNo ?? payload.invoice ?? undefined;
+
+  const expectedDeliveryDate = payload.expectedDeliveryDate ?? payload.expected_delivery_date ?? undefined;
+
+  const currency = payload.currency ?? undefined;
+
+  const status = payload.status ?? payload.state ?? undefined;
+
+  const notes = payload.notes ?? payload.note ?? undefined;
+
+  const createdBy = payload.createdBy ?? payload.created_by ?? undefined;
+
+  const createdAt = payload.createdAt ?? payload.created_at ?? undefined;
+  const updatedAt = payload.updatedAt ?? payload.updated_at ?? undefined;
+
+  const totalAmount = Number(
+    payload.totalAmount ?? payload.total ?? payload.grandTotal ?? payload.amount ?? 0
+  );
+
+  // Products normalization: support products array where each element may be nested product object
+  const rawProducts = Array.isArray(payload.products)
+    ? payload.products
+    : Array.isArray(payload.items)
+    ? payload.items
+    : [];
+
+  const products = rawProducts.map((p: any) => normalizeProductLine(p));
+
+  return {
+    _id,
+    supplierId,
+    organizationId,
+    products,
+    expectedDeliveryDate,
+    currency,
+    status,
+    notes,
+    createdBy,
+    createdAt,
+    updatedAt,
+    totalAmount,
+    invoiceNumber,
+  } as PurchaseOrderResponse;
 }
 
 /* ---------- Service functions ---------- */
@@ -85,9 +203,13 @@ export async function createPurchaseOrder(
 ): Promise<PurchaseOrderResponse> {
   try {
     const { data } = await axiosClient.post(`${BASE}`, payload, config);
-    if (data?.data?.purchase) return data.data.purchase;
-    if (data?.purchase) return data.purchase;
-    return data as PurchaseOrderResponse;
+    const raw = data ?? {};
+    if (raw?.data?.purchase) return normalizePurchaseOrder(raw.data.purchase);
+    if (raw?.purchase) return normalizePurchaseOrder(raw.purchase);
+    if (raw?.data && (raw.data.invoiceNumber || raw.data.products)) {
+      return normalizePurchaseOrder(raw.data);
+    }
+    return normalizePurchaseOrder(raw);
   } catch (error: any) {
     console.error("❌ createPurchaseOrder error:", error.response?.data || error.message);
     throw error;
@@ -96,22 +218,21 @@ export async function createPurchaseOrder(
 
 /**
  * NOTE:
- * The backend endpoints you showed use this path shape:
- *   /api/v1/purchaseOrders/status=draft
- * So when a status is provided we call: /purchaseOrders/status=<status>
- * (axiosClient should add baseURL like /api/v1 if configured).
+ * Backend endpoints may use: /purchase-orders/status/<status>
  */
 export async function getPurchaseOrders(status?: 'draft' | 'approved' | 'delivered') {
   try {
-    const url = status ? `${BASE}/status=${status}` : BASE;
+    const url = status ? `${BASE}/status/${status}` : BASE;
     console.log('⤴️ getPurchaseOrders request URL:', url);
 
     const { data } = await axiosClient.get<any>(url);
     console.log('⤵️ getPurchaseOrders raw response:', data);
 
-    const purchases = extractPurchasesFromListResponse(data);
-    console.log('🔎 extracted purchases count:', purchases.length);
-    return purchases;
+    const purchasesRaw = data ? extractPurchasesFromListResponse(data) : [];
+    console.log('🔎 extracted purchases count:', purchasesRaw.length);
+
+    // Normalize each entry
+    return purchasesRaw.map((p) => normalizePurchaseOrder(p));
   } catch (err: any) {
     console.error('❌ getPurchaseOrders error:', err.response?.data || err.message);
     throw err;
@@ -120,20 +241,42 @@ export async function getPurchaseOrders(status?: 'draft' | 'approved' | 'deliver
 
 // Get purchase order by ID
 export async function getPurchaseOrderById(id: string) {
-  const { data } = await axiosClient.get<any>(`${BASE}/${id}`);
-  if (data && data.data && (data.data.purchase || data.data.purchases)) {
-    if (data.data.purchase) return data.data.purchase as PurchaseOrderResponse;
-    if (Array.isArray(data.data.purchases)) return data.data.purchases[0] as PurchaseOrderResponse;
+  try {
+    const resp = await axiosClient.get<any>(`${BASE}/${id}`);
+    const data = resp?.data ?? resp;
+
+    if (data && data.data && (data.data.invoiceNumber || data.data.products || data.data.id)) {
+      return normalizePurchaseOrder(data.data);
+    }
+    if (data && data.purchase) {
+      return normalizePurchaseOrder(data.purchase);
+    }
+    if (data && Array.isArray(data.data?.purchases) && data.data.purchases.length > 0) {
+      return normalizePurchaseOrder(data.data.purchases[0]);
+    }
+    if (data && data.data && typeof data.data === 'object') {
+      return normalizePurchaseOrder(data.data);
+    }
+    return normalizePurchaseOrder(data);
+  } catch (error: any) {
+    console.error('❌ getPurchaseOrderById error:', error.response?.data || error.message);
+    throw error;
   }
-  if (data && data.purchase) return data.purchase as PurchaseOrderResponse;
-  return data as PurchaseOrderResponse;
 }
 
 // Update purchase order
 export async function updatePurchaseOrder(id: string, payload: Partial<CreatePurchaseOrderPayload>) {
-  const { data } = await axiosClient.patch<any>(`${BASE}/${id}`, payload);
-  if (data && data.data && data.data.purchase) return data.data.purchase as PurchaseOrderResponse;
-  return data as PurchaseOrderResponse;
+  try {
+    const { data } = await axiosClient.patch<any>(`${BASE}/${id}`, payload);
+    const raw = data ?? {};
+    if (raw?.data?.purchase) return normalizePurchaseOrder(raw.data.purchase);
+    if (raw?.purchase) return normalizePurchaseOrder(raw.purchase);
+    if (raw?.data && (raw.data.invoiceNumber || raw.data.products)) return normalizePurchaseOrder(raw.data);
+    return normalizePurchaseOrder(raw);
+  } catch (error: any) {
+    console.error('❌ updatePurchaseOrder error:', error.response?.data || error.message);
+    throw error;
+  }
 }
 
 // Delete purchase order
@@ -145,22 +288,54 @@ export async function deletePurchaseOrder(id: string) {
 // Approve purchase order
 export async function approvePurchaseOrder(id: string) {
   try {
-    const { data } = await axiosClient.patch(`${BASE}/${id}/approve`);
-    console.log("Response:", data);
-    return data?.data?.purchase || data;
+    const { data } = await axiosClient.patch(`${BASE}/approve/${id}`, { status: 'approved' });
+    // Try to normalize returned purchase if present
+    if (data?.data?.purchase) return normalizePurchaseOrder(data.data.purchase);
+    if (data?.purchase) return normalizePurchaseOrder(data.purchase);
+    return data ?? null;
   } catch (error: any) {
-    console.error("❌ approvePurchaseOrder error:", error.response?.data || error.message);
+    console.error('❌ approvePurchaseOrder error:', error.response?.data || error.message);
     throw error;
   }
 }
 
-// Deliver purchase order
+// Ship / Deliver purchase order
 export async function deliverPurchaseOrder(id: string) {
   try {
-    const { data } = await axiosClient.patch(`${BASE}/${id}/deliver`);
-    return data?.data?.purchase || data;
+    const { data } = await axiosClient.patch(
+      `/purchase-orders/deliver/${id}`,
+      {
+        deliveredQuantities: [], // سيبه فاضي زي ما الـ API طالب
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (data?.data?.purchase) return normalizePurchaseOrder(data.data.purchase);
+    if (data?.purchase) return normalizePurchaseOrder(data.purchase);
+    return data ?? null;
   } catch (error: any) {
-    console.error("❌ deliverPurchaseOrder error:", error.response?.data || error.message);
+    console.error(
+      '❌ deliverPurchaseOrder error:',
+      error.response?.data || error.message
+    );
+    throw error;
+  }
+}
+
+
+// Cancel purchase order
+export async function cancelPurchaseOrder(id: string, payload: { status?: string } = { status: 'canceled' }) {
+  try {
+    const { data } = await axiosClient.patch(`/purchase-orders/cancel/${id}`, payload);
+    if (data?.data?.purchase) return normalizePurchaseOrder(data.data.purchase);
+    if (data?.purchase) return normalizePurchaseOrder(data.purchase);
+    return data ?? { success: true };
+  } catch (error: any) {
+    console.error('❌ cancelPurchaseOrder error:', error.response?.data || error.message);
     throw error;
   }
 }

@@ -8,8 +8,8 @@ import { useResetPassword } from "../hooks/useResetPassword";
 
 type FormData = {
   email: string;
-  password: string;
-  confirmPassword: string;
+  newPassword: string;
+  confirmNewPassword: string;
 };
 
 const UserResetPassword = () => {
@@ -23,14 +23,14 @@ const UserResetPassword = () => {
 
   const { resetPassword, loading } = useResetPassword();
 
-  const password = watch("password");
-  const confirmPassword = watch("confirmPassword");
+  const newPassword = watch("newPassword");
+  const confirmNewPassword = watch("confirmNewPassword");
 
   useEffect(() => {
-    if (confirmPassword) {
-      trigger("confirmPassword");
+    if (confirmNewPassword) {
+      trigger("confirmNewPassword");
     }
-  }, [password, confirmPassword, trigger]);
+  }, [newPassword, confirmNewPassword, trigger]);
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -38,21 +38,18 @@ const UserResetPassword = () => {
   const onSubmit = async (data: FormData) => {
     try {
       const response = await resetPassword({
-        email: data.email,
-        password: data.password,
-        confirmPassword: data.confirmPassword,
-      });
+  email: data.email,
+  password: data.newPassword,         
+  confirmPassword: data.confirmNewPassword,
+});
+
       toast.success(response?.message || "Password reset successfully ✅");
     } catch (error: any) {
-      // عرض رسالة الخطأ من السيرفر إن وُجِدت، وإلا رسالة عامة
       const errMsg =
         error?.response?.data?.message ||
         error?.message ||
         "Failed to reset password. Please try again ❌";
       toast.error(errMsg);
-      // useful for debugging without affecting UI
-      // eslint-disable-next-line no-console
-      console.error("Reset password error:", error);
     }
   };
 
@@ -87,30 +84,28 @@ const UserResetPassword = () => {
           )}
         </div>
 
-        {/* Password */}
+        {/* New Password */}
         <div className="w-full">
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Password
+            New Password
           </label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
-              {...register("password", {
-                required: "Password is required",
+              {...register("newPassword", {
+                required: "New Password is required",
                 minLength: {
-                  value: 8,
-                  message: "Password must be at least 8 characters",
+                  value: 5,
+                  message: "New Password must be at least 5 characters",
                 },
                 pattern: {
-                  // at least one lowercase, one uppercase, one digit, one special char
-                  value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{8,}$/,
-                  message:
-                    "Password must include uppercase, lowercase, number & special character",
+                  value: /^(?=.*[A-Za-z])(?=.*\d).{5,}$/,
+                  message: "Password must contain at least one letter and one number",
                 },
               })}
               type={showPassword ? "text" : "password"}
               placeholder="Enter Your Password"
-              className="pl-9  border-[2px] border-[#213555] rounded"
+              className="pl-9 border-[2px] border-[#213555] rounded"
             />
             <button
               type="button"
@@ -120,12 +115,12 @@ const UserResetPassword = () => {
               {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
           </div>
-          {errors.password && (
-            <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
+          {errors.newPassword && (
+            <p className="text-red-500 text-sm mt-1">{errors.newPassword.message}</p>
           )}
         </div>
 
-        {/* Confirm Password */}
+        {/* Confirm New Password */}
         <div className="w-full">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Confirm Password
@@ -133,10 +128,10 @@ const UserResetPassword = () => {
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
-              {...register("confirmPassword", {
-                required: "Confirm Password is required",
+              {...register("confirmNewPassword", {
+                required: "Confirm New Password is required",
                 validate: (value) =>
-                  value === watch("password") || "Passwords do not match",
+                  value === watch("newPassword") || "Passwords do not match",
               })}
               type={showConfirmPassword ? "text" : "password"}
               placeholder="Confirm Password"
@@ -150,8 +145,8 @@ const UserResetPassword = () => {
               {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
           </div>
-          {errors.confirmPassword && (
-            <p className="text-red-500 text-sm mt-1">{errors.confirmPassword.message}</p>
+          {errors.confirmNewPassword && (
+            <p className="text-red-500 text-sm mt-1">{errors.confirmNewPassword.message}</p>
           )}
         </div>
 

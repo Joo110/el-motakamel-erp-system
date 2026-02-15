@@ -3,8 +3,10 @@ import { Upload, Edit2 } from "lucide-react";
 import { useProducts } from "../hooks/useProducts";
 import { toast } from 'react-hot-toast';
 import { useCategories } from "@/mycomponents/category/hooks/useCategories";
+import { useTranslation } from "react-i18next";
 
-const NewProduct = () => {
+const NewProduct: React.FC = () => {
+  const { t } = useTranslation();
   const { addProduct } = useProducts();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { categories: apiCategories, isLoading: catLoading } = useCategories();
@@ -28,7 +30,7 @@ const NewProduct = () => {
       const firstId = apiCategories[0]._id ?? apiCategories[0].id;
       setFormData((prev) => ({ ...prev, category: firstId }));
     }
-  }, [apiCategories]);
+  }, [apiCategories]); // keep same behavior
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -57,76 +59,98 @@ const NewProduct = () => {
 
       const selectedCategoryId = formData.category;
       if (!selectedCategoryId) {
-        toast.error("Please select a valid category!");
+        toast.error(t("select_valid_category"));
         setSaving(false);
         return;
       }
 
       if (imageFile && imageFile.size > 3 * 1024 * 1024) {
-        toast.error("❌ Image file is too large! Please upload an image under 3MB.");
+        toast.error(t("image_too_large"));
         setSaving(false);
         return;
       }
 
-      // Build FormData (minimal change requested)
+      // Build FormData
       const form = new FormData();
       form.append("name", formData.name);
       form.append("code", formData.code);
-      form.append("price", String(parseFloat(formData.price) || 0));
+
+      // backend expects retailPrice & wholesalePrice (we only have one input 'price' in UI)
+      // send both so endpoint accepts the payload
+      form.append("retailPrice", String(parseFloat(formData.price) || 0));
+      form.append("wholesalePrice", String(parseFloat(formData.price) || 0));
+
       form.append("tax", String(parseFloat(formData.tax) || 0));
       form.append("description", formData.description);
       form.append("category", String(selectedCategoryId));
       form.append("unit", String(parseInt(formData.unit) || 1));
 
-      // append the file using the same key used previously in payload (img)
       if (imageFile) {
-        form.append("img", imageFile); // تأكد أن الباكديند يتوقع الحقل "img"
+        form.append("img", imageFile);
       }
 
-const result = await addProduct(form as unknown as any);
+      // call hook (which expects FormData)
+      await addProduct(form);
 
-      // ✅ Case 1: Duplicate code error from backend (MongoDB)
-      if (result?.err?.code === 11000 || result?.code === 11000) {
-        toast.error("❌ This product code is already in use!");
-        setSaving(false);
-        return;
-      }
-
-      // ✅ Case 2: Image too large (HTTP 413)
-      if (result?.err?.statusCode === 413 || result?.err?.status === 413 || result?.statusCode === 413) {
-        toast.error("❌ Image file is too large! Please upload a smaller image.");
-        setSaving(false);
-        return;
-      }
-
-      toast.success("✅ Product created successfully!");
+      toast.success(t("product_created_success"));
       handleCancel();
     } catch (error: any) {
-      console.error("❌ Error creating product:", error);
+     console.error("❌ Error creating product:", error);
 
-      if (error?.response?.data?.err?.code === 11000 || error?.err?.code === 11000) {
-        toast.error("❌ This product code is already in use!");
-      } else if (
-        error?.response?.data?.err?.statusCode === 413 ||
-        error?.err?.statusCode === 413 ||
-        error?.statusCode === 413
-      ) {
-        toast.error("❌ Image file is too large! Please upload a smaller image.");
-      } else {
-        toast.error("Error creating product.");
-      }
+// حاول تجيب رسالة من السيرفر
+const serverMessage =
+  error?.response?.data?.message ||
+  error?.message ||
+  error?.response?.data?.err?.message ||
+  (typeof error === "string" ? error : undefined);
+
+if (serverMessage) {
+  const lower = String(serverMessage).toLowerCase();
+
+  // كود منتج مكرر
+  if (
+    lower.includes("product code already exists") ||
+    lower.includes("code already exists") ||
+    lower.includes("already exists") ||
+    lower.includes("duplicate") ||
+    lower.includes("exists")
+  ) {
+    toast.error(t("duplicate_code_error"));
+  }
+  // أي رسالة معروفة تانية من السيرفر (مستقبلاً)
+  else {
+    toast.error(t("error_creating_product"));
+  }
+}
+// Mongo duplicate key (fallback قديم)
+else if (
+  error?.response?.data?.err?.code === 11000 ||
+  error?.err?.code === 11000
+) {
+  toast.error(t("duplicate_code_error"));
+}
+else if (
+  error?.response?.data?.err?.statusCode === 413 ||
+  error?.err?.statusCode === 413 ||
+  error?.statusCode === 413 ||
+  error?.response?.status === 413
+) {
+  toast.error(t("image_too_large"));
+}
+else {
+  toast.error(t("error_creating_product"));
+}
+
     } finally {
       setSaving(false);
     }
   };
-  // ======== نهاية التعديل ========
 
   const calculateTotal = () => {
     const price = parseFloat(formData.price) || 0;
     const tax = parseFloat(formData.tax) || 0;
     return (price + tax).toFixed(2);
   };
-
 
   const handleCancel = () => {
     setFormData({
@@ -146,27 +170,27 @@ const result = await addProduct(form as unknown as any);
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
       <div className="mb-3 flex items-center gap-4 flex-wrap">
-        <h1 className="text-3xl font-bold text-gray-800">Products Management</h1>
+        <h1 className="text-3xl font-bold text-gray-800">{t("products_management_header")}</h1>
 
         <div className="flex items-center gap-2 text-sm text-gray-500 flex-wrap">
-          <span>Dashboard</span>
+          <span>{t("breadcrumb_dashboard")}</span>
           <span>›</span>
-          <span>Products</span>
+          <span>{t("breadcrumb_products")}</span>
           <span>›</span>
-          <span className="text-gray-700">New Product</span>
+          <span className="text-gray-700">{t("new_product")}</span>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="bg-white rounded-lg shadow-sm p-8">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-8">New Product</h2>
+        <h2 className="text-2xl font-semibold text-gray-800 mb-8">{t("new_product_title")}</h2>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Form Fields */}
           <div className="lg:col-span-2 space-y-6">
             {/* Product Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Product Name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t("product_name_label")}</label>
               <input
                 type="text"
                 name="name"
@@ -179,7 +203,7 @@ const result = await addProduct(form as unknown as any);
 
             {/* Category */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t("category_label")}</label>
               <select
                 name="category"
                 value={formData.category}
@@ -193,7 +217,7 @@ const result = await addProduct(form as unknown as any);
                   paddingRight: "2.5rem",
                 }}
               >
-                <option value="">Category...</option>
+                <option value="">{t("category_placeholder")}</option>
                 {apiCategories && apiCategories.length > 0 ? (
                   apiCategories.map((c: any) => (
                     <option key={c._id ?? c.id} value={c._id ?? c.id}>
@@ -201,7 +225,6 @@ const result = await addProduct(form as unknown as any);
                     </option>
                   ))
                 ) : (
-                  // if categories list empty, show nothing (no dummy options)
                   null
                 )}
               </select>
@@ -209,7 +232,7 @@ const result = await addProduct(form as unknown as any);
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t("description_label")}</label>
               <textarea
                 name="description"
                 value={formData.description}
@@ -221,21 +244,21 @@ const result = await addProduct(form as unknown as any);
 
             {/* Code */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Code</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t("code_label")}</label>
               <input
                 type="text"
                 name="code"
                 value={formData.code}
                 onChange={handleInputChange}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
-                placeholder="Enter product code..."
+                placeholder={t("enter_product_code_placeholder")}
               />
             </div>
 
             {/* Price, Tax, Unit Row */}
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Price</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t("price_label")}</label>
                 <div className="relative">
                   <input
                     type="number"
@@ -245,12 +268,11 @@ const result = await addProduct(form as unknown as any);
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
                     placeholder=""
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">SR</span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Tax</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t("tax_label")}</label>
                 <div className="relative">
                   <input
                     type="number"
@@ -260,12 +282,11 @@ const result = await addProduct(form as unknown as any);
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-gray-400"
                     placeholder=""
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">SR</span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Unit</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t("unit_label")}</label>
                 <input
                   type="number"
                   name="unit"
@@ -279,7 +300,7 @@ const result = await addProduct(form as unknown as any);
 
             {/* Total */}
             <div className="flex items-center gap-4">
-              <span className="text-sm font-medium text-gray-700">Total:</span>
+              <span className="text-sm font-medium text-gray-700">{t("total_label")}</span>
               <span className="text-lg font-semibold text-gray-800">{calculateTotal()} SR</span>
             </div>
           </div>
@@ -290,9 +311,9 @@ const result = await addProduct(form as unknown as any);
               {/* Image Preview */}
               <div className="border-2 border-dashed border-gray-300 rounded-lg h-80 flex items-center justify-center bg-gray-50 mb-4 overflow-hidden">
                 {image ? (
-                  <img src={image} alt="Product preview" className="w-full h-full object-cover" />
+                  <img src={image} alt={t("image_preview")} className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-gray-400 text-sm">image preview</span>
+                  <span className="text-gray-400 text-sm">{t("image_preview")}</span>
                 )}
               </div>
 
@@ -301,7 +322,7 @@ const result = await addProduct(form as unknown as any);
                 <label className="flex-1 cursor-pointer">
                   <div className="flex items-center justify-center gap-2 px-4 py-3 bg-[#1f334d] text-white rounded-xl shadow-sm hover:bg-gray-900 transition-all font-medium">
                     <Edit2 size={18} />
-                    <span>Edit image</span>
+                    <span>{t("edit_image")}</span>
                   </div>
                   <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                 </label>
@@ -309,7 +330,7 @@ const result = await addProduct(form as unknown as any);
                 <label className="flex-1 cursor-pointer">
                   <div className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-400 text-white rounded-xl shadow-sm hover:bg-blue-700 transition-all font-medium">
                     <Upload size={18} />
-                    <span>Upload image</span>
+                    <span>{t("upload_image")}</span>
                   </div>
                   <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                 </label>
@@ -324,7 +345,7 @@ const result = await addProduct(form as unknown as any);
             onClick={handleCancel}
             className="px-6 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-xl shadow-sm hover:bg-gray-50 transition-all font-medium"
           >
-            Cancel
+            {t("cancel")}
           </button>
 
           <button
@@ -334,7 +355,7 @@ const result = await addProduct(form as unknown as any);
               saving ? "bg-gray-400 cursor-not-allowed" : "bg-[#1f334d] hover:bg-gray-900"
             }`}
           >
-            {saving ? "Saving..." : "Save Product"}
+            {saving ? t("saving") : t("save_product")}
           </button>
         </div>
       </div>

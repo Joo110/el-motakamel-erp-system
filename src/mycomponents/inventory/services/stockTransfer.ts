@@ -1,3 +1,4 @@
+// src/mycomponents/stockTransfer/services/stockTransfer.ts
 import axiosClient from "@/lib/axiosClient";
 
 export interface StockTransferProduct {
@@ -10,96 +11,74 @@ export interface StockTransferRequest {
   from: string;
   to: string;
   products: StockTransferProduct[];
-  shippingCost: number;
+  shippingCost?: number;
 }
 
 export interface StockTransferResponse {
-  status: string;
-  reference: string;
-  from: string;
-  to: string;
-  products: StockTransferProduct[];
-  shippingCost: number;
+  status?: string;
+  reference?: string;
+  from?: string;
+  to?: string;
+  products?: StockTransferProduct[];
+  shippingCost?: number;
+  [key: string]: any;
 }
 
-// ✅ تحديث تكلفة الشحن (shippingCost)
+export const createStockTransferService = async (
+  data: StockTransferRequest
+): Promise<any> => {
+  const response = await axiosClient.post("/stock-transfers", data);
+  return response.data ?? response;
+};
+
+
+export const getStockTransferByRefService = async (
+  reference: string
+): Promise<any> => {
+  const response = await axiosClient.get(`/stock-transfers/${reference}`);
+  return response.data ?? response;
+};
+
+
+export const getTransfersByStatusService = async (status: string) => {
+  const response = await axiosClient.get(`/stock-transfers`, {
+    params: { status },
+  });
+  return response.data ?? response;
+};
+
+
 export const updateStockTransferShippingCostService = async (
   id: string,
   shippingCost: number
-): Promise<StockTransferResponse> => {
-  const response = await axiosClient.patch<StockTransferResponse>(
-    `/stockTransfer/${id}/shipping`,
-    { shippingCost }
-  );
-  return response.data;
-};
-
-// ✅ إنشاء تحويل مخزون جديد
-export const createStockTransferService = async (
-  data: StockTransferRequest
-): Promise<StockTransferResponse> => {
-  const response = await axiosClient.post<StockTransferResponse>(
-    "/stockTransfer",
-    data
-  );
-  return response.data;
-};
-
-// ✅ الحصول على تحويل محدد بالـ reference
-export const getStockTransferByRefService = async (
-  reference: string
-): Promise<StockTransferResponse> => {
-  const response = await axiosClient.get<StockTransferResponse>(
-    `/stockTransfer/${reference}`
-  );
-  return response.data;
-};
-
-// ✅ جلب التحويلات بحالة "Draft"
-export const getDraftStockTransfersService = async () => {
-  const response = await axiosClient.get("/stockTransfer/status=draft");
-  return response.data;
-};
-
-// ✅ تحديث حالة التحويل إلى "Shipping"
-export const markStockTransferAsShippingService = async (
-  id: string
-): Promise<StockTransferResponse> => {
-  const response = await axiosClient.patch<StockTransferResponse>(
-    `/stockTransfer/${id}/shipping`
-  );
-  return response.data;
-};
-
-// ✅ جلب التحويلات بحالة "Shipped"
-export const getShippedStockTransfersService = async () => {
-  const response = await axiosClient.get("/stockTransfer/status=shipped");
-  return response.data;
+): Promise<any> => {
+  const response = await axiosClient.patch(`/stock-transfers/ship/${id}`, {
+    shippingCost,
+  });
+  return response.data ?? response;
 };
 
 
-// ✅ تحديث حالة التحويل إلى "Delivered"
-export const markStockTransferAsDeliveredService = async (
-  id: string
-): Promise<StockTransferResponse> => {
-  const response = await axiosClient.patch<StockTransferResponse>(
-  `/stockTransfer/${id}/delivered`
-);
-  return response.data;
+export const markStockTransferAsShippingService = async (id: string) => {
+  const response = await axiosClient.patch(`/stock-transfers/ship/${id}`);
+  return response.data ?? response;
 };
 
-// ✅ جلب التحويلات بحالة "Delivered"
-export const getDeliveredStockTransfersService = async () => {
-  const response = await axiosClient.get("/stockTransfer/status=delivered");
-  return response.data;
+
+export const markStockTransferAsDeliveredService = async (id: string) => {
+  const response = await axiosClient.patch(`/stock-transfers/deliver/${id}`);
+  return response.data ?? response;
 };
 
-// ✅ جلب تحويل "Delivered" معين بالـ id
-export const getDeliveredStockTransferByIdService = async (
-  id: string
-): Promise<StockTransferResponse> => {
-  const response = await axiosClient.get<StockTransferResponse>(
-    `/stockTransfer/status=delivered/${id}`
-  );
-  return response.data;
+
+export const getTransferDocumentService = async (id: string) => {
+  const response = await axiosClient.get(`/stock-transfers/document/${id}`, {
+    responseType: "arraybuffer",
+  });
+  return response.data ?? response;
+};
+
+export const getAllStockTransfersService = async (params?: Record<string, any>) => {
+  const response = await axiosClient.get("/stock-transfers", { params });
+  return response.data ?? response;
 };

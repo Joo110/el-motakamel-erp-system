@@ -6,19 +6,21 @@ import { usePurchaseOrder } from '../../Precious/hooks/useCreatePurchaseOrder';
 import { useOrganization } from '../../organizations/hooks/useOrganization';
 import axiosClient from '@/lib/axiosClient';
 import { toast } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 type StatusType = 'Draft' | 'Approved' | 'Invoice';
 
 const StockInDraftComponent: React.FC = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { item: orderData, loading, error } = usePurchaseOrder(id);
+  const { item: orderData } = usePurchaseOrder(id);
   const { organization: organizationData } = useOrganization(orderData?.organizationId);
 
   const [creating, setCreating] = useState(false);
-  const [apiError, setApiError] = useState<string | null>(null); // new: show banner when backend returns unexpected HTML
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const parseStatus = (raw?: any): StatusType | null => {
     if (!raw) return null;
@@ -46,7 +48,7 @@ const StockInDraftComponent: React.FC = () => {
     setActiveStatus(getInitialStatus());
   }, [location.key, location.search, JSON.stringify(location.state)]);
 
-  const headerText = `Purchase Order (${activeStatus})`;
+  const headerText = `${t('purchase_order')} (${activeStatus})`;
 
   const extractOrgName = (org: any): string | null => {
     if (!org) return null;
@@ -60,103 +62,113 @@ const StockInDraftComponent: React.FC = () => {
 
   const warehouseName = extractOrgName(organizationData) || orderData?.organizationId || '-';
 
-  const handleCreateInvoice = async () => {
-    if (!id) return;
-    setApiError(null);
-    setCreating(true);
-    try {
-      const resp = await axiosClient.post(`/purchaseInvoices/${id}`);
+ const handleCreateInvoice = async () => {
+  if (!id) return;
 
-      // Normalize headers access (axios response has headers object)
-const contentType =
-  typeof resp?.headers?.get === 'function'
-    ? (resp.headers.get('content-type') ?? '')
-    : String((resp?.headers as any)?.['content-type'] ?? '');
+  setApiError(null);
+  setCreating(true);
 
-      const body = resp?.data;
+  try {
+    const resp = await axiosClient.post(
+      `/purchase-invoices/${id}`,
+      {
+        notes: 'Invoice created from purchase order',
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
 
-      // Detect HTML/text response like "Welcome to ERP"
-      const isHtmlText =
-        typeof body === 'string' ||
-        (typeof contentType === 'string' && contentType.includes('text/html'));
+    const returnedInvoice =
+      resp?.data?.data?.invoice ??
+      resp?.data?.invoice ??
+      resp?.data ??
+      resp;
 
-      if (isHtmlText) {
-        // If body includes "Welcome to ERP" or it's HTML, treat as unexpected/error
-   if (typeof resp?.data === "string") {
-  const normalized = resp.data.toLowerCase().trim();
-  if (normalized.includes("welcome to erp")) {
-    toast.error("Unexpected server response — please contact your administrator.");
-    return;
+    console.log('Create invoice response:', returnedInvoice);
+
+    toast.success(t('invoice_created_successfully'));
+    navigate(`/dashboard/preciousmanagement`);
+  } catch (err: any) {
+    console.error('Create invoice error:', err?.response?.data ?? err);
+
+    const msg =
+      err?.response?.data?.message ||
+      err?.message ||
+      'Unknown error';
+
+    setApiError(msg);
+    toast.error(t('failed_create_invoice') + ': ' + msg);
+  } finally {
+    setCreating(false);
   }
-}
+};
 
-      }
 
-      // If backend uses envelope like { status, data: { invoice: ... } } or returns invoice directly:
-      const returnedInvoice = resp?.data?.data?.invoice ?? resp?.data?.invoice ?? resp?.data ?? resp;
-      console.log('Create invoice response:', returnedInvoice);
-      toast.success('Invoice created successfully!');
-      // navigate to invoice page (optional)
-      navigate(`/dashboard/preciousmanagement`);
-    } catch (err: any) {
-      console.error('Create invoice error:', err?.response?.data ?? err);
-      // If server returned HTML message in error.response.data, detect and show friendly message:
-      const serverBody = err?.response?.data;
-      if (typeof serverBody === 'string' && serverBody.includes('Welcome to ERP')) {
-        const msg = 'Server returned "Welcome to ERP" — request hit wrong endpoint (dev server).';
-        setApiError(msg);
-        toast.error(msg);
-      } else {
-        const msg = err?.response?.data?.message || err?.message || String(err);
-        setApiError(String(msg));
-        toast.error('Failed to create invoice: ' + msg);
+  // ---- Helpers to safely extract/display values ----
+  const safeText = (v: any): string => {
+    if (v === null || v === undefined) return '-';
+    if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return String(v);
+    if (typeof v === 'object') {
+      if (Array.isArray(v)) return v.join(', ');
+      if (v.name) return String(v.name);
+      if (v.productName) return String(v.productName);
+      if (v.tradeName) return String(v.tradeName);
+      if (v._id) return String(v._id);
+      if (v.id) return String(v.id);
+      try {
+        const s = JSON.stringify(v);
+        return s.length > 80 ? s.slice(0, 77) + '…' : s;
+      } catch {
+        return '[Object]';
       }
-    } finally {
-      setCreating(false);
     }
+    return String(v);
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen text-gray-600 text-lg">
-        ⏳ Loading purchase order details...
-      </div>
-    );
-  }
+  const getQuantity = (p: any): number => {
+    return Number(p.quantity ?? p.qty ?? p.units ?? 0) || 0;
+  };
 
-  if (error) {
-    return (
-      <div className="flex justify-center items-center h-screen text-red-600 text-lg">
-        ❌ Failed to load purchase order: {error.message}
-      </div>
-    );
-  }
+  const getWholesalePrice = (p: any): number => {
+    // prioritize explicit wholesalePrice, then product.wholesalePrice, then fallbacks
+    return Number(p.wholesalePrice ?? p.product?.wholesalePrice ?? p.wholesale ?? p.price ?? p.retailPrice ?? 0) || 0;
+  };
 
-  if (!orderData) {
-    return (
-      <div className="flex justify-center items-center h-screen text-gray-600 text-lg">
-        ⚠️ No purchase order data found for ID: {id}
-      </div>
-    );
-  }
+  const getRetailPrice = (p: any): number => {
+    return Number(p.retailPrice ?? p.product?.retailPrice ?? p.retailPrice ?? p.retail ?? 0) || 0;
+  };
 
+  const getDiscount = (p: any): number => {
+    return Number(p.discount ?? 0) || 0;
+  };
+
+  // compute subtotal based on wholesale price (quantity * wholesale * (1 - discount))
   const subtotal =
-    orderData?.products?.reduce((sum: number, item: any) => sum + (item.total ?? 0), 0) || 0;
+    (orderData?.products ?? []).reduce((sum: number, item: any) => {
+      const q = getQuantity(item);
+      const w = getWholesalePrice(item);
+      const d = getDiscount(item);
+      const line = w * q * (1 - d / 100);
+      return sum + (Number.isFinite(line) ? line : 0);
+    }, 0) || 0;
+
   const tax = subtotal * 0.14;
-  const total = orderData?.totalAmount ?? subtotal + tax;
+  const total = subtotal + tax;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Inventory Management</h1>
-        <p className="text-sm text-gray-500">Dashboard &gt; Inventory &gt; Stock in Draft</p>
+        <h1 className="text-2xl font-semibold text-gray-900">{t('inventory_management')}</h1>
+        <p className="text-sm text-gray-500">{t('dashboard')} &gt; {t('inventory')} &gt; {t('stock_in_draft')}</p>
       </div>
 
-      {/* Show API error banner if detected */}
       {apiError && (
         <div className="max-w-5xl mx-auto mb-4 p-3 rounded-md bg-red-50 border border-red-200 text-red-800">
-          <strong>Error:</strong> {apiError}
+          <strong>{t('error_label')}:</strong> {apiError}
         </div>
       )}
 
@@ -171,20 +183,20 @@ const contentType =
           {/* Invoice Info */}
           <div className="grid grid-cols-2 gap-6 mb-8">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Invoice number:</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('invoice_number')}:</label>
               <input
                 type="text"
-                value={orderData?.invoiceNumber || '-'}
+                value={safeText(orderData?.invoiceNumber ?? '-')}
                 readOnly
                 className="w-full px-3 py-2 border border-gray-300 rounded-full bg-gray-50"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Invoice Date:</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('invoice_date')}:</label>
               <input
                 type="text"
                 value={
-                  orderData?.createdAt ? new Date(orderData.createdAt).toLocaleDateString('en-GB') : '-'
+                  orderData?.createdAt ? new Date(orderData.createdAt).toLocaleDateString('ar-EG') : '-'
                 }
                 readOnly
                 className="w-full px-3 py-2 border border-gray-300 rounded-full bg-gray-50"
@@ -194,24 +206,23 @@ const contentType =
 
           {/* Supplier & Company Info */}
           <div className="grid grid-cols-2 gap-8 mb-8">
-            {/* Supplier */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Supplier</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('supplier_label')}</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Supplier ID:</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('supplier_id')}:</label>
                   <input
                     type="text"
-                    value={orderData?.supplierId || '-'}
+                    value={safeText(orderData?.supplierId ??  '-')}
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-full bg-gray-50"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Currency:</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('currency_label')}:</label>
                   <input
                     type="text"
-                    value={orderData?.currency || '-'}
+                    value={safeText(orderData?.currency ?? '-') }
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-full bg-gray-50"
                   />
@@ -219,26 +230,25 @@ const contentType =
               </div>
             </div>
 
-            {/* Company */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Company Info</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('company_info')}</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">WarehouseId:</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('warehouse_id')}:</label>
                   <input
                     type="text"
-                    value={warehouseName}
+                    value={safeText(warehouseName)}
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-full bg-gray-50"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Expected Delivery Date:</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('expected_delivery_date')}:</label>
                   <input
                     type="text"
                     value={
                       orderData?.expectedDeliveryDate
-                        ? new Date(orderData.expectedDeliveryDate).toLocaleDateString('en-GB')
+                        ? new Date(orderData.expectedDeliveryDate).toLocaleDateString('ar-EG')
                         : '-'
                     }
                     readOnly
@@ -251,33 +261,51 @@ const contentType =
 
           {/* Products */}
           <div className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Requested Products</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('requested_products')}</h2>
             <div className="overflow-x-auto border border-gray-200 rounded-lg">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-xs font-medium text-gray-600 text-left">Product</th>
-                    <th className="px-4 py-3 text-xs font-medium text-gray-600 text-left">Quantity</th>
-                    <th className="px-4 py-3 text-xs font-medium text-gray-600 text-left">Price</th>
-                    <th className="px-4 py-3 text-xs font-medium text-gray-600 text-left">Discount</th>
-                    <th className="px-4 py-3 text-xs font-medium text-gray-600 text-left">Total</th>
+                    <th className="px-4 py-3 text-xs font-medium text-gray-600 text-left">{t('product_col')}</th>
+                    <th className="px-4 py-3 text-xs font-medium text-gray-600 text-left">{t('quantity_label')}</th>
+                    <th className="px-4 py-3 text-xs font-medium text-gray-600 text-left">{t('wholesale_price_col') || 'Wholesale'}</th>
+                    <th className="px-4 py-3 text-xs font-medium text-gray-600 text-left">{t('retail_price_col') || 'Retail'}</th>
+                    <th className="px-4 py-3 text-xs font-medium text-gray-600 text-left">{t('discount_col')}</th>
+                    <th className="px-4 py-3 text-xs font-medium text-gray-600 text-left">{t('total_col')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {orderData?.products?.length ? (
-                    orderData.products.map((p: any, i: number) => (
-                      <tr key={i} className="border-b last:border-0">
-                        <td className="px-4 py-3 text-sm">{p.name || '-'}</td>
-                        <td className="px-4 py-3 text-sm">{p.quantity ?? 0}</td>
-                        <td className="px-4 py-3 text-sm">{((p.price ?? 0) as number).toFixed(2)}</td>
-                        <td className="px-4 py-3 text-sm">{p.discount ?? 0}%</td>
-                        <td className="px-4 py-3 text-sm font-medium">{((p.total ?? 0) as number).toFixed(2)}</td>
-                      </tr>
-                    ))
+                    orderData.products.map((p: any, i: number) => {
+                       console.log('DEBUG PRODUCT', {
+    retailPrice: p.retailPrice,
+    wholesalePrice: p.wholesalePrice,
+    full: p
+  });
+                      const q = getQuantity(p);
+                      const wholesale = getWholesalePrice(p);
+                      const retail = getRetailPrice(p);
+                      const discount = getDiscount(p);
+                      const lineTotal = wholesale * q * (1 - discount / 100);
+
+                      // product name may be nested under `product`
+                      const productName = p.product?.name ?? p.productName ?? p.name ?? p.product?.title ?? '-';
+
+                      return (
+                        <tr key={i} className="border-b last:border-0">
+                          <td className="px-4 py-3 text-sm">{safeText(productName)}</td>
+                          <td className="px-4 py-3 text-sm">{q}</td>
+                          <td className="px-4 py-3 text-sm">{wholesale.toFixed(2)}</td>
+                          <td className="px-4 py-3 text-sm">{retail.toFixed(2)}</td>
+                          <td className="px-4 py-3 text-sm">{discount ?? 0}%</td>
+                          <td className="px-4 py-3 text-sm font-medium">{lineTotal.toFixed(2)}</td>
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr>
-                      <td colSpan={5} className="text-center py-10 text-gray-400">
-                        No products found
+                      <td colSpan={6} className="text-center py-10 text-gray-400">
+                        {t('no_products_found')}
                       </td>
                     </tr>
                   )}
@@ -289,7 +317,7 @@ const contentType =
           {/* Notes + Totals */}
           <div className="grid grid-cols-2 gap-8 mb-8">
             <div>
-              <h3 className="text-base font-semibold text-gray-900 mb-3">Notes</h3>
+              <h3 className="text-base font-semibold text-gray-900 mb-3">{t('notes_label')}</h3>
               <textarea
                 readOnly
                 value={orderData?.notes || ''}
@@ -298,18 +326,18 @@ const contentType =
               />
             </div>
             <div>
-              <h3 className="text-base font-semibold text-gray-900 mb-3">Total Payment</h3>
+              <h3 className="text-base font-semibold text-gray-900 mb-3">{t('total_payment')}</h3>
               <div className="border border-gray-300 rounded-md px-4 py-3 bg-gray-50 space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Subtotal:</span>
+                  <span className="text-gray-600">{t('subtotal_label')}:</span>
                   <span>{subtotal.toFixed(2)} {orderData?.currency || 'EGP'}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Tax (14%):</span>
+                  <span className="text-gray-600">{t('tax_14')}:</span>
                   <span>{tax.toFixed(2)} {orderData?.currency || 'EGP'}</span>
                 </div>
                 <div className="flex justify-between text-base font-semibold border-t pt-2">
-                  <span>Total:</span>
+                  <span>{t('total_label')}:</span>
                   <span>{total.toFixed(2)} {orderData?.currency || 'EGP'}</span>
                 </div>
               </div>
@@ -322,29 +350,30 @@ const contentType =
               className="px-6 py-2 border border-gray-300 text-gray-700 rounded-full text-sm hover:bg-gray-50"
               onClick={() => window.history.back()}
             >
-              Back
+              {t('back_btn')}
             </button>
 
-            <button
-              className="px-6 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-slate-800 flex items-center gap-2"
-              onClick={() => {
-                if (!id) return;
-                navigate(`/dashboard/EditPurchaseOrderComponent/${id}`, {
-                  state: { orderData },
-                });
-              }}
-            >
-              Edit
-            </button>
+            {activeStatus !== 'Invoice' && (
+              <button
+                className="px-6 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-slate-800 flex items-center gap-2"
+                onClick={() => {
+                  if (!id) return;
+                  navigate(`/dashboard/EditPurchaseOrderComponent/${id}`, {
+                    state: { orderData },
+                  });
+                }}
+              >
+                {t('edit_btn')}
+              </button>
+            )}
 
-            {/* Create Invoice button - only show when status is Invoice */}
             {activeStatus === 'Invoice' && (
               <button
                 className="px-6 py-2 bg-green-600 text-white rounded-full text-sm hover:bg-green-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={handleCreateInvoice}
                 disabled={creating}
               >
-                {creating ? 'Creating...' : 'Create Invoice'}
+                {creating ? t('creating_label') : t('create_invoice_btn')}
               </button>
             )}
 
@@ -353,7 +382,7 @@ const contentType =
               onClick={() => window.print()}
             >
               <Download className="w-4 h-4" />
-              Export
+              {t('export_btn')}
             </button>
           </div>
         </div>
@@ -362,7 +391,7 @@ const contentType =
   );
 };
 
-// Print styles injection (kept as earlier)
+// Print styles injection
 const printStyles = `
   @media print {
     body * {

@@ -5,9 +5,8 @@ interface RetryableRequest extends AxiosRequestConfig {
   _retry?: boolean;
 }
 
-// ✅ استخدم متغير البيئة أو المسار المحلي حسب الحالة
 const baseURL =
-  import.meta.env.VITE_API_URL || "/api";
+  import.meta.env.VITE_API_URL || "/api/v1";
 
 const axiosClient = axios.create({
   baseURL,
@@ -33,7 +32,6 @@ axiosClient.interceptors.response.use(
     const originalRequest = error.config as RetryableRequest | undefined;
     if (!originalRequest) return Promise.reject(error);
 
-    // ✅ في حالة انتهاء الصلاحية، حاول تجديد التوكن
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 

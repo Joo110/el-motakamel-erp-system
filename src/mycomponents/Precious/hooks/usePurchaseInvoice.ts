@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { postPurchaseInvoiceById } from '../services/purchaseInvoices';
+import { payInvoiceById } from '../services/invoicePay';
 
 export function usePurchaseInvoice(id?: string) {
   const [invoice, setInvoice] = useState<any>(null);
@@ -12,7 +12,7 @@ export function usePurchaseInvoice(id?: string) {
     setLoading(true);
     setError(null);
     try {
-      const res = await postPurchaseInvoiceById(realId);
+const res = await payInvoiceById(realId);
       setInvoice(res);
       return res;
     } catch (err) {

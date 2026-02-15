@@ -6,6 +6,7 @@ import {
   updateInventoryService,
 } from "@/mycomponents/inventory/services/inventories";
 import { toast } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 interface EditInventoryFormProps {
   inventoryId: string;
@@ -25,6 +26,8 @@ interface RawInventory extends Inventory {
   avatar?: string;
   img?: string;
   image?: string;
+  _id?: string;
+  id?: string;
 }
 
 const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
@@ -32,10 +35,12 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
   onSave,
   onCancel,
 }) => {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [original, setOriginal] = useState<RawInventory | null>(null);
+  const [imageFile, setImageFile] = useState<File | undefined>(undefined);
 
   const [formData, setFormData] = useState<InventoryEditData>({
     id: inventoryId ?? "#1346HC",
@@ -63,7 +68,7 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
 
         setOriginal(inv);
 
-        const id = inv._id ?? inventoryId;
+        const idVal = inv._id ?? inv.id ?? inventoryId;
         const inventoryName = inv.name ?? "";
         const location = inv.location ?? "";
         const capacity =
@@ -74,7 +79,7 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
         const image = inv.image ?? inv.img ?? inv.avatar ?? "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=400&h=300&fit=crop";
 
         setFormData({
-          id,
+          id: idVal,
           inventoryName,
           location,
           capacity,
@@ -82,7 +87,7 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
         });
       } catch (err) {
         console.error(err);
-        setError("Failed to load inventory data.");
+        setError(t('failed_load_inventory'));
       } finally {
         setIsLoading(false);
       }
@@ -92,7 +97,7 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
     return () => {
       mounted = false;
     };
-  }, [inventoryId]);
+  }, [inventoryId, t]);
 
   const handleInputChange = (field: keyof InventoryEditData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -102,6 +107,7 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData((prev) => ({ ...prev, image: reader.result as string }));
@@ -122,9 +128,17 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
       String(formData.capacity).trim() !==
       String(original.capacity ?? "").trim()
     )
-      changes.capacity = formData.capacity;
-    if (formData.image && formData.image !== (original.image ?? original.avatar))
-      changes.image = formData.image;
+      changes.capacity = Number(formData.capacity); // ✅ convert to number
+
+    // image change detection
+    if (imageFile) {
+      (changes as any).image = imageFile; // send as File
+    } else {
+      const originalImage = (original.image ?? original.img ?? original.avatar ?? "").toString();
+      if (formData.image && formData.image !== originalImage) {
+        (changes as any).image = formData.image; // send URL
+      }
+    }
 
     return changes;
   };
@@ -134,15 +148,15 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
     let valid = true;
 
     if (!formData.inventoryName.trim()) {
-      newErrors.inventoryName = "Inventory Name is required";
+      newErrors.inventoryName = t('inventory_name_required');
       valid = false;
     }
     if (!formData.location.trim()) {
-      newErrors.location = "Location is required";
+      newErrors.location = t('location_required');
       valid = false;
     }
     if (!formData.capacity.trim()) {
-      newErrors.capacity = "Capacity is required";
+      newErrors.capacity = t('capacity_required');
       valid = false;
     }
 
@@ -153,9 +167,14 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
   const handleSaveDetails = async () => {
     if (!validate()) return;
 
+    if (!original) {
+      toast.error(t('failed_load_inventory'));
+      return;
+    }
+
     const changes = getChangedFields();
     if (Object.keys(changes).length === 0) {
-      toast.success("No changes detected.");
+      toast.success(t('no_changes_detected'));
       return;
     }
 
@@ -163,28 +182,31 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
     setError(null);
 
     try {
+      const idToSend = String(formData.id ?? inventoryId).replace(/^#/, "");
       const updated = await updateInventoryService(
-        formData.id.replace(/^#/, ""),
-        changes
+        idToSend,
+        changes,
+        imageFile
       );
 
-      toast.success("✅Inventory updated successfully!");
+      toast.success(t('inventory_updated_success'));
       setOriginal(updated as RawInventory);
+
       if (onSave) {
         onSave({
-          id: updated._id ?? formData.id,
+          id: updated._id ?? updated._id ?? formData.id,
           inventoryName: updated.name ?? formData.inventoryName,
           location: updated.location ?? formData.location,
           capacity:
             typeof updated.capacity === "number"
               ? String(updated.capacity)
               : formData.capacity,
-          image: (updated as any).image ?? formData.image,
+          image: (updated as any).image ?? (updated as any).avatar ?? formData.image,
         });
       }
     } catch (err) {
       console.error("Update error:", err);
-      toast.error("Failed to update inventory.");
+      toast.error(t('failed_update_inventory'));
     } finally {
       setIsSaving(false);
     }
@@ -195,22 +217,22 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
       <div className="max-w-5xl mx-auto">
         <div className="mb-6">
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-            <span>Dashboard</span>
+            <span>{t('dashboard')}</span>
             <span>›</span>
-            <span>Inventories</span>
+            <span>{t('inventories')}</span>
             <span>›</span>
-            <span>{formData.inventoryName || "Inventory"}</span>
+            <span>{formData.inventoryName || t('inventory')}</span>
             <span>›</span>
-            <span className="text-gray-700">Edit</span>
+            <span className="text-gray-700">{t('edit_details')}</span>
           </div>
-          <h1 className="text-2xl font-bold">Inventory Management</h1>
+          <h1 className="text-2xl font-bold">{t('inventory_management')}</h1>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-semibold">Edit Details</h2>
+            <h2 className="text-lg font-semibold">{t('edit_details')}</h2>
             <div className="text-sm">
-              <span className="text-gray-600">Id:</span>
+              <span className="text-gray-600">{t('id')}</span>
               <span className="ml-2 font-medium">{formData.id}</span>
             </div>
           </div>
@@ -219,7 +241,7 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Inventory Name:
+                  {t('inventory_name')}:
                 </label>
                 <input
                   type="text"
@@ -236,7 +258,7 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
 
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Location:
+                  {t('location')}:
                 </label>
                 <input
                   type="text"
@@ -253,7 +275,7 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
 
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Capacity:
+                  {t('capacity')}:
                 </label>
                 <input
                   type="text"
@@ -288,7 +310,7 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
                 />
                 <div className="px-6 py-2 bg-gray-800 text-white rounded-full hover:bg-gray-700 transition-colors inline-flex items-center gap-2">
                   <Upload size={16} />
-                  Change Image
+                  {t('change_image')}
                 </div>
               </label>
             </div>
@@ -299,14 +321,14 @@ const EditInventoryForm: React.FC<EditInventoryFormProps> = ({
               onClick={onCancel}
               className="px-6 py-2 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               onClick={handleSaveDetails}
-              disabled={isSaving || isLoading}
+              disabled={isSaving || isLoading || !original}
               className="px-6 py-2 bg-slate-700 text-white rounded-full hover:bg-blue-800 transition-colors disabled:opacity-60"
             >
-              {isSaving ? "Saving..." : "Save Details"}
+              {isSaving ? t('loading') : t('save_details')}
             </button>
           </div>
         </div>

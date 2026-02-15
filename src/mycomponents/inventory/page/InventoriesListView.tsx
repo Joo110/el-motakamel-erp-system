@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Search, RotateCcw, MapPin, Calendar, Edit2 } from 'lucide-react';
 import { useInventories } from '@/mycomponents/inventory/hooks/useInventories';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 interface Inventory {
   id: string;
@@ -24,47 +25,48 @@ const InventoriesListView: React.FC<InventoriesListViewProps> = ({
   onInventoryClick,
   onEditInventory,
 }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(6);
 
   const { inventories: rawInventories, isLoading } = useInventories();
-const mappedInventories: Inventory[] = useMemo(() => {
-  return rawInventories.map((inv: any, idx) => {
-    const id = inv._id ?? `inv-${idx}`;
-    const name = inv.name ?? 'Unnamed Inventory';
-    const location = inv.location ?? '';
-    const capacity =
-      typeof inv.capacity === 'number'
-        ? String(inv.capacity)
-        : inv.capacity ?? '';
 
-    const dateStr = inv.updatedAt ?? inv.createdAt ?? '';
-    let lastUpdate = '';
-    if (dateStr) {
-      try {
-        const d = new Date(dateStr);
-        const opts: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric' };
-        lastUpdate = d.toLocaleDateString('en-GB', opts).toUpperCase();
-      } catch {
-        lastUpdate = String(dateStr).toUpperCase();
+  const mappedInventories: Inventory[] = useMemo(() => {
+    return (rawInventories || []).map((inv: any, idx: number) => {
+const id = inv._id ?? inv.id ?? `inv-${idx}`;
+      const name = inv.name ?? t('unnamed_inventory');
+      const location = inv.location ?? '';
+      const capacity =
+        typeof inv.capacity === 'number'
+          ? String(inv.capacity)
+          : inv.capacity ?? '';
+
+      const dateStr = inv.updatedAt ?? inv.createdAt ?? '';
+      let lastUpdate = '';
+      if (dateStr) {
+        try {
+          const d = new Date(dateStr);
+          const opts: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric' };
+          lastUpdate = d.toLocaleDateString('en-GB', opts).toUpperCase();
+        } catch {
+          lastUpdate = String(dateStr).toUpperCase();
+        }
       }
-    }
 
-    const image = inv.avatar ?? '';
+      const image = inv.avatar ?? '';
 
-    return {
-      id,
-      name,
-      location,
-      capacity,
-      lastUpdate,
-      image,
-    };
-  });
-}, [rawInventories]);
-
+      return {
+        id,
+        name,
+        location,
+        capacity,
+        lastUpdate,
+        image,
+      };
+    });
+  }, [rawInventories, t]);
 
   const filteredInventories = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -122,85 +124,90 @@ const mappedInventories: Inventory[] = useMemo(() => {
       navigate(`/dashboard/edit-inventory/${id}`);
     }
   };
-const getPageNumbers = () => {
-  if (maxPages === 0) return [];
-  const pages: number[] = [];
-  const maxVisiblePages = 5;
-  let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-  const endPage = Math.min(maxPages, startPage + maxVisiblePages - 1);
+  const getPageNumbers = () => {
+    if (maxPages === 0) return [];
+    const pages: number[] = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    const endPage = Math.min(maxPages, startPage + maxVisiblePages - 1);
 
-  if (endPage - startPage < maxVisiblePages - 1) {
-    startPage = Math.max(1, endPage - maxVisiblePages + 1);
-  }
+    if (endPage - startPage < maxVisiblePages - 1) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
 
-  for (let i = startPage; i <= endPage; i++) {
-    pages.push(i);
-  }
-  return pages;
-};
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    return pages;
+  };
 
-React.useEffect(() => {
-  if (currentPage > maxPages) {
-    setCurrentPage(maxPages || 1);
-  }
-}, [maxPages]);
+  React.useEffect(() => {
+    if (currentPage > maxPages) {
+      setCurrentPage(maxPages || 1);
+    }
+  }, [maxPages]);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-            <span>Dashboard</span>
+            <span>{t('dashboard')}</span>
             <span>›</span>
-            <span className="text-gray-700">Inventories</span>
+            <span className="text-gray-700">{t('inventories')}</span>
           </div>
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold">Inventory Management</h1>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between">
+            <h1 className="text-2xl font-bold">{t('inventory_management')}</h1>
+
             <button
               onClick={handleAddInventory}
-              className="px-5 py-2 bg-slate-700 text-white rounded-full hover:bg-slate-800 transition-colors flex items-center gap-2"
+              className="mt-3 sm:mt-0 px-5 py-2 bg-slate-700 text-white rounded-full hover:bg-slate-800 transition-colors flex items-center gap-2 whitespace-nowrap"
             >
               <span className="text-xl">+</span>
-              Add Inventory
+              {t('add_inventory')}
             </button>
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">Inventory Search</h2>
-          <div className="flex gap-3">
+          <h2 className="text-lg font-semibold mb-4">{t('inventory_search')}</h2>
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="text"
-                placeholder="Search Inventory by name, id, or location"
+                placeholder={t('')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <button
-              onClick={handleSearch}
-              className="px-6 py-2 bg-slate-700 text-white rounded-full hover:bg-slate-800 transition-colors flex items-center gap-2"
-            >
-              <Search size={18} />
-              Search
-            </button>
-            <button
-              onClick={handleReset}
-              className="px-6 py-2 bg-slate-700 text-white rounded-full hover:bg-slate-800 transition-colors flex items-center gap-2"
-            >
-              <RotateCcw size={18} />
-              Reset
-            </button>
+
+            <div className="flex gap-3 flex-col sm:flex-row">
+              <button
+                onClick={handleSearch}
+                className="px-6 py-2 bg-slate-700 text-white rounded-full hover:bg-slate-800 transition-colors flex items-center gap-2 w-full sm:w-auto whitespace-nowrap flex-shrink-0"
+              >
+                <Search size={18} />
+                {t('search')}
+              </button>
+              <button
+                onClick={handleReset}
+                className="px-6 py-2 bg-slate-700 text-white rounded-full hover:bg-slate-800 transition-colors flex items-center gap-2 w-full sm:w-auto whitespace-nowrap flex-shrink-0"
+              >
+                <RotateCcw size={18} />
+                {t('reset')}
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="mb-4 flex justify-between items-center">
-          <h2 className="text-lg font-semibold">Inventories</h2>
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold">{t('inventories')}</h2>
           <span className="text-sm text-gray-500">
-            Showing {startEntry}-{endEntry} of {totalInventories} Inventory
+            {t('showing')} {startEntry}-{endEntry} {t('of')} {totalInventories} {t('inventories')}
           </span>
         </div>
 
@@ -211,7 +218,7 @@ React.useEffect(() => {
             ))
           ) : paginated.length === 0 ? (
             <div className="col-span-full text-center py-12 text-gray-500">
-              No inventories found matching your search.
+              {t('no_inventories_found')}
             </div>
           ) : (
             paginated.map((inventory, index) => (
@@ -233,7 +240,7 @@ React.useEffect(() => {
                   <button
                     onClick={(e) => handleEditClick(e, inventory.id)}
                     className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-all opacity-0 group-hover:opacity-100"
-                    aria-label="Edit inventory"
+                    aria-label={t('edit_inventory')}
                   >
                     <Edit2 size={16} className="text-slate-700" />
                   </button>
@@ -259,7 +266,7 @@ React.useEffect(() => {
                     {inventory.lastUpdate && (
                       <div className="flex items-center gap-2">
                         <Calendar size={16} className="text-gray-400" />
-                        <span>Last Updated: {inventory.lastUpdate}</span>
+                        <span>{t('last_updated')} {inventory.lastUpdate}</span>
                       </div>
                     )}
                   </div>
@@ -269,9 +276,9 @@ React.useEffect(() => {
           )}
         </div>
 
-        <div className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm">
+        <div className="flex flex-col sm:flex-row items-center justify-between bg-white p-4 rounded-lg shadow-sm gap-4">
           <div className="flex items-center gap-2 text-sm">
-            <span>Show</span>
+            <span>{t('show')}</span>
             <select
               value={entriesPerPage}
               onChange={(e) => {
@@ -284,40 +291,42 @@ React.useEffect(() => {
               <option value={12}>12</option>
               <option value={24}>24</option>
             </select>
-            <span>entries</span>
+            <span>{t('entries')}</span>
           </div>
-         <div className="flex gap-2">
-  <button
-    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-    disabled={currentPage === 1}
-    className="px-3 py-1 border border-gray-300 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-  >
-    Previous
-  </button>
 
-  {getPageNumbers().map((pageNum) => (
-    <button
-      key={pageNum}
-      onClick={() => setCurrentPage(pageNum)}
-      className={`px-3 py-1 rounded-full ${
-        currentPage === pageNum
-          ? 'bg-slate-700 text-white'
-          : 'border border-gray-300 hover:bg-gray-50'
-      }`}
-    >
-      {pageNum}
-    </button>
-  ))}
+          <div className="flex items-center gap-2 overflow-x-auto py-1">
+            <button
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 border border-gray-300 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+            >
+              {t('previous')}
+            </button>
 
-  <button
-    onClick={() => setCurrentPage(Math.min(maxPages, currentPage + 1))}
-    disabled={currentPage >= maxPages}
-    className="px-3 py-1 border border-gray-300 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-  >
-    Next
-  </button>
-</div>
+            <div className="flex gap-2 px-1">
+              {getPageNumbers().map((pageNum) => (
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`px-3 py-1 rounded-full flex-shrink-0 ${
+                    currentPage === pageNum
+                      ? 'bg-slate-700 text-white'
+                      : 'border border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              ))}
+            </div>
 
+            <button
+              onClick={() => setCurrentPage(Math.min(maxPages, currentPage + 1))}
+              disabled={currentPage >= maxPages}
+              className="px-3 py-1 border border-gray-300 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+            >
+              {t('next')}
+            </button>
+          </div>
         </div>
       </div>
     </div>

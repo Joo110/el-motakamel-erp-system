@@ -11,6 +11,6 @@ export type User = {
 
 export async function getUsersService(): Promise<User[]> {
   // Adjust endpoint if your backend uses /v1/users or /v1/account/users etc.
-  const res = await axiosClient.get('/users');
+  const res = await axiosClient.get('/adminDashboard');
   return res.data?.data?.users || res.data?.users || res.data || [];
 }

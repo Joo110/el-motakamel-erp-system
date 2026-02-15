@@ -6,6 +6,7 @@ import { useProducts } from '../../product/hooks/useProducts';
 import { useInventories } from '../../inventory/hooks/useInventories';
 import { useSuppliers } from '../../Precious/hooks/useSuppliers';
 import { toast } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 interface ProductRow {
   id: string;
@@ -26,6 +27,7 @@ const truncate = (s: string | undefined, n = 30) => {
 };
 
 const EditPurchaseOrderComponent: React.FC = () => {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
@@ -117,9 +119,8 @@ const EditPurchaseOrderComponent: React.FC = () => {
   };
 
   const handleAddProduct = () => {
-    // ✅ Validation
-    if (!selectedProductId) return toast.error('Select a product.');
-    if (!selectedInventoryId) return toast.error('Select an inventory.');
+    if (!selectedProductId) return toast.error(t('select_product'));
+    if (!selectedInventoryId) return toast.error(t('select_inventory'));
     if (Number(formProduct.units) <= 0) return toast.error('Units must be greater than 0.');
     if (Number(formProduct.price) <= 0) return toast.error('Price must be greater than 0.');
 
@@ -171,8 +172,7 @@ const EditPurchaseOrderComponent: React.FC = () => {
   }
 
   const handleUpdate = async () => {
-    // ✅ Form Validation
-    if (!supplierId) return toast.error('Select a supplier.');
+    if (!supplierId) return toast.error(t('select_supplier'));
     if (products.length === 0) return toast.error('Add at least one product.');
 
     try {
@@ -186,7 +186,6 @@ const EditPurchaseOrderComponent: React.FC = () => {
 
       await patch(payload);
       toast.success('✅ Order updated successfully');
-
       setTimeout(() => navigate(-1), 1000);
     } catch (err) {
       console.error('❌ Update error:', err);
@@ -194,57 +193,29 @@ const EditPurchaseOrderComponent: React.FC = () => {
     }
   };
 
-  if (orderLoading) return <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">Loading order...</div>;
+  if (orderLoading) return <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">{t('loading')}</div>;
   if (orderError) return <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center text-red-600">Error: {orderError.message}</div>;
   if (!item) return <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">Order not found</div>;
 
-  // ===== Loading & Error States =====
-  if (orderLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
-        <div className="text-lg text-gray-600">Loading order data...</div>
-      </div>
-    );
-  }
-
-  if (orderError) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
-        <div className="text-lg text-red-600">Error loading order: {orderError}</div>
-      </div>
-    );
-  }
-
-  if (!item) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
-        <div className="text-lg text-gray-600">Order not found</div>
-      </div>
-    );
-  }
-
-  // ===== UI =====
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Edit Purchase Order</h1>
-        <p className="text-sm text-gray-500">Dashboard &gt; Purchase Orders &gt; Edit #{item.invoiceNumber || id}</p>
+        <h1 className="text-2xl font-semibold text-gray-900">{t('update_order')}</h1>
+        <p className="text-sm text-gray-500">Dashboard &gt; Purchase Orders &gt; #{item.invoiceNumber || id}</p>
       </div>
 
-      {/* Main Form */}
       <div className="bg-white rounded-lg shadow-sm p-6">
-        {/* Top Section */}
         <div className="grid grid-cols-4 gap-4 mb-8">
+          {/* Supplier */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Supplier</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('supplier')}</label>
             <div className="relative">
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
                 value={supplierId}
                 onChange={(e) => setSupplierId(e.target.value)}
               >
-                <option value="">{suppliersLoading ? 'Loading suppliers...' : 'Select supplier'}</option>
+                <option value="">{suppliersLoading ? t('loading') : t('select_supplier')}</option>
                 {suppliers.map((s: any) => (
                   <option key={s._id ?? s.id ?? s.name} value={s._id}>
                     {truncate(s.name, 36)}
@@ -255,8 +226,9 @@ const EditPurchaseOrderComponent: React.FC = () => {
             </div>
           </div>
 
+          {/* Expected Delivery Date */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Expected Delivery Date</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('expected_delivery_date')}</label>
             <div className="relative">
               <input
                 type="date"
@@ -268,8 +240,9 @@ const EditPurchaseOrderComponent: React.FC = () => {
             </div>
           </div>
 
+          {/* Order Date */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Order Date</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('order_date')}</label>
             <div className="relative">
               <input
                 type="date"
@@ -281,8 +254,9 @@ const EditPurchaseOrderComponent: React.FC = () => {
             </div>
           </div>
 
+          {/* Currency */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('currency')}</label>
             <div className="relative">
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
@@ -301,17 +275,17 @@ const EditPurchaseOrderComponent: React.FC = () => {
 
         {/* Add Products Section */}
         <div className="mb-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Add More Products</h2>
+          <h2 className="text-lg font-medium text-gray-900 mb-4">{t('add_product')}</h2>
           <div className="grid grid-cols-7 gap-3 items-end">
             {/* Product dropdown */}
             <div className="relative">
-              <label className="block text-xs text-gray-600 mb-1">Product</label>
+              <label className="block text-xs text-gray-600 mb-1">{t('select_product')}</label>
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
                 value={selectedProductId}
                 onChange={(e) => handleProductSelect(e.target.value)}
               >
-                <option value="">{productsLoading ? 'Loading...' : 'Select'}</option>
+                <option value="">{productsLoading ? t('loading') : t('select_product')}</option>
                 {productsFromHook.map((p: any) => (
                   <option key={p._id ?? p.id} value={p._id ?? p.id}>
                     {truncate(p.name, 36)}
@@ -323,13 +297,13 @@ const EditPurchaseOrderComponent: React.FC = () => {
 
             {/* Inventory dropdown */}
             <div className="relative">
-              <label className="block text-xs text-gray-600 mb-1">Inventory</label>
+              <label className="block text-xs text-gray-600 mb-1">{t('select_inventory')}</label>
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
                 value={selectedInventoryId}
                 onChange={(e) => handleInventorySelect(e.target.value)}
               >
-                <option value="">{inventoriesLoading ? 'Loading...' : 'Select'}</option>
+                <option value="">{inventoriesLoading ? t('loading') : t('select_inventory')}</option>
                 {inventories.map((inv: any) => (
                   <option key={inv._id ?? inv.id} value={inv._id}>
                     {truncate(inv.name, 36)}
@@ -401,36 +375,30 @@ const EditPurchaseOrderComponent: React.FC = () => {
           </div>
 
           <div className="flex justify-end gap-2 mt-4">
-            <button
-              onClick={handleResetForm}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-full text-sm hover:bg-gray-300"
-            >
-              Reset
+            <button onClick={handleResetForm} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-full text-sm hover:bg-gray-300">
+              {t('reset')}
             </button>
-            <button
-              onClick={handleAddProduct}
-              className="px-4 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-slate-800"
-            >
-              + Add Product
+            <button onClick={handleAddProduct} className="px-4 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-slate-800">
+              {t('add_product')}
             </button>
           </div>
         </div>
 
         {/* Products Table */}
         <div className="mb-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Order Products</h2>
+          <h2 className="text-lg font-medium text-gray-900 mb-4">{t('order_products')}</h2>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left text-xs font-medium text-gray-600 pb-3 w-8"></th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Product</th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Inventory</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('select_product')}</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('select_inventory')}</th>
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">Code</th>
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">Units</th>
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">Price</th>
                   <th className="text-left text-xs font-medium text-gray-600 pb-3">Discount</th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Total</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('total')}</th>
                   <th className="w-8"></th>
                 </tr>
               </thead>
@@ -453,10 +421,7 @@ const EditPurchaseOrderComponent: React.FC = () => {
                     <td className="py-3 text-sm text-gray-600">{product.discount}%</td>
                     <td className="py-3 text-sm text-gray-900">{product.total.toFixed(2)} {currency}</td>
                     <td className="py-3">
-                      <button
-                        onClick={() => handleDeleteProduct(product.id)}
-                        className="text-gray-400 hover:text-red-500"
-                      >
+                      <button onClick={() => handleDeleteProduct(product.id)} className="text-gray-400 hover:text-red-500">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </td>
@@ -468,7 +433,7 @@ const EditPurchaseOrderComponent: React.FC = () => {
 
           <div className="flex justify-end mt-4">
             <div className="text-right">
-              <span className="text-sm font-medium text-gray-700">Total: </span>
+              <span className="text-sm font-medium text-gray-700">{t('total')}: </span>
               <span className="text-sm font-semibold text-gray-900">{total.toFixed(2)} {currency}</span>
             </div>
           </div>
@@ -476,13 +441,13 @@ const EditPurchaseOrderComponent: React.FC = () => {
 
         {/* Notes */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t('notes')}</label>
           <textarea
             className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm resize-none"
             rows={4}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Add any notes here..."
+            placeholder={t('notes')}
           ></textarea>
         </div>
 
@@ -492,7 +457,7 @@ const EditPurchaseOrderComponent: React.FC = () => {
             onClick={() => navigate(-1)}
             className="px-6 py-2 border border-gray-300 text-gray-700 rounded-full text-sm hover:bg-gray-50"
           >
-            Cancel
+            {t('cancel')}
           </button>
           <button
             onClick={handleUpdate}
@@ -500,7 +465,7 @@ const EditPurchaseOrderComponent: React.FC = () => {
             className="px-6 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             <Save className="w-4 h-4" />
-            {orderLoading ? 'Updating...' : 'Update Order'}
+            {orderLoading ? t('loading') : t('update_order')}
           </button>
         </div>
       </div>

@@ -5,6 +5,7 @@ import { useProducts } from '../../product/hooks/useProducts';
 import { useInventories } from '../../inventory/hooks/useInventories';
 import { useCustomers } from '../../Sales/hooks/useCustomers';
 import { toast } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 interface ProductRow {
   id: string;
@@ -15,6 +16,8 @@ interface ProductRow {
   code: string;
   units: number;
   price: number;
+  wholesalePrice?: number;
+  retailPrice?: number;
   discount: number;
   total: number;
 }
@@ -25,43 +28,36 @@ const truncate = (s: string | undefined, n = 30) => {
 };
 
 const StockOutComponent: React.FC = () => {
-  const [products, setProducts] = useState<ProductRow[]>([
-    { id: '1', productId: '1', inventoryId: 'a', name: 'Product 1', inventoryName: 'Abu Dhabi', code: '99282', units: 10, price: 1140.95, discount: 13, total: 9990.0 },
-    { id: '2', productId: '2', inventoryId: 'a', name: 'Product 2', inventoryName: 'Abu Dhabi', code: '323-14', units: 10, price: 1710.55, discount: 13, total: 9400.0 },
-    { id: '3', productId: '3', inventoryId: 'b', name: 'Wireless Bluetooth Earbuds', inventoryName: 'New capital', code: '326x1', units: 10, price: 1102.55, discount: 11, total: 9400.0 },
-    { id: '4', productId: '4', inventoryId: 'a', name: 'Product 2', inventoryName: 'Abu Dhabi', code: '322-14', units: 10, price: 1710.55, discount: 23, total: 9400.0 },
-  ]);
+  const { t } = useTranslation();
+  const [products, setProducts] = useState<ProductRow[]>([]);
 
   const total = useMemo(() => products.reduce((sum, product) => sum + product.total, 0), [products]);
 
-  // ===== form state for Add Products =====
   const [formProduct, setFormProduct] = useState({
     name: '',
     inventory: '',
     code: '96269',
     units: '0',
     price: '0',
+    wholesalePrice: '0',
     discount: '0',
   });
 
-  // ===== selected ids =====
   const [customerId, setCustomerId] = useState<string>('');
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [selectedInventoryId, setSelectedInventoryId] = useState<string>('');
 
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<string>('');
   const [orderDate, setOrderDate] = useState<string>('');
-  const [currency, setCurrency] = useState<string>('SR');
+  const [currency, setCurrency] = useState<string>('SAR');
   const [notes, setNotes] = useState<string>('');
-  // new shipping cost state (string to keep input behavior)
   const [shippingCost, setShippingCost] = useState<string>('');
   
-  const [organizationId] = useState<string>('68c2d89e2ee5fae98d57bef1');
+  const [organizationId] = useState<string>('6963ef29d4010f957c2de3f6');
   const [createdBy] = useState<string>('68c699af13bdca2885ed4d27');
 
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
 
-  // ===== hooks =====
   const { create, loading } = useSaleOrders(undefined, false);
   const { products: productsFromHook = [], loading: productsLoading = false } = useProducts() as any;
   const { inventories = [], isLoading: inventoriesLoading = false } = useInventories() as any;
@@ -69,35 +65,37 @@ const StockOutComponent: React.FC = () => {
 
   const computedFormTotal = useMemo(() => {
     const u = Number(formProduct.units || 0);
-    const p = Number(formProduct.price || 0);
+    const p = Number(formProduct.price);
     const d = Number(formProduct.discount || 0);
     const tot = u * p * (1 - d / 100);
-    return isFinite(tot) ? tot.toFixed(2) + ' SR' : '0.00 SR';
+    return isFinite(tot) ? tot.toFixed(2) + ' ' : '0.00 ';
   }, [formProduct.units, formProduct.price, formProduct.discount]);
 
-  // ===== handlers =====
   const handleFormChange = (key: keyof typeof formProduct, value: string) => {
     setFormProduct((s) => ({ ...s, [key]: value }));
   };
 
   const handleResetForm = () => {
-    setFormProduct({ name: '', inventory: '', code: '96269', units: '0', price: '0', discount: '0' });
+    setFormProduct({ name: '', inventory: '', code: '96269', units: '0', price: '0', wholesalePrice: '0', discount: '0' });
     setSelectedProductId('');
     setSelectedInventoryId('');
   };
 
   const handleCustomerSelect = (id: string) => {
     setCustomerId(id);
-    const c = customers.find((x: any) => x._id === id);
-    setFormProduct((f) => ({ ...f, name: c?.name ?? '' }));
   };
 
   const handleProductSelect = (productId: string) => {
     setSelectedProductId(productId);
     const p = productsFromHook.find((x: any) => x._id === productId || x.id === productId);
     setFormProduct((f) => ({ ...f, name: p?.name ?? '' }));
-    if (p && (p.price || p.code)) {
-      if (p.price) setFormProduct((f) => ({ ...f, price: String(p.price) }));
+    if (p) {
+      if (p.wholesalePrice !== undefined || p.retailPrice !== undefined) {
+        if (p.wholesalePrice !== undefined) setFormProduct((f) => ({ ...f, wholesalePrice: String(p.wholesalePrice) }));
+        if (p.retailPrice !== undefined) setFormProduct((f) => ({ ...f, price: String(p.retailPrice) }));
+      } else if (p.price) {
+        setFormProduct((f) => ({ ...f, price: String(p.price), wholesalePrice: String(p.price) }));
+      }
       if (p.code) setFormProduct((f) => ({ ...f, code: String(p.code) }));
     }
   };
@@ -108,30 +106,83 @@ const StockOutComponent: React.FC = () => {
     setFormProduct((f) => ({ ...f, inventory: inv?.name ?? '' }));
   };
 
+  const handleExpectedDeliveryChange = (value: string) => {
+    if (orderDate && value) {
+      const expected = new Date(value);
+      const order = new Date(orderDate);
+      if (expected.getTime() < order.getTime()) {
+        toast.error(t('expected_delivery_must_be_after_order') || 'تاريخ التسليم يجب أن يكون بعد أو مساوي لتاريخ الطلب');
+        return;
+      }
+    }
+    setExpectedDeliveryDate(value);
+  };
+
+  const handleOrderDateChange = (value: string) => {
+    if (expectedDeliveryDate && value) {
+      const expected = new Date(expectedDeliveryDate);
+      const order = new Date(value);
+      if (order.getTime() > expected.getTime()) {
+        toast.error(t('order_date_cannot_be_after_expected') || 'تاريخ الطلب لا يمكن أن يكون بعد تاريخ التسليم المتوقع');
+        return;
+      }
+    }
+    setOrderDate(value);
+  };
+
   const handleAddProduct = () => {
-    // ✅ Validation لكل الحقول المهمة
     if (!selectedProductId) {
-      toast.error('Please select a product.');
+      toast.error(t('please_select_product'));
       return;
     }
     if (!selectedInventoryId) {
-      toast.error('Please select an inventory.');
-      return;
-    }
-    if (!formProduct.units || Number(formProduct.units) <= 0) {
-      toast.error('Units must be greater than 0.');
-      return;
-    }
-    if (!formProduct.price || Number(formProduct.price) <= 0) {
-      toast.error('Price must be greater than 0.');
+      toast.error(t('please_select_inventory'));
       return;
     }
 
-    // ===== Add product logic =====
+    // Validate actual existence
+    const foundProduct = productsFromHook.find((x: any) => x._id === selectedProductId || x.id === selectedProductId);
+    const foundInventory = inventories.find((x: any) => x._id === selectedInventoryId || x.id === selectedInventoryId);
+    if (!foundProduct) {
+      toast.error(t('selected_product_not_found') || 'Selected product not found in list');
+      return;
+    }
+    if (!foundInventory) {
+      toast.error(t('selected_inventory_not_found') || 'Selected inventory not found in list');
+      return;
+    }
+
+    if (!formProduct.units || Number(formProduct.units) <= 0) {
+      toast.error(t('units_must_greater_zero'));
+      return;
+    }
+
+    // discount validation
+    const discountVal = Number(formProduct.discount || 0);
+    if (discountVal < 0 || discountVal > 100) {
+      toast.error(t('discount_must_between_0_100') || 'خصم غير صالح (يجب أن يكون بين 0 و 100)');
+      return;
+    }
+
+    const retailPrice = Number(formProduct.price);
+    if (!retailPrice || retailPrice <= 0) {
+      toast.error(t('price_must_greater_zero'));
+      return;
+    }
+
+    // prevent duplicate product (same product + inventory)
+    const duplicate = products.some(
+      (p) => p.productId === selectedProductId && p.inventoryId === selectedInventoryId
+    );
+    if (duplicate) {
+      toast.error(t('product_already_added') || 'تم إضافة هذا المنتج في نفس المخزن بالفعل');
+      return;
+    }
+
     const units = Number(formProduct.units);
-    const price = Number(formProduct.price);
+    const wholesalePriceVal = Number(formProduct.wholesalePrice || 0);
     const discount = Number(formProduct.discount || 0);
-    const tot = units * price * (1 - discount / 100);
+    const tot = units * retailPrice * (1 - discount / 100);
 
     const productName =
       productsFromHook.find((p: any) => p._id === selectedProductId || p.id === selectedProductId)?.name ??
@@ -141,14 +192,16 @@ const StockOutComponent: React.FC = () => {
       formProduct.inventory;
 
     const newProduct: ProductRow = {
-      id: Date.now().toString(),
+      id: `${selectedProductId}-${selectedInventoryId}-${Date.now()}`,
       productId: selectedProductId,
       inventoryId: selectedInventoryId,
       name: productName,
       inventoryName,
       code: formProduct.code || '96269',
       units,
-      price,
+      price: retailPrice,
+      wholesalePrice: wholesalePriceVal,
+      retailPrice: retailPrice,
       discount,
       total: Math.round((tot + Number.EPSILON) * 100) / 100,
     };
@@ -156,7 +209,6 @@ const StockOutComponent: React.FC = () => {
     setProducts((prev) => [...prev, newProduct]);
     handleResetForm();
   };
-
 
   const handleCheckboxToggle = (id: string) => {
     setSelectedProducts((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -171,15 +223,15 @@ const StockOutComponent: React.FC = () => {
     console.groupCollapsed('[StockOut] mapProductsForApi');
     console.log('Input products array:', p);
     const mapped = p.map((prod) => {
-      const mappedItem = {
+      const mappedItem: any = {
         productId: prod.productId,
         inventoryId: prod.inventoryId,
         name: prod.name,
         quantity: prod.units,
-        price: prod.price,
+        wholesalePrice: prod.wholesalePrice ?? prod.price,
+        retailPrice: prod.retailPrice ?? prod.price,
         discount: prod.discount,
       };
-      // log warnings if something suspicious
       if (!mappedItem.productId) console.warn('[StockOut] missing productId for', prod);
       if (!mappedItem.inventoryId) console.warn('[StockOut] missing inventoryId for', prod);
       if (typeof mappedItem.quantity !== 'number' || Number.isNaN(mappedItem.quantity)) console.warn('[StockOut] quantity is not a number for', prod);
@@ -190,7 +242,6 @@ const StockOutComponent: React.FC = () => {
     return mapped;
   }
 
-  // ===== حفظ الطلب وإرساله للـ API =====
   const handleSave = async () => {
     try {
       console.group('[StockOut] handleSave START');
@@ -198,24 +249,30 @@ const StockOutComponent: React.FC = () => {
       console.log('organizationId:', organizationId);
       console.log('createdBy:', createdBy);
       console.log('products (local):', products);
-      console.log('selectedProducts:', selectedProducts);
-      console.log('expectedDeliveryDate:', expectedDeliveryDate);
-      console.log('currency:', currency);
-      console.log('notes:', notes);
-      console.log('shippingCost (raw):', shippingCost);
 
       if (!customerId) {
-        toast.error('Please select a customer before saving.');
+        toast.error(t('please_select_customer_before_saving'));
         console.warn('[StockOut] missing customerId');
         console.groupEnd();
         return;
       }
       
       if (products.length === 0) {
-        toast.error('Please add at least one product.');
+        toast.error(t('please_add_at_least_one_product'));
         console.warn('[StockOut] products array empty');
         console.groupEnd();
         return;
+      }
+
+      // validate dates before save
+      if (orderDate && expectedDeliveryDate) {
+        const order = new Date(orderDate);
+        const expected = new Date(expectedDeliveryDate);
+        if (expected.getTime() < order.getTime()) {
+          toast.error(t('expected_delivery_must_be_after_order') || 'تاريخ التسليم يجب أن يكون بعد أو مساوي لتاريخ الطلب');
+          console.groupEnd();
+          return;
+        }
       }
 
       const productsToSend = selectedProducts.length
@@ -226,56 +283,50 @@ const StockOutComponent: React.FC = () => {
 
       const mappedProducts = mapProductsForApi(productsToSend);
 
-      // extra validation before sending
       const invalid = mappedProducts.find((mp) => !mp.productId || !mp.inventoryId || typeof mp.quantity !== 'number' || mp.quantity <= 0);
       if (invalid) {
         console.error('[StockOut] Found invalid mapped product before API call:', invalid);
-        toast.error('One or more products are missing required fields (productId/inventoryId/quantity). Check console.');
+        toast.error(t('invalid_product_fields_check_console'));
         console.groupEnd();
         return;
       }
 
-      // parse shipping cost to number if provided
       const shippingCostNumber = shippingCost ? Number(shippingCost) : 0;
       if (shippingCost !== '' && (Number.isNaN(shippingCostNumber) || shippingCostNumber < 0)) {
-        toast.error('Shipping cost must be a valid non-negative number.');
+        toast.error(t('shipping_cost_must_valid_number'));
         console.groupEnd();
         return;
       }
 
       const payload: any = {
-        customerId,
+        // Use the selected customerId from the dropdown (was previously hardcoded).
+        customerId: customerId,
         organizationId,
         products: mappedProducts,
         expectedDeliveryDate: expectedDeliveryDate || undefined,
-        currency: currency || 'SR',
+        currency: currency || 'SAR',
         notes: notes || undefined,
         createdBy,
-        // include shippingCost only when provided
         ...(shippingCostNumber !== undefined ? { shippingCost: shippingCostNumber } : {}),
       };
 
       console.log('payload from React:', JSON.stringify(payload, null, 2));
-
       console.log('📤 Sending sale order payload to API:', payload);
 
-      // call create and catch result
       try {
         const res = await create(payload);
         console.log('✅ create() resolved with:', res);
-        toast.success('✅ Sale order saved successfully');
+        toast.success(t('sale_order_saved_successfully'));
       } catch (err: any) {
-        // Log full error details - helpful to inspect server response
         console.error('❌ create() threw error:', err);
         console.error('err.response?.status:', err?.response?.status);
         console.error('err.response?.data:', err?.response?.data);
         console.error('err.request:', err?.request);
-        toast.error('Failed to save sale order. Check console for details.');
+        toast.error(t('failed_save_sale_order_check_console'));
         console.groupEnd();
         return;
       }
 
-      // reset UI state after success
       setProducts([]);
       setCustomerId('');
       setExpectedDeliveryDate('');
@@ -288,32 +339,31 @@ const StockOutComponent: React.FC = () => {
       console.groupEnd();
     } catch (err) {
       console.error('❌ Save sale order unexpected error:', err);
-      toast.error('Failed to save sale order. Check console for details.');
+      toast.error(t('failed_save_sale_order_check_console'));
     }
   };
 
-  // ===== UI =====
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Inventory Management</h1>
-        <p className="text-sm text-gray-500">Dashboard &gt; Inventory &gt; Stock out</p>
+        <h1 className="text-2xl font-semibold text-gray-900">{t('inventory_management')}</h1>
+        <p className="text-sm text-gray-500">{t('dashboard')} &gt; {t('inventory')} &gt; {t('stock_out')}</p>
       </div>
 
       {/* Main Form */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         {/* Top Section */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Customer</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('customer_label')}</label>
             <div className="relative">
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
                 value={customerId}
                 onChange={(e) => handleCustomerSelect(e.target.value)}
               >
-                <option value="">{customersLoading ? 'Loading customers...' : 'Select customer'}</option>
+                <option value="">{customersLoading ? t('loading_customers') : t('select_customer')}</option>
                 {customers.map((c: any) => (
                   <option key={c._id ?? c.id ?? c.name} value={c._id}>
                     {truncate(c.name, 36)}
@@ -325,40 +375,40 @@ const StockOutComponent: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Expected Delivery Date</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('expected_delivery_date')}</label>
             <div className="relative">
               <input
                 type="date"
                 className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm"
                 value={expectedDeliveryDate}
-                onChange={(e) => setExpectedDeliveryDate(e.target.value)}
+                onChange={(e) => handleExpectedDeliveryChange(e.target.value)}
               />
               <Calendar className="absolute right-2 top-3 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Order Date</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('order_date')}</label>
             <div className="relative">
               <input
                 type="date"
                 className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm"
                 value={orderDate}
-                onChange={(e) => setOrderDate(e.target.value)}
+                onChange={(e) => handleOrderDateChange(e.target.value)}
               />
               <Calendar className="absolute right-2 top-3 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('currency_label')}</label>
             <div className="relative">
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
               >
-                <option value="SR">SR</option>
+                <option value="SAR">SR</option>
                 <option value="EGP">EGP</option>
                 <option value="USD">USD</option>
                 <option value="EUR">EUR</option>
@@ -370,17 +420,16 @@ const StockOutComponent: React.FC = () => {
 
         {/* Add Products Section */}
         <div className="mb-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Add Products</h2>
-          <div className="grid grid-cols-7 gap-3 items-end">
-            {/* Product dropdown */}
+          <h2 className="text-lg font-medium text-gray-900 mb-4">{t('add_products')}</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 items-end">
             <div className="relative">
-              <label className="block text-xs text-gray-600 mb-1">Product</label>
+              <label className="block text-xs text-gray-600 mb-1">{t('product_label')}</label>
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
                 value={selectedProductId}
                 onChange={(e) => handleProductSelect(e.target.value)}
               >
-                <option value="">{productsLoading ? 'Loading' : 'Select pro'}</option>
+                <option value="">{productsLoading ? t('loading') : t('select_pro')}</option>
                 {productsFromHook.map((p: any) => (
                   <option key={p._id ?? p.id ?? p.productId ?? p.name} value={p._id ?? p.id}>
                     {truncate(p.name, 36)}
@@ -390,15 +439,14 @@ const StockOutComponent: React.FC = () => {
               <ChevronDown className="absolute right-2 top-8 w-4 h-4 text-gray-400" />
             </div>
 
-            {/* Inventory dropdown */}
             <div className="relative">
-              <label className="block text-xs text-gray-600 mb-1">Inventory</label>
+              <label className="block text-xs text-gray-600 mb-1">{t('inventory_label')}</label>
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-full pr-8 text-sm bg-white appearance-none"
                 value={selectedInventoryId}
                 onChange={(e) => handleInventorySelect(e.target.value)}
               >
-                <option value="">{inventoriesLoading ? 'Loading ' : 'Select inv'}</option>
+                <option value="">{inventoriesLoading ? t('loading') : t('select_inv')}</option>
                 {inventories.map((inv: any) => (
                   <option key={inv._id ?? inv.id ?? inv.name} value={inv._id}>
                     {truncate(inv.name, 36)}
@@ -408,9 +456,8 @@ const StockOutComponent: React.FC = () => {
               <ChevronDown className="absolute right-2 top-8 w-4 h-4 text-gray-400" />
             </div>
 
-            {/* Code */}
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Code</label>
+              <label className="block text-xs text-gray-600 mb-1">{t('code_label')}</label>
               <input
                 type="text"
                 className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
@@ -419,9 +466,8 @@ const StockOutComponent: React.FC = () => {
               />
             </div>
 
-            {/* Units */}
             <div className="relative">
-              <label className="block text-xs text-gray-600 mb-1">Units</label>
+              <label className="block text-xs text-gray-600 mb-1">{t('units_label')}</label>
               <input
                 type="number"
                 className="w-full px-3 py-2 border border-gray-300 rounded-full pr-6 text-sm"
@@ -432,9 +478,8 @@ const StockOutComponent: React.FC = () => {
               <ChevronDown className="absolute right-2 top-8 w-4 h-4 text-gray-400" />
             </div>
 
-            {/* Price */}
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Price</label>
+              <label className="block text-xs text-gray-600 mb-1">{t('price_label')}</label>
               <input
                 type="number"
                 className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
@@ -445,9 +490,20 @@ const StockOutComponent: React.FC = () => {
               />
             </div>
 
-            {/* Discount */}
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Discount</label>
+              <label className="block text-xs text-gray-600 mb-1">{t('wholesale_price_label') || 'سعر الجملة'}</label>
+              <input
+                type="number"
+                className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
+                value={formProduct.wholesalePrice}
+                onChange={(e) => handleFormChange('wholesalePrice', e.target.value)}
+                min={0}
+                step="0.01"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">{t('discount_label')}</label>
               <input
                 type="number"
                 className="w-full px-3 py-2 border border-gray-300 rounded-full text-sm"
@@ -458,9 +514,8 @@ const StockOutComponent: React.FC = () => {
               />
             </div>
 
-            {/* Total */}
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Total</label>
+              <label className="block text-xs text-gray-600 mb-1">{t('total_label')}</label>
               <input
                 type="text"
                 readOnly
@@ -470,37 +525,38 @@ const StockOutComponent: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 mt-4">
+          <div className="flex flex-col sm:flex-row sm:justify-end gap-2 mt-4">
             <button
               onClick={handleResetForm}
               className="px-4 py-2 bg-gray-200 text-gray-700 rounded-full text-sm hover:bg-gray-300"
             >
-              Reset
+              {t('reset_btn')}
             </button>
             <button
               onClick={handleAddProduct}
               className="px-4 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-slate-800"
             >
-              + Add Product
+              {t('add_product_btn')}
             </button>
           </div>
         </div>
 
         {/* Received Products Section */}
         <div className="mb-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Received Products</h2>
+          <h2 className="text-lg font-medium text-gray-900 mb-4">{t('received_products')}</h2>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[600px] sm:min-w-full">
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left text-xs font-medium text-gray-600 pb-3 w-8"></th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Product</th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Inventory</th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Code</th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Units</th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Price</th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Discount</th>
-                  <th className="text-left text-xs font-medium text-gray-600 pb-3">Total</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('product_col')}</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('inventory_col')}</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('code_col')}</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('units_col')}</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('wholesale_price_col') || 'سعر الجملة'}</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('retail_price_col') || 'سعر التجزئة'}</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('discount_col')}</th>
+                  <th className="text-left text-xs font-medium text-gray-600 pb-3">{t('total_col')}</th>
                   <th className="w-8"></th>
                 </tr>
               </thead>
@@ -524,7 +580,12 @@ const StockOutComponent: React.FC = () => {
                         <ChevronDown className="w-3 h-3 text-gray-400" />
                       </div>
                     </td>
-                    <td className="py-3 text-sm text-gray-600">{product.price.toFixed(2)}</td>
+                    <td className="py-3 text-sm text-gray-600">
+                      {product.wholesalePrice != null ? product.wholesalePrice.toFixed(2) : '-'}
+                    </td>
+                    <td className="py-3 text-sm text-gray-600">
+                      {product.retailPrice != null ? product.retailPrice.toFixed(2) : '-'}
+                    </td>
                     <td className="py-3 text-sm text-gray-600">{product.discount}%</td>
                     <td className="py-3 text-sm text-gray-900">{product.total.toFixed(2)} {currency}</td>
                     <td className="py-3">
@@ -536,22 +597,29 @@ const StockOutComponent: React.FC = () => {
                       </button>
                     </td>
                   </tr>
-                ))}
+                ))} 
+                {products.length === 0 && (
+                  <tr>
+                    <td colSpan={10} className="py-8 text-center text-gray-500">
+                      {t('no_products_added_yet')}
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
 
           <div className="flex justify-end mt-4">
             <div className="text-right">
-              <span className="text-sm font-medium text-gray-700">Total: </span>
+              <span className="text-sm font-medium text-gray-700">{t('total_label')}: </span>
               <span className="text-sm font-semibold text-gray-900">{total.toFixed(2)} {currency}</span>
             </div>
           </div>
         </div>
 
-        {/* Shipping Cost (NEW) */}
+        {/* Shipping Cost */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Shipping Cost</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t('shipping_cost')}</label>
           <input
             type="number"
             min="0"
@@ -565,26 +633,26 @@ const StockOutComponent: React.FC = () => {
 
         {/* Notes & Action Buttons */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t('notes_label')}</label>
           <textarea
             className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm resize-none"
             rows={4}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Add any notes here..."
+            placeholder={t('add_notes_placeholder')}
           ></textarea>
         </div>
 
-        <div className="flex justify-end gap-3">
+        <div className="flex flex-col sm:flex-row sm:justify-end gap-3">
           <button className="px-6 py-2 border border-gray-300 text-gray-700 rounded-full text-sm hover:bg-gray-50">
-            Cancel
+            {t('cancel_label')}
           </button>
           <button
             onClick={handleSave}
             disabled={loading}
             className="px-6 py-2 bg-slate-700 text-white rounded-full text-sm hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Saving...' : 'Save Order'}
+            {loading ? t('saving_label') : t('save_order_btn')}
           </button>
         </div>
       </div>

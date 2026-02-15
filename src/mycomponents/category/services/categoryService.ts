@@ -14,31 +14,21 @@ export interface CategoryInput {
   [key: string]: any;
 }
 
-/**
- * يحصل على كل الكاتيجوريات
- * يمكنك تمرير { signal } للالغاء
- */
+
 export const getCategoriesService = (config?: AxiosRequestConfig) => {
-  return axiosClient.get("/category", config);
+  return axiosClient.get("/categories", config);
 };
 
-/**
- * ينشئ كاتيجوري جديد
- */
+
 export const createCategoryService = (payload: CategoryInput, config?: AxiosRequestConfig) => {
   return axiosClient.post("/category", payload, config);
 };
 
-/**
- * يحدث كاتيجوري ب id
- */
+
 export const updateCategoryService = (id: string, payload: Partial<CategoryInput>, config?: AxiosRequestConfig) => {
   return axiosClient.put(`/category/${id}`, payload, config);
 };
 
-/**
- * يحذف كاتيجوري ب id
- */
 export const deleteCategoryService = (id: string, config?: AxiosRequestConfig) => {
   return axiosClient.delete(`/category/${id}`, config);
 };

@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Suppliers } from "../hooks/Suppliers";
+import { useSuppliers } from "../hooks/Suppliers";
 import { toast } from "react-hot-toast";
+import { useTranslation } from 'react-i18next';
+import type { Supplier } from '../services/suppliersService';
 
 const SupplierEditFilled: React.FC = () => {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
-  const { fetchSupplierById, editSupplier } = Suppliers(false);
+  const { fetchSupplierById, editSupplier } = useSuppliers(false);
   const [form, setForm] = useState({
     name: "",
     address: "",
@@ -16,7 +19,7 @@ const SupplierEditFilled: React.FC = () => {
 
   useEffect(() => {
     if (id) {
-      fetchSupplierById(id).then((data) => {
+      fetchSupplierById(id).then((data: Supplier | null) => {
         if (data) {
           setForm({
             name: data.name || "",
@@ -37,29 +40,29 @@ const SupplierEditFilled: React.FC = () => {
   // ===== Validation =====
   const validateForm = () => {
     if (!form.name.trim()) {
-      toast.error("Please enter supplier name.");
+      toast.error(t('enter_supplier_name'));
       return false;
     }
     if (!form.address.trim()) {
-      toast.error("Please enter address.");
+      toast.error(t('enter_address'));
       return false;
     }
     if (!form.email.trim()) {
-      toast.error("Please enter email.");
+      toast.error(t('enter_email'));
       return false;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(form.email)) {
-      toast.error("Invalid email format.");
+      toast.error(t('invalid_email_format'));
       return false;
     }
     if (!form.phone.trim()) {
-      toast.error("Please enter phone number.");
+      toast.error(t('enter_phone_number'));
       return false;
     }
     const phoneRegex = /^[0-9]{6,15}$/;
     if (!phoneRegex.test(form.phone)) {
-      toast.error("Invalid phone number. Only digits allowed (6-15 characters).");
+      toast.error(t('invalid_phone_number'));
       return false;
     }
     return true;
@@ -67,15 +70,15 @@ const SupplierEditFilled: React.FC = () => {
 
   const handleSave = async () => {
     if (!id) return;
-    if (!validateForm()) return; // Stop if validation fails
+    if (!validateForm()) return;
 
     try {
       await editSupplier(id, form);
-      toast.success("Supplier updated successfully!");
+      toast.success(t('supplier_updated_success'));
       navigate("/dashboard/precious/suppliers");
     } catch (err) {
       console.error("Update failed:", err);
-      toast.error("Failed to update supplier. Check console for details.");
+      toast.error(t('supplier_update_failed'));
     }
   };
 
@@ -83,15 +86,17 @@ const SupplierEditFilled: React.FC = () => {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Precious Management</h1>
-          <p className="text-sm text-gray-500">Dashboard &gt; Precious &gt; Edit</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('precious_management')}</h1>
+          <p className="text-sm text-gray-500">
+            {t('dashboard')} &gt; {t('precious')} &gt; {t('edit')}
+          </p>
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex justify-between items-start mb-6">
-            <h2 className="text-xl font-bold text-gray-900">Edit Details</h2>
+            <h2 className="text-xl font-bold text-gray-900">{t('edit_details')}</h2>
             <div className="text-right">
-              <p className="text-sm text-gray-500">Id:</p>
+              <p className="text-sm text-gray-500">{t('id')}:</p>
               <p className="font-semibold text-gray-900">{id}</p>
             </div>
           </div>
@@ -101,7 +106,13 @@ const SupplierEditFilled: React.FC = () => {
               {["name", "address", "email", "phone"].map((field) => (
                 <div key={field}>
                   <label className="block text-sm font-semibold text-gray-700 mb-2 capitalize">
-                    {field === "name" ? "Supplier Name" : field}
+                    {field === "name"
+                      ? t('supplier_name')
+                      : field === "address"
+                      ? t('address')
+                      : field === "email"
+                      ? t('email')
+                      : t('phone')}
                   </label>
                   <input
                     type={field === "email" ? "email" : "text"}
@@ -113,13 +124,6 @@ const SupplierEditFilled: React.FC = () => {
                 </div>
               ))}
             </div>
-
-            <div className="flex flex-col items-center">
-              <div className="text-red-500 text-4xl font-bold mb-3">⚡ {form.name || "Supplier"}</div>
-              <button className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-full text-sm">
-                Change Image
-              </button>
-            </div>
           </div>
 
           <div className="flex justify-end gap-3 mt-8">
@@ -127,13 +131,13 @@ const SupplierEditFilled: React.FC = () => {
               className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-2 rounded-full"
               onClick={() => navigate("/dashboard/supplier")}
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               onClick={handleSave}
               className="bg-gray-800 hover:bg-blue-800 text-white px-6 py-2 rounded-full"
             >
-              Save Details
+              {t('save_details')}
             </button>
           </div>
         </div>

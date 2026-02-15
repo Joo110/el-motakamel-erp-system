@@ -31,7 +31,6 @@ const UserLogin = () => {
   const navigate = useNavigate();
   const { login, loading } = useLogin();
 
-  // ✅ لو المستخدم عامل لوجن، يروح على الداشبورد
   useEffect(() => {
     const token = Cookies.get("authToken");
     if (token) {
@@ -40,25 +39,26 @@ const UserLogin = () => {
   }, [navigate]);
 
   const onSubmit = async (data: FormData) => {
-    try {
-      const response = await login(data.email, data.password);
+  try {
+    const response = await login(data.email, data.password);
 
-      if (response.token || response.accessToken) {
-        toast.success("Login successful!");
-        navigate("/dashboard");
-      } else {
-        toast.error("Login failed: No token received");
-      }
-    } catch  {
-     toast.success("Login successful!");
-       //const errorMessage =
-        //error?.response?.data?.message ||
-        //error?.message ||
-        //"Invalid email or password";
-      //toast.error(errorMessage);
-      //console.error("Login error:", error);
+    if (response.token || response.accessToken) {
+      toast.success("Login successful!");
+      navigate("/dashboard");
+    } else {
+      toast.error("Login failed: No token received");
     }
-  };
+  } catch (err: any) {
+    const errorMessage =
+      err?.response?.data?.message ||
+      err?.message ||
+      "Invalid email or password";
+
+    toast.error(errorMessage);
+    console.error("Login error:", err);
+  }
+};
+
 
   return (
     <div className="flex flex-col items-start space-y-6 max-w-md mx-auto mt-10">

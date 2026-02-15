@@ -5,165 +5,231 @@ import { useCustomers } from '../../Sales/hooks/useCustomers';
 import { useSaleOrders } from '../../Sales/hooks/useSaleOrders';
 import { useInventories } from '../../inventory/hooks/useInventories';
 import { useUsers } from '../../user/hooks/useUsers';
+import { useTranslation } from 'react-i18next';
 
 const CustomerDetails: React.FC = () => {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const { getCustomer } = useCustomers(false);
   const { items: orders, fetch: fetchOrders } = useSaleOrders(undefined, false);
-const { inventories, refetch: refetchInventories } = useInventories();
-const { users, refetch: refetchUsers } = useUsers();
-
+  const { inventories, refetch: refetchInventories } = useInventories();
+  const { users, refetch: refetchUsers } = useUsers();
 
   const [customer, setCustomer] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (!id) return;
-    setLoading(true);
-    void (async () => {
-      try {
-        const c = await getCustomer(id);
-        setCustomer(c);
-await Promise.all([fetchOrders(), refetchInventories(), refetchUsers()]);
-      } catch (err) {
-        console.error('Failed to load customer or related data', err);
-      } finally {
-        setLoading(false);
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [entriesPerPage, setEntriesPerPage] = useState<number>(10);
+
+useEffect(() => {
+  if (!id) {
+    console.error('Customer ID is undefined!');
+    return; // ✅ أهم حاجة - اوقف لو مفيش ID
+  }
+  
+  setLoading(true);
+  void (async () => {
+    try {
+      const c = await getCustomer(id); // دلوقتي id موجود مضمون
+      setCustomer(c);
+      await Promise.all([fetchOrders(), refetchInventories(), refetchUsers()]);
+    } catch (err) {
+      console.error('Failed to load customer or related data', err);
+    } finally {
+      setLoading(false);
+    }
+  })();
+}, [id, getCustomer, fetchOrders, refetchInventories, refetchUsers]); // ✅ ضيف الـ dependencies
 
   const customerOrders = useMemo(() => {
     if (!orders || !id) return [];
     return orders.filter((o) => o.customerId === id);
   }, [orders, id]);
 
+  const totalOrders = customerOrders.length;
+  const totalPages = Math.max(1, Math.ceil(totalOrders / entriesPerPage));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
+  const startEntry = totalOrders === 0 ? 0 : (currentPage - 1) * entriesPerPage + 1;
+  const endEntry = Math.min(currentPage * entriesPerPage, totalOrders);
+
+  const paginatedOrders = useMemo(() => {
+    const start = (currentPage - 1) * entriesPerPage;
+    return customerOrders.slice(start, start + entriesPerPage);
+  }, [customerOrders, currentPage, entriesPerPage]);
+
   const getInventoryName = (invId?: string) => {
     if (!invId) return '-';
     return inventories?.find((inv: any) => inv._id === invId)?.name ?? invId;
   };
 
- const getUserName = (userId?: string) => {
-  if (!userId) return '-';
-  const user = users?.find((u: any) => u._id === userId);
-  return user?.name || user?.fullname || user?.name || userId;
-};
+  const getUserName = (userId?: string) => {
+    if (!userId) return '-';
+    const user = users?.find((u: any) => u._id === userId);
+    return user?.name || user?.fullname || userId;
+  };
 
-  if (loading) return <p className="p-6">Loading supplier details...</p>;
-  if (!customer) return <p className="p-6 text-gray-500">Customer not found.</p>;
+  const getPaginationPages = (current: number, total: number, maxVisible = 5) => {
+    const pages: number[] = [];
+    const half = Math.floor(maxVisible / 2);
+    let start = Math.max(1, current - half);
+    let end = Math.min(total, current + half);
+    if (end - start + 1 < maxVisible) {
+      if (start === 1) end = Math.min(total, start + maxVisible - 1);
+      else if (end === total) start = Math.max(1, end - maxVisible + 1);
+    }
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
+  };
+
+  if (loading) return <p className="p-6">{t('loading_customer_details', 'Loading customer details...')}</p>;
+  if (!customer) return <p className="p-6 text-gray-500">{t('customer_not_found', 'Customer not found.')}</p>;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Sales Management</h1>
-            <p className="text-sm text-gray-500">Dashboard &gt; Customer &gt; Details</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{t('sales_management', 'Sales Management')}</h1>
+            <p className="text-sm text-gray-500">{t('dashboard')} &gt; {t('customer')} &gt; {t('details')}</p>
           </div>
         </div>
 
-        {/* Customer Info Card */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="flex justify-between">
+        {/* Customer Info */}
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6 mb-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between gap-4">
             <div className="flex-1">
-              <div className="flex justify-between items-start mb-6">
-                <h2 className="text-xl font-bold text-gray-900">{customer.name}</h2>
-                <div className="text-right">
-                  <p className="text-sm text-gray-500">Id:</p>
-                  <p className="font-semibold text-gray-900">{customer._id}</p>
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-6 gap-2">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900">{customer.name}</h2>
+                <div className="text-sm sm:text-right">
+                  <p className="text-gray-500">{t('id_label', 'Id:')}</p>
+                  <p className="font-semibold text-gray-900 break-all">{customer._id}</p>
                 </div>
               </div>
-              <div className="space-y-3">
-                <div className="flex">
-                  <span className="font-semibold text-gray-700 w-32">Location:</span>
+              <div className="space-y-3 text-sm sm:text-base">
+                <div className="flex flex-col sm:flex-row">
+                  <span className="font-semibold text-gray-700 sm:w-32">{t('location', 'Location:')}</span>
                   <span className="text-gray-600">{customer.address ?? '-'}</span>
                 </div>
-                <div className="flex">
-                  <span className="font-semibold text-gray-700 w-32">Phone:</span>
-                  <span className="text-gray-600">{customer.phone ?? '-'}</span>
+                <div className="flex flex-col sm:flex-row">
+                  <span className="font-semibold text-gray-700 sm:w-32">{t('phone', 'Phone:')}</span>
+                  <span className="text-gray-600 break-all">{customer.phone ?? '-'}</span>
                 </div>
-                <div className="flex">
-                  <span className="font-semibold text-gray-700 w-32">Email:</span>
-                  <span className="text-gray-600">{customer.email ?? '-'}</span>
+                <div className="flex flex-col sm:flex-row">
+                  <span className="font-semibold text-gray-700 sm:w-32">{t('email', 'Email:')}</span>
+                  <span className="text-gray-600 break-all">{customer.email ?? '-'}</span>
                 </div>
               </div>
-            </div>
-            <div className="ml-8">
-              <img
-                src="https://via.placeholder.com/150x100/e5e7eb/6b7280?text=Customer"
-                alt="Customer"
-                className="rounded-lg"
-              />
             </div>
           </div>
         </div>
 
         {/* Orders Table */}
         <div className="bg-white rounded-lg shadow">
-          <div className="p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Orders</h2>
-              <p className="text-sm text-gray-500">Showing 1-10 of {customerOrders.length} Orders</p>
+          <div className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-2">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900">{t('orders', 'Orders')}</h2>
+              <p className="text-sm text-gray-500">
+                {t('showing', 'Showing')} {startEntry}-{endEntry} {t('of', 'of')} {totalOrders} {t('orders', 'Orders')}
+              </p>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="min-w-full text-sm sm:text-base">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Order number</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Inventory</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Total Price</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Created by</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Order Time</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Status</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">View</th>
+                    {[
+                      t('order_number', 'Order number'),
+                      t('inventory', 'Inventory'),
+                      t('total_price', 'Total Price'),
+                      t('created_by', 'Created by'),
+                      t('order_time', 'Order Time'),
+                      t('status', 'Status')
+                    ].map((h) => (
+                      <th key={h} className="text-left py-3 px-4 font-medium text-gray-700 whitespace-nowrap">{h}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {customerOrders.map((order: any, idx: number) => (
+                  {paginatedOrders.map((order: any, idx: number) => (
                     <tr key={order._id ?? idx} className="border-b hover:bg-gray-50">
-                      <td className="py-4 px-4 text-gray-900">{order.invoiceNumber ?? order._id}</td>
-                      <td className="py-4 px-4 text-blue-600 underline cursor-pointer hover:text-blue-800">
+                      <td className="py-3 px-4 text-gray-900">{order.invoiceNumber ?? order._id}</td>
+                      <td className="py-3 px-4 text-blue-600 underline cursor-pointer hover:text-blue-800 whitespace-nowrap">
                         {getInventoryName(order.products?.[0]?.inventoryId)}
                       </td>
-                      <td className="py-4 px-4 text-gray-600">{order.totalAmount ?? '-'}</td>
-                      <td className="py-4 px-4 text-gray-600">{getUserName(order.createdBy)}</td>
-                      <td className="py-4 px-4 text-gray-600">
+                      <td className="py-3 px-4 text-gray-600">{order.totalAmount ?? '-'}</td>
+                      <td className="py-3 px-4 text-gray-600">{getUserName(order.createdBy)}</td>
+                      <td className="py-3 px-4 text-gray-600 whitespace-nowrap">
                         {order.createdAt ? new Date(order.createdAt).toLocaleString() : '-'}
                       </td>
-                      <td className="py-4 px-4 text-gray-600">{order.status ?? '-'}</td>
-                      <td className="py-4 px-4">
-                        <button className="text-blue-600 hover:text-blue-800 underline text-sm rounded-full px-2 py-1">
-                          view
-                        </button>
-                      </td>
+                      <td className="py-3 px-4 text-gray-600">{order.status ?? '-'}</td>
                     </tr>
                   ))}
-                  {customerOrders.length === 0 && (
+                  {paginatedOrders.length === 0 && (
                     <tr>
                       <td colSpan={7} className="text-center py-6 text-gray-500">
-                        No orders found for this customer.
+                        {t('no_orders_found_for_customer', 'No orders found for this customer.')}
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
-            <div className="flex justify-between items-center mt-4">
+
+            {/* Pagination */}
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-4 gap-3">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Show</span>
-                <select className="border border-gray-300 rounded-full px-2 py-1 text-sm">
-                  <option>10</option>
+                <span className="text-sm text-gray-600">{t('show', 'Show')}</span>
+                <select
+                  className="border border-gray-300 rounded-full px-2 py-1 text-sm"
+                  value={entriesPerPage}
+                  onChange={(e) => {
+                    setEntriesPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
                 </select>
-                <span className="text-sm text-gray-600">entries</span>
+                <span className="text-sm text-gray-600">{t('entries', 'entries')}</span>
               </div>
-              <div className="flex gap-2">
-                <button className="px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-600">Previous</button>
-                <button className="px-3 py-1 bg-gray-800 text-white rounded-full text-sm">1</button>
-                <button className="px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-600">2</button>
-                <button className="px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-600">3</button>
-                <button className="px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-600">Next</button>
+
+              <div className="flex flex-wrap justify-center sm:justify-end gap-2">
+                <button
+                  className="px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-600 disabled:opacity-50"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  {t('previous', 'Previous')}
+                </button>
+
+                {getPaginationPages(currentPage, totalPages).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setCurrentPage(p)}
+                    className={`px-3 py-1 rounded-full text-sm ${
+                      currentPage === p
+                        ? 'bg-gray-800 text-white'
+                        : 'border border-gray-300 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+
+                <button
+                  className="px-3 py-1 border border-gray-300 rounded-full text-sm text-gray-600 disabled:opacity-50"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  {t('next', 'Next')}
+                </button>
               </div>
             </div>
           </div>

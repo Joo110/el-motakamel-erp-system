@@ -4,6 +4,7 @@ import { useProducts } from '../../product/hooks/useProducts';
 import { useInventories } from '@/mycomponents/inventory/hooks/useInventories';
 import { toast } from 'react-hot-toast';
 import { useLocation, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 interface StockInPayload {
   productId: string;
@@ -15,6 +16,7 @@ interface AddStockToInventoryProps {
 }
 
 const AddStockToInventory: React.FC<AddStockToInventoryProps> = ({ inventoryId: propInventoryId }) => {
+  const { t } = useTranslation();
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [quantity, setQuantity] = useState<string>('5');
   const [orderNumber, setOrderNumber] = useState<string>('');
@@ -55,7 +57,7 @@ const AddStockToInventory: React.FC<AddStockToInventoryProps> = ({ inventoryId: 
       console.group('[StockIn] handleSave START');
 
       if (!selectedProductId) {
-        toast.error('Please select a product.');
+        toast.error(t('please_select_product'));
         console.warn('[StockIn] missing productId');
         console.groupEnd();
         return;
@@ -63,14 +65,14 @@ const AddStockToInventory: React.FC<AddStockToInventoryProps> = ({ inventoryId: 
 
       const qty = Number(quantity);
       if (!qty || qty <= 0) {
-        toast.error('Quantity must be greater than 0.');
+        toast.error(t('quantity_gt_zero'));
         console.warn('[StockIn] invalid quantity');
         console.groupEnd();
         return;
       }
 
       if (!inventoryId) {
-        toast.error('Missing inventory id.');
+        toast.error(t('missing_inventory_id'));
         console.warn('[StockIn] missing inventoryId');
         console.groupEnd();
         return;
@@ -95,7 +97,7 @@ const AddStockToInventory: React.FC<AddStockToInventoryProps> = ({ inventoryId: 
       const res = await addStockToInventory(inventoryId, selectedProductId, qty);
 
       console.log('✅ Stock added successfully:', res);
-      toast.success('Stock in saved successfully');
+      toast.success(t('stock_saved_success'));
 
       handleCancel();
       console.groupEnd();
@@ -103,7 +105,7 @@ const AddStockToInventory: React.FC<AddStockToInventoryProps> = ({ inventoryId: 
       console.error('❌ Stock in error:', err);
       console.error('err.response?.status:', err?.response?.status);
       console.error('err.response?.data:', err?.response?.data);
-      toast.error('Failed to save stock in. Check console for details.');
+      toast.error(t('failed_save_stock'));
     } finally {
       setLoading(false);
     }
@@ -114,13 +116,13 @@ const AddStockToInventory: React.FC<AddStockToInventoryProps> = ({ inventoryId: 
       <div className="max-w-5xl">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Inventory Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('inventory_management')}</h1>
           <div className="flex items-center gap-2 text-sm text-gray-500">
-            <span>Dashboard</span>
+            <span>{t('dashboard')}</span>
             <span>›</span>
-            <span>Inventory</span>
+            <span>{t('inventory')}</span>
             <span>›</span>
-            <span>add Stock To Inventory</span>
+            <span>{t('add_stock_to_inventory')}</span>
           </div>
         </div>
 
@@ -128,7 +130,7 @@ const AddStockToInventory: React.FC<AddStockToInventoryProps> = ({ inventoryId: 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           {/* Card Header */}
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">add Stock To Inventory</h2>
+            <h2 className="text-lg font-semibold text-gray-900">{t('add_stock_to_inventory')}</h2>
           </div>
 
           {/* Form Content */}
@@ -136,7 +138,7 @@ const AddStockToInventory: React.FC<AddStockToInventoryProps> = ({ inventoryId: 
             <div className="grid grid-cols-2 gap-6 mb-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Product <span className="text-red-500">*</span>
+                  {t('product')} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <select
@@ -146,7 +148,7 @@ const AddStockToInventory: React.FC<AddStockToInventoryProps> = ({ inventoryId: 
                     disabled={productsLoading}
                   >
                     <option value="">
-                      {productsLoading ? 'Loading products...' : 'Select a product'}
+                      {productsLoading ? t('loading_products') : t('select_product')}
                     </option>
                     {products.map((product: any) => (
                       <option key={product._id || product.id} value={product._id || product.id}>
@@ -160,7 +162,7 @@ const AddStockToInventory: React.FC<AddStockToInventoryProps> = ({ inventoryId: 
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Quantity <span className="text-red-500">*</span>
+                  {t('quantity')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
@@ -180,21 +182,21 @@ const AddStockToInventory: React.FC<AddStockToInventoryProps> = ({ inventoryId: 
               disabled={loading}
               className="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               onClick={handleSave}
               disabled={loading || !selectedProductId || !quantity}
               className="px-6 py-2 text-sm font-medium text-white bg-slate-600 hover:bg-slate-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Saving...' : 'add Stock'}
+              {loading ? t('loading') : t('add_stock_to_inventory')}
             </button>
           </div>
         </div>
 
         {selectedProductId && (
           <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h3 className="text-sm font-semibold text-blue-900 mb-2">Debug Info (للتطوير فقط):</h3>
+            <h3 className="text-sm font-semibold text-blue-900 mb-2">{t('debug_info')}</h3>
             <pre className="text-xs text-blue-800">
               {JSON.stringify(
                 {

@@ -2,6 +2,7 @@ import './App.css';
 import { createHashRouter, RouterProvider } from "react-router-dom";
 import { Toaster } from 'react-hot-toast';
 import ProtectedRoute from "./ProtectedRoute";
+import "./i18n";
 
 // Authentication Pages
 import UserLogin from './mycomponents/user/authentication/UserLogin';
@@ -46,12 +47,20 @@ import PreciousManagement from './mycomponents/Precious/page/PreciousManagement'
 import EditPurchaseOrderComponent from './mycomponents/Precious/page/EditPurchaseOrderComponent';
 import EditSaleOrderComponent from './mycomponents/Sales/page/EditSaleOrderComponent';
 
+//  HR Management Pages
 import EmployeeList from './mycomponents/HR/page/EmployeeListScreen';
 import AddEmployeeScreen from './mycomponents/HR/page/AddEmployeeScreen';
 import EditEmployeeScreen from './mycomponents/HR/page/EditEmployeeScreen';
 import EmployeeView from './mycomponents/HR/page/ViewEmployeeScreen';
 import PayrollManagement from './mycomponents/HR/page/PayrollScreen';
 import Attendance from './mycomponents/HR/page/AttendanceScreen';
+import AttendanceDayScreen from './mycomponents/HR/page/AttendanceDayScreen';
+
+//journal management pages
+import NewJournal from './mycomponents/journal/page/NewJournal';
+import NewJournalEntry from './mycomponents/journal/page/NewJournalEntry';
+import Journals from './mycomponents/journal/page/Journals';
+import JournalEntriesViewer from './mycomponents/journal/page/JournalEntriesViewer';
 
 //  Sales Management Pages (Customer)
 import CustomerSearchList from './mycomponents/Sales/page/CustomerSearchList';
@@ -64,7 +73,21 @@ import SupplierSearchList from './mycomponents/Precious/page/SupplierSearchList'
 import SupplierDetails from './mycomponents/Precious/page/SupplierDetails';
 import SupplierEditFilled from './mycomponents/Precious/page/SupplierEditFilled';
 import SupplierAdd from './mycomponents/Precious/page/SupplierAdd';
+import PurchaseInvoice from "./mycomponents/Precious/page/Allinvoice";
+import InvoiceScreen from "./mycomponents/Precious/page/InvoiceScreen";
 
+//  Accounts Management Pages
+import AccountingDashboard from './mycomponents/accounts/pages/AccountingDashboard';
+import AccountingTree from './mycomponents/accounts/pages/AccountingTree';
+
+//Trips Management Pages
+import TripsManagement from './mycomponents/Trips/page/TripsManagement';
+import NewTrip from './mycomponents/Trips/page/NewTrip';
+import DelegatesManagement from './mycomponents/Trips/page/DelegatesManagement';
+import CarsListView from './mycomponents/Trips/page/CarsListView';
+import CarDetailsView from './mycomponents/Trips/page/CarDetailsView';
+import AddCarForm from './mycomponents/Trips/page/AddCarForm';
+import Transfercar from './mycomponents/Trips/page/Transfercar';
 
 function App() {
   const routes = createHashRouter([
@@ -136,6 +159,8 @@ function App() {
         { path: "precious/supplier/:id", element: <SupplierDetails /> },
         { path: "precious/supplier/edit/:id", element: <SupplierEditFilled /> },
         { path: "precious/supplier/new", element: <SupplierAdd /> },
+        { path: "precious/supplier/purchaseinvoice", element: <PurchaseInvoice /> },
+        { path: "precious/supplier/InvoiceScreen/:id", element: <InvoiceScreen /> },
 
         // 🆕 HR Management Routes
     { path: "hr/employees", element: <EmployeeList /> },
@@ -144,6 +169,28 @@ function App() {
     { path: "hr/employee/view/:id", element: <EmployeeView /> },
     { path: "hr/payroll", element: <PayrollManagement /> },
     { path: "hr/Attendance", element: <Attendance /> },
+    { path: "hr/AttendanceDay", element: <AttendanceDayScreen /> },
+
+    //jounral management
+    { path: "journal/NewJournal", element: <NewJournal /> },
+    { path: "journal/NewJournalEntry", element: <NewJournalEntry /> },
+    { path: "journal/Journals", element: <Journals /> },
+    { path: "journal/JournalEntriesViewer", element: <JournalEntriesViewer /> },
+
+
+    //  Accounts Management Pages
+    { path: "accounts/AccountingDashboard", element: <AccountingDashboard /> },
+    { path: "accounts/AccountingTree", element: <AccountingTree /> },
+
+    //Trips Management Pages
+    { path: "Trips/TripsManagement", element: <TripsManagement /> },
+    { path: "Trips/NewTrip", element: <NewTrip /> },
+    { path: "Trips/DelegatesManagement/:id", element: <DelegatesManagement /> },
+    { path: "Trips/CarsListView", element: <CarsListView /> },
+    { path: "Trips/CarDetailsView/:id", element: <CarDetailsView /> },
+    { path: "Trips/AddCarForm", element: <AddCarForm /> },
+    { path: "Trips/Transfercar", element: <Transfercar /> },
+
       ],
     },
     //  Catch-all
